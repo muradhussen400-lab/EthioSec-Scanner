@@ -1,0 +1,27 @@
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database
+ethiosec.db
+ethiosec_test.db
+*.sqlite3
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
