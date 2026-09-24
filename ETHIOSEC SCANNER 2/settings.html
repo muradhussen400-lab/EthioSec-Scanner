@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - EthioSecScan</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="settingsstyle.css">
+</head>
+<body>
+
+  <!-- Background -->
+  <div class="dashboard-bg">
+    <div class="glow-one"></div>
+    <div class="glow-two"></div>
+  </div>
+
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🛡️</div>
+        <span class="logo-text">EthioSecScan</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
+        <a href="scanfinal.html" class="side-link"><span class="side-icon">🔍</span> New Scan</a>
+        <a href="scanhistory.html" class="side-link"><span class="side-icon">🕒</span> History</a>
+        <a href="results.html" class="side-link"><span class="side-icon">📋</span> Results</a>
+        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
+        <a href="assistance.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
+      </nav>
+      <div class="scanner-status">
+        <div class="status-dot"></div>
+        <span>Settings Synced</span>
+      </div>
+    </aside>
+
+    <main class="page-container">
+
+      <div class="page-header">
+        <div class="header-content">
+          <h1>Settings</h1>
+          <p>Manage your profile, security, and scan preferences</p>
+        </div>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" type="button">
+          <span id="themeIcon">🌙</span>
+        </button>
+      </div>
+
+      <div class="settings-tabs" id="settingsTabs">
+        <button class="tab-btn active" data-section="profile" type="button"><span>👤</span> Profile</button>
+        <button class="tab-btn" data-section="security" type="button"><span>🔐</span> Security</button>
+        <button class="tab-btn" data-section="scanning" type="button"><span>🔍</span> Scan Defaults</button>
+        <button class="tab-btn" data-section="preferences" type="button"><span>🎨</span> Preferences</button>
+        <button class="tab-btn" data-section="notifications" type="button"><span>🔔</span> Notifications</button>
+      </div>
+
+      <!-- ================= PROFILE ================= -->
+      <section class="settings-section active" id="profile">
+        <div class="panel">
+          <div class="card-header">
+            <h2>Profile</h2>
+            <span class="badge-pill verified">✓ Verified</span>
+          </div>
+
+          <div class="profile-top">
+            <div class="avatar"><span id="avatarLetter">A</span></div>
+            <div class="profile-meta">
+              <h3 id="previewName">Security Analyst</h3>
+              <p id="previewEmail">analyst@ethiosec.local</p>
+              <span class="role-tag" id="previewRole">Security Administrator</span>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fullName">Full Name</label>
+              <input type="text" id="fullName" autocomplete="name" placeholder="Your name">
+            </div>
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input type="text" id="username" autocomplete="username" placeholder="username">
+            </div>
+            <div class="form-group full">
+              <label for="email">Email Address</label>
+              <input type="email" id="email" autocomplete="email" placeholder="you@example.com">
+            </div>
+            <div class="form-group">
+              <label for="role">Account Role</label>
+              <input type="text" id="role" value="Security Administrator" disabled>
+              <small class="field-hint">Set by your workspace owner</small>
+            </div>
+            <div class="form-group">
+              <label for="timezone">Timezone</label>
+              <select id="timezone">
+                <option value="EAT" selected>East Africa Time (EAT)</option>
+                <option value="UTC">UTC</option>
+                <option value="CET">Central European Time (CET)</option>
+                <option value="ET">Eastern Time (ET)</option>
+                <option value="PT">Pacific Time (PT)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SECURITY ================= -->
+      <section class="settings-section" id="security">
+
+        <div class="panel">
+          <div class="card-heading">
+            <div class="card-icon primary">🔑</div>
+            <div>
+              <h3>Change Password</h3>
+              <p>Use at least 8 characters with a number and a symbol.</p>
+            </div>
+          </div>
+
+          <div class="password-fields">
+            <div class="form-group">
+              <label for="currentPassword">Current Password</label>
+              <div class="password-input">
+                <input type="password" id="currentPassword" placeholder="Enter current password">
+                <button class="password-toggle" type="button" aria-label="Show password">👁</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="newPassword">New Password</label>
+              <div class="password-input">
+                <input type="password" id="newPassword" placeholder="Enter new password">
+                <button class="password-toggle" type="button" aria-label="Show password">👁</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm Password</label>
+              <div class="password-input">
+                <input type="password" id="confirmPassword" placeholder="Repeat new password">
+                <button class="password-toggle" type="button" aria-label="Show password">👁</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="password-strength">
+            <div class="strength-label">
+              <span>Password strength</span>
+              <strong id="strengthText">Not checked</strong>
+            </div>
+            <div class="strength-bar"><span id="strengthBar"></span></div>
+            <ul class="strength-rules" id="strengthRules">
+              <li data-rule="length">8+ characters</li>
+              <li data-rule="case">Upper and lower case</li>
+              <li data-rule="number">A number</li>
+              <li data-rule="symbol">A symbol</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="panel toggle-row">
+          <div class="card-heading">
+            <div class="card-icon accent">🛡️</div>
+            <div>
+              <h3>Two-Factor Authentication</h3>
+              <p>Require a verification challenge when signing in.</p>
+            </div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="twoFactor" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="panel toggle-row">
+          <div class="card-heading">
+            <div class="card-icon warning">🚨</div>
+            <div>
+              <h3>Login Alerts</h3>
+              <p>Notify me when a new session signs in.</p>
+            </div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="loginAlerts" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="panel">
+          <div class="card-heading">
+            <div class="card-icon primary">💻</div>
+            <div>
+              <h3>Active Sessions</h3>
+              <p>Current device connection details.</p>
+            </div>
+          </div>
+
+          <div class="session-list">
+            <div class="session">
+              <div class="session-left">
+                <div class="session-icon">💻</div>
+                <div class="session-info">
+                  <strong>This browser <span class="session-current">CURRENT</span></strong>
+                  <small>Active session in local storage</small>
+                </div>
+              </div>
+              <span class="session-online">● Online</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel danger-zone">
+          <div class="danger-content">
+            <div>
+              <h3>Clear Local Data</h3>
+              <p>Removes cached mock scans, custom credentials, and resets application state.</p>
+            </div>
+            <button class="btn btn-danger" id="deleteAccount" type="button">Reset Storage</button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================= SCAN DEFAULTS ================= -->
+      <section class="settings-section" id="scanning">
+        <div class="panel">
+          <div class="card-header">
+            <h2>Default Scan Checks</h2>
+            <span class="header-hint">Pre-selected on the Scanner page</span>
+          </div>
+
+          <div class="preference-list">
+            <div class="preference">
+              <div class="preference-info">
+                <strong>Security Headers</strong>
+                <p>HSTS, CSP, X-Frame-Options and cookie flags.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="defHeaders" checked><span class="slider"></span></label>
+            </div>
+            <div class="preference">
+              <div class="preference-info">
+                <strong>SSL / TLS</strong>
+                <p>Certificate validity and protocol version.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="defSsl" checked><span class="slider"></span></label>
+            </div>
+            <div class="preference">
+              <div class="preference-info">
+                <strong>DNS Records</strong>
+                <p>Public DNS, SPF and DMARC records.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="defDns" checked><span class="slider"></span></label>
+            </div>
+            <div class="preference">
+              <div class="preference-info">
+                <strong>Page Metadata</strong>
+                <p>Title, description and mixed content.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="defMeta" checked><span class="slider"></span></label>
+            </div>
+            <div class="preference">
+              <div class="preference-info">
+                <strong>Default Scan Depth</strong>
+                <p>How thorough a new scan starts out.</p>
+              </div>
+              <div class="preference-control">
+                <select id="defDepth">
+                  <option value="quick">Quick</option>
+                  <option value="standard" selected>Standard</option>
+                  <option value="deep">Deep</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PREFERENCES ================= -->
+      <section class="settings-section" id="preferences">
+        <div class="panel">
+          <div class="card-header">
+            <h2>Preferences</h2>
+            <span class="header-hint">Applied to every page</span>
+          </div>
+
+          <div class="preference-list">
+            <div class="preference">
+              <div class="preference-info">
+                <strong>Appearance</strong>
+                <p>Switch between the dark and light theme.</p>
+              </div>
+              <div class="theme-buttons">
+                <button class="theme-option active" data-theme-choice="dark" type="button">🌙 Dark</button>
+                <button class="theme-option" data-theme-choice="light" type="button">☀️ Light</button>
+              </div>
+            </div>
+            <div class="preference">
+              <div class="preference-info">
+                <strong>Accent Colour</strong>
+                <p>Used for highlights, charts and buttons.</p>
+              </div>
+              <div class="swatches" id="swatches">
+                <button class="swatch active" data-accent="#cc2f0c" style="--sw:#cc2f0c" title="Volcano" type="button"></button>
+                <button class="swatch" data-accent="#1bb369" style="--sw:#1bb369" title="Emerald" type="button"></button>
+                <button class="swatch" data-accent="#ffa500" style="--sw:#ffa500" title="Amber" type="button"></button>
+                <button class="swatch" data-accent="#8e2109" style="--sw:#8e2109" title="Ember" type="button"></button>
+              </div>
+            </div>
+            <div class="preference">
+              <div class="preference-info">
+                <strong>Animations</strong>
+                <p>Background glow, gauge fills and transitions.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="animations" checked><span class="slider"></span></label>
+            </div>
+            <div class="preference">
+              <div class="preference-info">
+                <strong>Compact Layout</strong>
+                <p>Tighter spacing so more fits on screen.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="compactMode"><span class="slider"></span></label>
+            </div>
+            <div class="preference">
+              <div class="preference-info">
+                <strong>Language</strong>
+                <p>Interface language.</p>
+              </div>
+              <div class="preference-control">
+                <select id="language">
+                  <option>English</option>
+                  <option>አማርኛ (Amharic)</option>
+                  <option>Français</option>
+                  <option>Español</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= NOTIFICATIONS ================= -->
+      <section class="settings-section" id="notifications">
+        <div class="panel">
+          <div class="card-header">
+            <h2>Notifications</h2>
+            <span class="header-hint">Choose what reaches you</span>
+          </div>
+
+          <div class="notification-group">
+            <div class="notification-item">
+              <div class="notification-left">
+                <div class="notification-icon critical">⚠</div>
+                <div><strong>Critical Vulnerabilities</strong><small>Alert me the moment one is found.</small></div>
+              </div>
+              <label class="switch"><input type="checkbox" id="notifCritical" checked><span class="slider"></span></label>
+            </div>
+            <div class="notification-item">
+              <div class="notification-left">
+                <div class="notification-icon warning">!</div>
+                <div><strong>High Risk Findings</strong><small>High-severity issues from any scan.</small></div>
+              </div>
+              <label class="switch"><input type="checkbox" id="notifHigh" checked><span class="slider"></span></label>
+            </div>
+            <div class="notification-item">
+              <div class="notification-left">
+                <div class="notification-icon primary">🔐</div>
+                <div><strong>Security Events</strong><small>Password and sign-in activity.</small></div>
+              </div>
+              <label class="switch"><input type="checkbox" id="notifSecurity" checked><span class="slider"></span></label>
+            </div>
+            <div class="notification-item">
+              <div class="notification-left">
+                <div class="notification-icon accent">✓</div>
+                <div><strong>Scan Completed</strong><small>A summary when a scan finishes.</small></div>
+              </div>
+              <label class="switch"><input type="checkbox" id="notifComplete"><span class="slider"></span></label>
+            </div>
+            <div class="notification-item">
+              <div class="notification-left">
+                <div class="notification-icon primary">📅</div>
+                <div><strong>Weekly Digest</strong><small>One email every Monday morning.</small></div>
+              </div>
+              <label class="switch"><input type="checkbox" id="notifDigest" checked><span class="slider"></span></label>
+            </div>
+            <div class="notification-item">
+              <div class="notification-left">
+                <div class="notification-icon warning">🌙</div>
+                <div><strong>Quiet Hours</strong><small>Hold non-critical alerts 10pm–7am.</small></div>
+              </div>
+              <label class="switch"><input type="checkbox" id="notifQuiet"><span class="slider"></span></label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SAVE BAR ================= -->
+      <div class="save-bar">
+        <span class="save-status" id="saveStatus">
+          <span class="save-status-dot"></span> All changes saved
+        </span>
+        <div class="save-actions">
+          <button class="btn btn-secondary" id="resetDefaults" type="button">Reset to defaults</button>
+          <button class="btn btn-primary" id="saveChanges" type="button"><span>✓</span> Save changes</button>
+        </div>
+      </div>
+
+      <footer class="page-footer">
+        <span><i class="footer-pulse"></i> Security system operational</span>
+        <span>EthioSecScan · Settings v2.0</span>
+      </footer>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <span class="toast-icon">✓</span>
+    <div>
+      <strong id="toastTitle">Settings saved</strong>
+      <small id="toastMsg">Your changes are stored on your account</small>
+    </div>
+  </div>
+
+  <!-- Pure Frontend Runtime Shim -->
+  <script>
+    window.EthioShell = window.EthioShell || {
+      init: () => true,
+      escapeHTML: (str) => {
+        if (!str) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      },
+      toast: (msg, type = "info") => {
+        const t = document.getElementById("toast");
+        const title = document.getElementById("toastTitle");
+        const desc = document.getElementById("toastMsg");
+        if (t) {
+          if (desc) desc.textContent = msg;
+          if (title) title.textContent = type === "error" ? "Action Required" : "Preferences Saved";
+          t.classList.add("show");
+          setTimeout(() => t.classList.remove("show"), 3200);
+        }
+      }
+    };
+
+    // Mobile sidebar toggle handler
+    const toggle = document.getElementById("sidebarToggle");
+    const overlay = document.getElementById("sidebarOverlay");
+    const sidebar = document.getElementById("sidebar");
+    if (toggle && sidebar) {
+      toggle.addEventListener("click", () => {
+        sidebar.classList.toggle("open");
+        overlay?.classList.toggle("show");
+      });
+      overlay?.addEventListener("click", () => {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("show");
+      });
+    }
+  </script>
+
+  <!-- Settings Controller -->
+  <script src="settingsjava.js"></script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scanner - EthioSecScan</title>
+  <link rel="stylesheet" href="scanstylefinal.css">
+</head>
+<body>
+
+  <!-- Background glows -->
+  <div class="dashboard-bg">
+    <div class="glow-one"></div>
+    <div class="glow-two"></div>
+  </div>
+
+  <!-- Mobile sidebar toggle -->
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🛡️</div>
+        <span class="logo-text">EthioSecScan</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
+        <a href="scanfinal.html" class="side-link active"><span class="side-icon">🔍</span> New Scan</a>
+        <a href="scanhistory.html" class="side-link"><span class="side-icon">🕒</span> History</a>
+        <a href="results.html" class="side-link"><span class="side-icon">📋</span> Results</a>
+        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
+        <a href="assistance.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
+      </nav>
+      <div class="scanner-status">
+        <div class="status-dot"></div>
+        <span>Scanner Engine Ready</span>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="scanner-container">
+
+      <div class="page-header">
+        <div class="header-content">
+          <h1>URL Scanner</h1>
+          <p>Enter a site you are authorized to test, pick your checks, and run the scan</p>
+        </div>
+        <a href="dashboard.html" class="ghost-btn">← Back to dashboard</a>
+      </div>
+
+      <section class="scanner-grid">
+
+        <!-- ---------- Target + settings ---------- -->
+        <div class="panel scan-config">
+
+          <div class="card-header">
+            <h2>Scan Target</h2>
+            <span class="header-hint">Full URL, including https://</span>
+          </div>
+
+          <label class="field-label" for="url">Website URL</label>
+
+          <div class="url-input">
+            <span class="url-icon">🌐</span>
+            <input type="url" id="url" placeholder="https://example.com" autocomplete="url">
+            <button class="clear-url" id="clearUrl" title="Clear">✕</button>
+          </div>
+          <p class="input-help" id="urlHelp">We only read publicly available information.</p>
+
+          <!-- Recent targets as quick chips -->
+          <div class="chips" id="recentTargets"></div>
+
+          <div class="divider"></div>
+
+          <div class="settings-head">
+            <h3>Scan Settings</h3>
+            <button class="link-btn" id="toggleAll">Select all</button>
+          </div>
+
+          <div class="settings">
+
+            <label class="setting">
+              <div class="setting-text">
+                <strong>Security Headers</strong>
+                <small>HSTS, CSP, X-Frame-Options</small>
+              </div>
+              <input type="checkbox" id="modHeaders" data-module="headers" checked>
+              <span class="switch"></span>
+            </label>
+
+            <label class="setting">
+              <div class="setting-text">
+                <strong>SSL / TLS</strong>
+                <small>Certificate and protocol version</small>
+              </div>
+              <input type="checkbox" id="modSsl" data-module="ssl" checked>
+              <span class="switch"></span>
+            </label>
+
+            <label class="setting">
+              <div class="setting-text">
+                <strong>DNS Records</strong>
+                <small>Public DNS and mail records</small>
+              </div>
+              <input type="checkbox" id="modDns" data-module="dns" checked>
+              <span class="switch"></span>
+            </label>
+
+            <label class="setting">
+              <div class="setting-text">
+                <strong>Page Metadata</strong>
+                <small>Title, description, mixed content</small>
+              </div>
+              <input type="checkbox" id="modMeta" data-module="meta" checked>
+              <span class="switch"></span>
+            </label>
+
+          </div>
+
+          <div class="depth-row">
+            <div class="depth-field">
+              <label class="field-label" for="depth">Scan Depth</label>
+              <select id="depth">
+                <option value="quick">Quick — surface checks</option>
+                <option value="standard" selected>Standard — recommended</option>
+                <option value="deep">Deep — slower, more checks</option>
+              </select>
+            </div>
+            <div class="depth-note" id="depthNote">About 6 seconds</div>
+          </div>
+
+          <!-- Authorization Gate -->
+          <label class="authorize" for="authorized">
+            <input type="checkbox" id="authorized">
+            <span>
+              <strong>I own this website, or I have written permission to test it.</strong>
+              <small>Scanning a target you are not authorized to test is illegal in most countries.</small>
+            </span>
+          </label>
+
+          <button class="scan-button" id="scanButton" type="button" disabled>
+            <span>🔍</span> Start Scan
+          </button>
+
+        </div>
+
+        <!-- ---------- Right column ---------- -->
+        <div class="right-column">
+
+          <div class="panel info-card">
+            <div class="card-header"><h2>How it works</h2></div>
+
+            <div class="step">
+              <div class="step-number">1</div>
+              <div>
+                <strong>Enter a URL</strong>
+                <p>Point the scanner at any public site you own.</p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">2</div>
+              <div>
+                <strong>Watch it run</strong>
+                <p>The live progress page shows each check as it finishes.</p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">3</div>
+              <div>
+                <strong>Fix what's flagged</strong>
+                <p>Each finding comes with the reason and a fix.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel stats-card">
+            <div class="stat">
+              <span>Last Scan</span>
+              <strong id="lastScan">—</strong>
+            </div>
+            <div class="stat">
+              <span>URLs Scanned</span>
+              <strong id="totalScans">0</strong>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ---------- Recent Scans section ---------- -->
+      <section class="panel history-card" id="history">
+        <div class="card-header">
+          <h2>Recent Scans</h2>
+          <a href="scanhistory.html" class="link-btn">View all →</a>
+        </div>
+        <div class="history-list" id="historyList">
+          <p class="empty-state">Loading…</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Pure Frontend Runtime Shim -->
+  <script>
+    window.EthioShell = window.EthioShell || {
+      init: () => true,
+      escapeHTML: (str) => {
+        if (!str) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      },
+      timeAgo: (dateString) => {
+        if (!dateString) return "Recently";
+        return "Today";
+      },
+      toast: (msg) => {
+        const t = document.getElementById("toast");
+        if (t) {
+          t.textContent = msg;
+          t.classList.add("show");
+          setTimeout(() => t.classList.remove("show"), 3000);
+        }
+      }
+    };
+
+    window.EthioAuth = window.EthioAuth || {
+      isAuthenticated: () => true,
+      getQueryParam: (p) => new URLSearchParams(window.location.search).get(p)
+    };
+
+    // Mobile sidebar toggle handler
+    const toggle = document.getElementById("sidebarToggle");
+    const overlay = document.getElementById("sidebarOverlay");
+    const sidebar = document.getElementById("sidebar");
+    if (toggle && sidebar) {
+      toggle.addEventListener("click", () => {
+        sidebar.classList.toggle("open");
+        overlay?.classList.toggle("show");
+      });
+      overlay?.addEventListener("click", () => {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("show");
+      });
+    }
+
+    // Auto-prefill target if passed via URL parameter (?target=...)
+    const heldTarget = new URLSearchParams(window.location.search).get("target");
+    if (heldTarget) {
+      const urlInput = document.getElementById("url");
+      if (urlInput) urlInput.value = decodeURIComponent(heldTarget);
+    }
+  </script>
+
+  <!-- Scanner Controller -->
+  <script src="scanjavafinal.js"></script>
+</body>
+</html>

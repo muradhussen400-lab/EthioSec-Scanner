@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan Results - EthioSecScan</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="resultsstyle.css">
+</head>
+<body>
+
+  <div class="dashboard-bg">
+    <div class="glow-one"></div>
+    <div class="glow-two"></div>
+  </div>
+
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="layout">
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🛡️</div>
+        <span class="logo-text">EthioSecScan</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
+        <a href="scanfinal.html" class="side-link"><span class="side-icon">🔍</span> New Scan</a>
+        <a href="scanhistory.html" class="side-link"><span class="side-icon">🕒</span> History</a>
+        <a href="results.html" class="side-link active"><span class="side-icon">📋</span> Results</a>
+        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
+        <a href="assistance.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
+      </nav>
+      <div class="scanner-status">
+        <div class="status-dot"></div>
+        <span>Scanner Engine Idle</span>
+      </div>
+    </aside>
+
+    <main class="page-container">
+      <div class="page-header">
+        <div class="header-content">
+          <h1>Scan Results</h1>
+          <p id="resultTarget">Loading…</p>
+        </div>
+        <div class="header-actions">
+          <a href="scanfinal.html" class="ghost-btn">Scan another URL</a>
+          <a href="reports.html" class="primary-btn" id="openReport">Full report →</a>
+        </div>
+      </div>
+
+      <!-- ---------- Score summary ---------- -->
+      <section class="panel score-panel">
+        <div class="score-ring">
+          <svg viewBox="0 0 140 140">
+            <defs>
+              <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#cc2f0c" />
+                <stop offset="100%" stop-color="#1bb369" />
+              </linearGradient>
+            </defs>
+            <circle cx="70" cy="70" r="60" class="ring-bg" />
+            <circle cx="70" cy="70" r="60" class="ring-progress" id="ringProgress" />
+          </svg>
+          <div class="ring-center">
+            <span id="scoreValue">0</span>
+            <small>/100</small>
+          </div>
+        </div>
+
+        <div class="score-side">
+          <h2 id="verdict">Scoring…</h2>
+          <p id="verdictNote">Findings evaluated from local scanner results.</p>
+
+          <div class="count-grid">
+            <button class="count critical" data-filter="critical" type="button"><b id="cCritical">0</b><span>Critical</span></button>
+            <button class="count high" data-filter="high" type="button"><b id="cHigh">0</b><span>High</span></button>
+            <button class="count medium" data-filter="medium" type="button"><b id="cMedium">0</b><span>Medium</span></button>
+            <button class="count low" data-filter="low" type="button"><b id="cLow">0</b><span>Low</span></button>
+            <button class="count passed" data-filter="passed" type="button"><b id="cPassed">0</b><span>Passed</span></button>
+          </div>
+
+          <div class="scan-meta">
+            <span>Scan ID: <strong id="scanIdLabel">—</strong></span>
+            <span>Depth: <strong id="depthLabel">—</strong></span>
+            <span>Finished: <strong id="finishedLabel">—</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- Findings ---------- -->
+      <section class="panel findings-panel">
+        <div class="card-header">
+          <h2>Findings</h2>
+          <div class="filters">
+            <select id="severityFilter">
+              <option value="all">All severities</option>
+              <option value="open">Open issues only</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="passed">Passed checks</option>
+            </select>
+            <select id="moduleFilter">
+              <option value="all">All modules</option>
+            </select>
+            <input type="search" id="findingSearch" placeholder="Search findings…">
+          </div>
+        </div>
+
+        <div class="finding-list" id="findingList">
+          <p class="loading-state">Loading findings…</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ---------- VULNERABILITY DETAILS MODAL ---------- -->
+  <div class="modal-overlay" id="detailModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+      <button class="modal-close" id="modalClose" aria-label="Close" type="button">✕</button>
+
+      <div class="modal-head">
+        <span class="sev-badge" id="dSeverity">—</span>
+        <span class="confidence" id="dConfidence">—</span>
+        <h2 id="dTitle">Finding</h2>
+        <p class="modal-url" id="dUrl">—</p>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-block">
+          <h3>What was found</h3>
+          <p id="dDescription">—</p>
+        </div>
+
+        <div class="detail-block">
+          <h3>Evidence</h3>
+          <pre id="dEvidence">—</pre>
+        </div>
+
+        <div class="detail-block">
+          <h3>Real-world impact</h3>
+          <p id="dImpact">—</p>
+        </div>
+
+        <div class="detail-block ai-block">
+          <h3><span class="ai-tag">AI</span> Explanation</h3>
+          <p id="dAi">—</p>
+        </div>
+
+        <div class="detail-block">
+          <h3>How to fix it</h3>
+          <ol id="dRemediation"></ol>
+        </div>
+
+        <div class="detail-tags">
+          <span class="tag" id="dOwasp">OWASP —</span>
+          <span class="tag" id="dCwe">CWE —</span>
+          <span class="tag" id="dParam" hidden>Parameter —</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <a class="ghost-btn" id="askAi" href="#">Ask AI about this →</a>
+        <button class="primary-btn" id="modalDone" type="button">Back to results</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- =========================================================
+       PURE FRONTEND BRIDGE
+       ========================================================= -->
+  <script>
+    window.EthioShell = window.EthioShell || {
+      init: () => true,
+      escapeHTML: (str) => {
+        if (!str) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      },
+      timeAgo: (dateString) => {
+        if (!dateString) return "Recently";
+        return "Just now";
+      },
+      severityClass: (sev) => "sev-" + (sev || "info").toLowerCase(),
+      toast: (msg) => {
+        const t = document.getElementById("toast");
+        if (t) {
+          t.textContent = msg;
+          t.classList.add("show");
+          setTimeout(() => t.classList.remove("show"), 3000);
+        }
+      }
+    };
+
+    window.EthioAuth = window.EthioAuth || {
+      isAuthenticated: () => true,
+      getQueryParam: (param) => new URLSearchParams(window.location.search).get(param) || "scan_demo"
+    };
+
+    window.EthioAPI = window.EthioAPI || {
+      scanResults: async (id) => {
+        return {
+          target: "https://demo.ethio-security.org",
+          depth: "Deep Audit",
+          scanned_at: new Date().toISOString(),
+          security_score: 72,
+          counts: { critical: 1, high: 2, medium: 2, low: 3, passed: 14 },
+          findings: [
+            {
+              id: "f-01",
+              type: "injection",
+              severity: "critical",
+              confidence: "high",
+              url: "https://demo.ethio-security.org/login.php",
+              parameter: "username",
+              evidence: "SQL syntax error: ' OR 1=1 --",
+              title: "SQL Injection in Authentication Route",
+              description: "User parameter 'username' is concatenated directly into SQL query.",
+              impact: "Attacker can bypass login and extract password hashes.",
+              remediation: ["Use parameterized PDO/prepared statements."],
+              owasp: "A03:2021-Injection",
+              cwe: "CWE-89",
+              ai_explanation: "The query directly interprets single quotes as delimiters.",
+              status: "open"
+            },
+            {
+              id: "f-02",
+              type: "headers",
+              severity: "high",
+              confidence: "high",
+              url: "https://demo.ethio-security.org/",
+              parameter: "",
+              evidence: "Header 'Content-Security-Policy' missing",
+              title: "Missing Content-Security-Policy",
+              description: "No CSP configured on root domain.",
+              impact: "Vulnerable to inline script execution via XSS.",
+              remediation: ["Configure CSP with default-src 'self'."],
+              owasp: "A05:2021-Security Misconfiguration",
+              cwe: "CWE-693",
+              ai_explanation: "Enforce strict content security directives via web server headers.",
+              status: "open"
+            },
+            {
+              id: "f-03",
+              type: "misconfig",
+              severity: "medium",
+              confidence: "medium",
+              url: "https://demo.ethio-security.org/.git/",
+              parameter: "",
+              evidence: "Status 200 on /.git/config",
+              title: "Exposed Git Repository",
+              description: "Source code repository metadata is accessible via browser.",
+              impact: "Full code exposure and leaked secrets.",
+              remediation: ["Block access to hidden dotfiles in Nginx/Apache configuration."],
+              owasp: "A01:2021-Broken Access Control",
+              cwe: "CWE-538",
+              ai_explanation: "Add location blocks to reject dotfile paths.",
+              status: "open"
+            }
+          ]
+        };
+      }
+    };
+
+    // Sidebar mobile toggle handler
+    const toggle = document.getElementById("sidebarToggle");
+    const overlay = document.getElementById("sidebarOverlay");
+    const sidebar = document.getElementById("sidebar");
+    if (toggle && sidebar) {
+      toggle.addEventListener("click", () => {
+        sidebar.classList.toggle("open");
+        overlay?.classList.toggle("show");
+      });
+      overlay?.addEventListener("click", () => {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("show");
+      });
+    }
+
+    // Modal ESC handler
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const modal = document.getElementById("detailModal");
+        if (modal && !modal.hidden) {
+          modal.hidden = true;
+        }
+      }
+    });
+  </script>
+
+  <!-- Load UI controller -->
+  <script src="resultsjava.js"></script>
+</body>
+</html>

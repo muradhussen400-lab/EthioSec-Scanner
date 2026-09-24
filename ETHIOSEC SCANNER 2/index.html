@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EthioSecScan — scan your website for security, OWASP and AI-explained vulnerabilities. Scan. Understand. Secure.">
+    <title>EthioSecScan — Scan. Understand. Secure.</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="sty.css">
+</head>
+
+<body>
+
+    <!-- ================= BACKGROUND ================= -->
+    <div class="volcano-bg">
+        <div class="lava-glow glow-one"></div>
+        <div class="lava-glow glow-two"></div>
+        <span class="crack crack-1"></span>
+        <span class="crack crack-2"></span>
+        <span class="crack crack-3"></span>
+        <span class="crack crack-4"></span>
+        <span class="crack crack-5"></span>
+        <span class="crack crack-6"></span>
+    </div>
+
+    <!-- ================= NAVBAR ================= -->
+    <header class="navbar">
+        <a href="#home" class="logo">
+            <span class="logo-icon">◈</span>
+            <span>EthioSec<span>Scan</span></span>
+        </a>
+
+        <nav class="nav-links" id="navLinks">
+            <a href="#home" class="active">HOME</a>
+            <a href="#features">FEATURES</a>
+            <a href="#contact">CONTACT US</a>
+            <a href="dashboardfinal.html" class="login-link" id="openDashboard" hidden>DASHBOARD</a>
+            <a href="login.html" class="login-link" id="openLogin">LOGIN / REGISTER</a>
+        </nav>
+
+        <button class="menu-btn" id="menuBtn" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </header>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <main>
+
+        <!-- ================= HERO ================= -->
+        <section class="hero" id="home">
+            <div class="hero-content">
+
+                <div class="status-badge">
+                    <span class="flag-icon">🇪🇹</span>
+                    <span class="pulse-dot"></span>
+                    WEBSITE SECURITY PLATFORM
+                </div>
+
+                <h1>
+                    Scan. Understand.
+                    <span>Secure Your Website.</span>
+                </h1>
+
+                <p class="hero-description">
+                    EthioSecScan crawls your website, tests it against
+                    OWASP-standard vulnerability checks, explains every
+                    finding in plain language with AI, and hands you a
+                    report you can act on.
+                </p>
+
+                <!-- SCANNER FORM -->
+                <div class="scanner-card">
+                    <div class="scanner-header">
+                        <div>
+                            <span class="scanner-dot green"></span>
+                            <span class="scanner-dot yellow"></span>
+                            <span class="scanner-dot red"></span>
+                        </div>
+                        <span class="scanner-title">WEBSITE SCANNER</span>
+                        <span class="scanner-status" id="scannerStatus">READY</span>
+                    </div>
+
+                    <form class="scan-form" id="scanForm">
+                        <div class="url-input">
+                            <span class="url-icon">⌕</span>
+                            <input
+                                type="text"
+                                id="urlInput"
+                                placeholder="https://yourwebsite.com"
+                                autocomplete="url"
+                                required
+                            >
+                        </div>
+                        <button class="scan-btn" type="submit" id="scanBtn">
+                            <span>START SCAN</span>
+                            <span class="arrow">→</span>
+                        </button>
+                    </form>
+
+                    <p class="scan-hint">
+                        Already have an account? We'll take you straight to the scanner.
+                        New here? We'll hold your URL and get you signed up first.
+                    </p>
+
+                    <div class="scan-progress" id="scanProgress">
+                        <div class="progress-info">
+                            <span id="scanText">Redirecting you to scanner...</span>
+                            <span id="progressPercent">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HERO STATS -->
+                <div class="hero-stats">
+                    <div class="stat">
+                        <strong>99.9%</strong>
+                        <span>SCAN ACCURACY</span>
+                    </div>
+                    <div class="stat">
+                        <strong>24/7</strong>
+                        <span>MONITORING</span>
+                    </div>
+                    <div class="stat">
+                        <strong>50+</strong>
+                        <span>CHECKS</span>
+                    </div>
+                    <div class="stat">
+                        <strong>100K+</strong>
+                        <span>USERS</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- HERO VISUAL -->
+            <div class="hero-visual">
+                <div class="scanner-orbit orbit-one"></div>
+                <div class="scanner-orbit orbit-two"></div>
+
+                <div class="scanner-core">
+                    <div class="core-ring"></div>
+                    <div class="core-content">
+                        <div class="core-icon">⌁</div>
+                        <span>SCANNING</span>
+                        <strong>WEBSITE</strong>
+                        <small>INTELLIGENCE</small>
+                    </div>
+                </div>
+
+                <div class="floating-card security-card">
+                    <span class="card-icon">◉</span>
+                    <div>
+                        <strong>OWASP TESTING</strong>
+                        <small>Verified</small>
+                    </div>
+                </div>
+
+                <div class="floating-card performance-card">
+                    <span class="card-icon">ϟ</span>
+                    <div>
+                        <strong>AI EXPLAINED</strong>
+                        <small>Understood</small>
+                    </div>
+                </div>
+
+                <div class="floating-card seo-card">
+                    <span class="card-icon">◆</span>
+                    <div>
+                        <strong>REPORTS</strong>
+                        <small>Actioned</small>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FEATURES ================= -->
+        <section class="features-section" id="features">
+            <div class="section-heading">
+                <span class="section-label">WHAT WE DO</span>
+                <h2>Four Steps To A Secure Site.</h2>
+                <p>
+                    From first crawl to a report you can hand to your team —
+                    here's what EthioSecScan does for every website you scan.
+                </p>
+            </div>
+
+            <div class="features-grid">
+                <article class="feature-card">
+                    <div class="feature-number">01</div>
+                    <div class="feature-icon">🕸️</div>
+                    <h3>Discovery</h3>
+                    <p>We crawl and map your site — pages, endpoints and assets — so nothing is scanned blind.</p>
+                    <span class="feature-line"></span>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-number">02</div>
+                    <div class="feature-icon">🛡️</div>
+                    <h3>OWASP Testing</h3>
+                    <p>Every page is tested against industry-standard OWASP vulnerability checks, from injection to misconfiguration.</p>
+                    <span class="feature-line"></span>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-number">03</div>
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI Explanations</h3>
+                    <p>Every finding comes with a plain-language AI explanation of what it means and why it matters.</p>
+                    <span class="feature-line"></span>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-number">04</div>
+                    <div class="feature-icon">📄</div>
+                    <h3>Reports</h3>
+                    <p>Get a shareable, downloadable report with a security score and step-by-step fixes for every issue.</p>
+                    <span class="feature-line"></span>
+                </article>
+            </div>
+        </section>
+
+        <!-- ================= HOW IT WORKS ================= -->
+        <section class="process-section">
+            <div class="section-heading">
+                <span class="section-label">SIMPLE PROCESS</span>
+                <h2>From URL To Intelligence.</h2>
+            </div>
+
+            <div class="process">
+                <div class="process-step">
+                    <div class="step-circle">01</div>
+                    <h3>Enter URL</h3>
+                    <p>Sign in and enter the website you want to analyze.</p>
+                </div>
+                <div class="process-line"></div>
+                <div class="process-step">
+                    <div class="step-circle">02</div>
+                    <h3>Start Scan</h3>
+                    <p>Watch our scanning engine examine the website live.</p>
+                </div>
+                <div class="process-line"></div>
+                <div class="process-step">
+                    <div class="step-circle">03</div>
+                    <h3>Get Results</h3>
+                    <p>Review AI-explained findings and download your report.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= CTA ================= -->
+        <section class="cta-section">
+            <div class="cta-content">
+                <span class="section-label">READY TO EXPLORE?</span>
+                <h2>
+                    Don't Guess.
+                    <span>Scan.</span>
+                </h2>
+                <p>Find what's hiding beneath your website's surface.</p>
+                <a class="cta-btn" href="login.html">GET STARTED →</a>
+            </div>
+        </section>
+
+        <!-- ================= CONTACT ================= -->
+        <section class="contact-section" id="contact">
+            <div class="contact-info">
+                <span class="section-label">GET IN TOUCH</span>
+                <h2>Let's Talk.</h2>
+                <p>Have questions about website scanning? We'd love to hear from you.</p>
+
+                <div class="contact-detail">
+                    <span>✉</span>
+                    <div>
+                        <small>EMAIL</small>
+                        <strong>hello@ethiosecscan.com</strong>
+                    </div>
+                </div>
+
+                <div class="contact-detail">
+                    <span>⌖</span>
+                    <div>
+                        <small>PLATFORM</small>
+                        <strong>Available Worldwide</strong>
+                    </div>
+                </div>
+            </div>
+
+            <form class="contact-form" id="contactForm">
+                <div class="form-row">
+                    <input type="text" id="contactName" placeholder="Your name" required>
+                    <input type="email" id="contactEmail" placeholder="Your email" required>
+                </div>
+                <input type="text" id="contactSubject" placeholder="Subject" required>
+                <textarea id="contactMessage" rows="6" placeholder="Tell us how we can help..." required></textarea>
+                <button type="submit" class="submit-btn">SEND MESSAGE →</button>
+            </form>
+        </section>
+
+    </main>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-column footer-about">
+                <h3>About EthioSecScan</h3>
+                <p>Scan. Understand. Secure. — website security scanning built for modern teams.</p>
+            </div>
+            <div class="footer-column">
+                <h3>Quick Links</h3>
+                <a href="#home">Home</a>
+                <a href="#features">Features</a>
+                <a href="#contact">Contact</a>
+                <a href="login.html" id="footerLogin">Login</a>
+            </div>
+            <div class="footer-column">
+                <h3>Support</h3>
+                <a href="#">Documentation</a>
+                <a href="#">Help Center</a>
+                <a href="#">Community</a>
+                <a href="#">API Docs</a>
+            </div>
+            <div class="footer-column">
+                <h3>Connect With Us</h3>
+                <a href="#">Twitter</a>
+                <a href="#">Facebook</a>
+                <a href="#">LinkedIn</a>
+                <a href="#">Instagram</a>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <div class="footer-copyright">
+                © 2026 EthioSecScan. All rights reserved.
+            </div>
+            <div class="footer-legal">
+                <a href="#">Privacy Policy</a>
+                <span>|</span>
+                <a href="#">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================= NOTIFICATION TOAST ================= -->
+    <div class="notification" id="notification">
+        <span id="notificationIcon">✓</span>
+        <p id="notificationText">Message sent successfully.</p>
+    </div>
+
+    <!-- Pure Frontend Mock Bridge -->
+    <script>
+        window.EthioAuth = window.EthioAuth || {
+            isAuthenticated: () => localStorage.getItem("isLoggedIn") === "true",
+            scanDestination: (target) => {
+                const authed = localStorage.getItem("isLoggedIn") === "true";
+                return authed
+                    ? `scanfinal.html?target=${encodeURIComponent(target)}`
+                    : `login.html?target=${encodeURIComponent(target)}`;
+            }
+        };
+
+        // Sync footer login link if authenticated
+        const isAuth = localStorage.getItem("isLoggedIn") === "true";
+        const footerLog = document.getElementById("footerLogin");
+        if (isAuth && footerLog) {
+            footerLog.textContent = "Dashboard";
+            footerLog.href = "dashboardfinal.html";
+        }
+    </script>
+
+    <!-- Main Landing Page Script -->
+    <script src="script.js"></script>
+</body>
+</html>

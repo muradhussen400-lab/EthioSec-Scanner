@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan History - EthioSecScan</title>
+    <link rel="stylesheet" href="shell.css">
+    <link rel="stylesheet" href="scan_historystyle.css">
+</head>
+<body>
+
+<div class="dashboard-bg">
+    <div class="glow-one"></div>
+    <div class="glow-two"></div>
+</div>
+
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">🛡️</div>
+            <span class="logo-text">EthioSecScan</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
+            <a href="scanfinal.html" class="side-link"><span class="side-icon">🔍</span> New Scan</a>
+            <a href="scanhistory.html" class="side-link active"><span class="side-icon">🕒</span> History</a>
+            <a href="results.html" class="side-link"><span class="side-icon">📋</span> Results</a>
+            <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
+            <a href="assistance.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
+        </nav>
+        <div class="scanner-status">
+            <div class="status-dot"></div>
+            <span>Database Synced</span>
+        </div>
+    </aside>
+
+    <main class="page-container">
+
+        <div class="page-header">
+            <div class="header-content">
+                <h1>Scan History</h1>
+                <p>Review and re-open your previous security scans</p>
+            </div>
+            <a href="scanfinal.html" class="primary-btn">🔍 New scan</a>
+        </div>
+
+        <!-- Totals derived from scan database -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Scans</div>
+                <div class="stat-value" id="statTotal">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Clean</div>
+                <div class="stat-value safe-number" id="statSafe">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Warnings</div>
+                <div class="stat-value warning-number" id="statWarning">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Critical / High</div>
+                <div class="stat-value danger-number" id="statDanger">—</div>
+            </div>
+        </div>
+
+        <div class="filters-section">
+            <div class="filter-group">
+                <label for="statusFilter">Filter by status</label>
+                <select id="statusFilter">
+                    <option value="all">All</option>
+                    <option value="safe">Clean</option>
+                    <option value="warning">Warning</option>
+                    <option value="danger">Critical / High</option>
+                    <option value="running">Still running</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Date range</label>
+                <div class="date-fields">
+                    <input type="date" id="dateFrom">
+                    <span>to</span>
+                    <input type="date" id="dateTo">
+                </div>
+            </div>
+
+            <div class="filter-group search-group">
+                <label for="searchInput">Search</label>
+                <input type="search" id="searchInput" placeholder="Search URLs…">
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <h2>Scans</h2>
+                <span id="resultCount">—</span>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>URL</th>
+                            <th>Status</th>
+                            <th>Score</th>
+                            <th>Scan date</th>
+                            <th>Issues</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="pagination">
+            <button id="prevBtn" type="button">← Previous</button>
+            <span id="pageInfo"></span>
+            <button id="nextBtn" type="button">Next →</button>
+        </div>
+
+    </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Mobile Sidebar Script -->
+<script>
+    const toggle = document.getElementById("sidebarToggle");
+    const overlay = document.getElementById("sidebarOverlay");
+    const sidebar = document.getElementById("sidebar");
+    if (toggle && sidebar) {
+        toggle.addEventListener("click", () => {
+            sidebar.classList.toggle("open");
+            overlay?.classList.toggle("show");
+        });
+        overlay?.addEventListener("click", () => {
+            sidebar.classList.remove("open");
+            overlay.classList.remove("show");
+        });
+    }
+</script>
+
+<script src="scan_historyjava.js"></script>
+
+</body>
+</html>

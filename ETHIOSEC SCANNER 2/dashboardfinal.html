@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - EthioSecScan</title>
+    <link rel="stylesheet" href="dashboardfinal.css">
+    <!-- Chart.js for rendering scan metrics without errors -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Background -->
+    <div class="dashboard-bg">
+        <div class="glow-one"></div>
+        <div class="glow-two"></div>
+    </div>
+
+    <!-- Mobile sidebar toggle -->
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="layout">
+
+        <!-- ============ SIDEBAR ============ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">🛡️</div>
+                <span class="logo-text">EthioSecScan</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="side-link active"><span class="side-icon">📊</span> Dashboard</a>
+                <a href="scanfinal.html" class="side-link"><span class="side-icon">🔍</span> New Scan</a>
+                <a href="scanhistory.html" class="side-link"><span class="side-icon">🕒</span> History</a>
+                <a href="results.html" class="side-link"><span class="side-icon">📋</span> Results</a>
+                <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
+                <a href="assistance.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
+            </nav>
+            <div class="scanner-status">
+                <div class="status-dot"></div>
+                <span>Scanner Engine Online</span>
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">U</div>
+                    <div class="user-details">
+                        <span class="user-name">Security Analyst</span>
+                        <span class="user-email" id="userEmailDisplay">analyst@ethiosec.local</span>
+                    </div>
+                </div>
+                <button class="logout-btn" id="logoutBtn" type="button">Log Out</button>
+            </div>
+        </aside>
+
+        <!-- ============ MAIN CONTENT ============ -->
+        <main class="dashboard-container">
+
+            <!-- Header Section -->
+            <div class="dashboard-header">
+                <div class="header-content">
+                    <h1>Security Dashboard</h1>
+                    <p>Monitor your website's security, performance, and health metrics</p>
+                </div>
+                <a href="scanfinal.html" class="scan-btn-header">🔍 New Scan</a>
+            </div>
+
+            <!-- Main Grid -->
+            <div class="dashboard-grid">
+
+                <!-- Left Column -->
+                <div class="dashboard-left">
+
+                    <!-- Security Score Card -->
+                    <div class="security-card">
+                        <div class="card-header">
+                            <h2>Security Score</h2>
+                            <span class="score-label">Overall</span>
+                        </div>
+
+                        <div class="score-container">
+                            <div class="score-gauge">
+                                <svg viewBox="0 0 200 200">
+                                    <defs>
+                                        <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#cc2f0c" />
+                                            <stop offset="100%" stop-color="#1bb369" />
+                                        </linearGradient>
+                                    </defs>
+                                    <circle cx="100" cy="100" r="90" class="gauge-bg" />
+                                    <circle cx="100" cy="100" r="90" class="gauge-progress" id="scoreProgress" />
+                                </svg>
+                                <div class="score-display">
+                                    <div class="score-number" id="scoreNumber">85</div>
+                                    <div class="score-text">/100</div>
+                                </div>
+                            </div>
+
+                            <div class="score-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Status</span>
+                                    <span class="detail-value status-good" id="scoreStatus">Protected</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Last Scan</span>
+                                    <span class="detail-value" id="lastScan">Just now</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Issues</span>
+                                    <span class="detail-value" id="issueCount">3</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="score-breakdown">
+                            <h3>Score Breakdown</h3>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">🔒 Security</span>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="barSecurity" style="width: 85%"></div>
+                                </div>
+                                <span class="breakdown-value" id="valSecurity">85%</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">⚡ Performance</span>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="barPerformance" style="width: 92%"></div>
+                                </div>
+                                <span class="breakdown-value" id="valPerformance">92%</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">🔍 SEO</span>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="barSeo" style="width: 80%"></div>
+                                </div>
+                                <span class="breakdown-value" id="valSeo">80%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">🛡️</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Vulnerabilities</div>
+                                <div class="stat-number" id="vulnCount">3</div>
+                                <div class="stat-status">Found</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">⚠️</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Warnings</div>
+                                <div class="stat-number" id="warnCount">12</div>
+                                <div class="stat-status">Need attention</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">✓</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Passed Checks</div>
+                                <div class="stat-number" id="passCount">47</div>
+                                <div class="stat-status">All good</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Total Scans</div>
+                                <div class="stat-number" id="totalScans">24</div>
+                                <div class="stat-status">This month</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Column -->
+                <div class="dashboard-right">
+
+                    <!-- Scan Summary -->
+                    <div class="summary-card">
+                        <div class="card-header">
+                            <h2>Scan Summary</h2>
+                            <span class="time-filter">
+                                <button class="filter-btn active" data-range="week">Week</button>
+                                <button class="filter-btn" data-range="month">Month</button>
+                                <button class="filter-btn" data-range="year">Year</button>
+                            </span>
+                        </div>
+
+                        <div class="summary-content">
+                            <div class="summary-item">
+                                <div class="summary-label">Websites Scanned</div>
+                                <div class="summary-value" id="sumWebsites">8</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Total Requests</div>
+                                <div class="summary-value" id="sumRequests">1,245</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Avg Response Time</div>
+                                <div class="summary-value" id="sumResponse">234ms</div>
+                            </div>
+                        </div>
+
+                        <!-- Daily scans chart -->
+                        <div class="chart-block">
+                            <div class="chart-title">Daily scans</div>
+                            <div class="chart-container">
+                                <canvas id="scansChart"></canvas>
+                            </div>
+                            <div class="chart-legend">
+                                <span class="legend-item"><i class="dot dot-me"></i> My scans</span>
+                                <span class="legend-item"><i class="dot dot-all"></i> All sites</span>
+                            </div>
+                        </div>
+
+                        <!-- Requests trend chart -->
+                        <div class="chart-block">
+                            <div class="chart-title-row">
+                                <div class="chart-title">Requests handled</div>
+                                <span class="chart-range">This week ▾</span>
+                            </div>
+                            <div class="chart-container chart-container-sm">
+                                <canvas id="trendChart"></canvas>
+                            </div>
+                        </div>
+
+                        <p class="chart-note"><span>ⓘ</span> Performance telemetry evaluated locally.</p>
+                    </div>
+
+                    <!-- Recent Scans -->
+                    <div class="recent-scans-card">
+                        <div class="card-header">
+                            <h2>Recent Scans</h2>
+                            <a href="scanhistory.html" class="view-all">View All →</a>
+                        </div>
+
+                        <div class="scans-list" id="scansList">
+                            <p class="empty-state">Loading recent scans…</p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Pure Frontend Mock Bridge -->
+    <script>
+        window.EthioShell = window.EthioShell || {
+            init: () => true,
+            escapeHTML: (str) => str || "",
+            toast: (msg) => console.log(msg)
+        };
+
+        window.EthioAuth = window.EthioAuth || {
+            isAuthenticated: () => true,
+            getUser: () => ({ email: localStorage.getItem("userEmail") || "analyst@ethiosec.local" }),
+            logout: () => {
+                localStorage.removeItem("isLoggedIn");
+                window.location.href = "login.html";
+            }
+        };
+
+        // Populate email if present
+        const savedEmail = localStorage.getItem("userEmail");
+        if (savedEmail) {
+            const emailEl = document.getElementById("userEmailDisplay");
+            if (emailEl) emailEl.textContent = savedEmail;
+        }
+
+        // Sidebar mobile toggle hook
+        const toggle = document.getElementById("sidebarToggle");
+        const overlay = document.getElementById("sidebarOverlay");
+        const sidebar = document.getElementById("sidebar");
+        if (toggle && sidebar) {
+            toggle.addEventListener("click", () => {
+                sidebar.classList.toggle("open");
+                overlay.classList.toggle("show");
+            });
+            overlay?.addEventListener("click", () => {
+                sidebar.classList.remove("open");
+                overlay.classList.remove("show");
+            });
+        }
+
+        // Logout listener
+        document.getElementById("logoutBtn")?.addEventListener("click", () => {
+            EthioAuth.logout();
+        });
+    </script>
+
+    <!-- UI Controller -->
+    <script src="dashboardfinal.js"></script>
+</body>
+</html>
