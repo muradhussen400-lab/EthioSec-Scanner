@@ -38,6 +38,7 @@ class Scan(Base):
     progress = Column(Integer, default=0)
     stage = Column(String, default="Queued")
     checks = Column(JSON, default=dict)
+    modules = Column(JSON, nullable=True)
     security_score = Column(Integer, nullable=True)
     
     # Optional Auth Contexts (JSON, typically {"headers": {"Authorization": "Bearer..."}})
@@ -57,8 +58,8 @@ class Finding(Base):
     target_id = Column(String, ForeignKey("scan_targets.id"), nullable=True)
     type = Column(String, nullable=False)
     severity = Column(String, nullable=False) # critical, high, medium, low, info
-    confidence = Column(String, default="high")
-    status = Column(String, default="open") # open, passed
+    confidence = Column(String, default="HIGH")
+    status = Column(String, default="NOT_DETECTED") # HIGH, MEDIUM, LOW, NOT_DETECTED, SCANNER_ERROR
     url = Column(String, nullable=True)
     parameter = Column(String, nullable=True)
     title = Column(String, nullable=False)
@@ -76,3 +77,13 @@ class Finding(Base):
 
     scan = relationship("Scan", back_populates="findings")
     target = relationship("ScanTarget")
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+    
+    user_id = Column(String, ForeignKey("users.id"), primary_key=True, index=True)
+    default_scan_depth = Column(String, default="standard")
+    notif_scan_completed = Column(Boolean, default=True)
+    notif_scan_failed = Column(Boolean, default=True)
+    notif_security_findings = Column(Boolean, default=True)
+    updated_at = Column(String, default=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())

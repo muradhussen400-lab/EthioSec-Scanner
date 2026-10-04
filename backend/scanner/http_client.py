@@ -3,13 +3,14 @@ import logging
 import asyncio
 import os
 import time
+import zlib
 from urllib.parse import urljoin
 from .safety import is_safe_url, UnsafeTargetError
 
 logger = logging.getLogger(__name__)
 
 class SafeHTTPClient:
-    def __init__(self, timeout=10.0, max_redirects=3, max_response_size=5 * 1024 * 1024, max_concurrency=10, rate_limit_delay=0.1):
+    def __init__(self, timeout=30.0, max_redirects=3, max_response_size=5 * 1024 * 1024, max_concurrency=10, rate_limit_delay=0.1):
         self.timeout = timeout
         self.max_redirects = max_redirects
         self.max_response_size = max_response_size
@@ -38,7 +39,8 @@ class SafeHTTPClient:
     async def request(self, method: str, url: str, **kwargs) -> httpx.Response:
         """
         Wrapper around httpx.AsyncClient.request that performs manual redirect
-        following with SSRF checks on every hop, and limits response size.
+        following with SSRF checks on every hop, limits response size, and handles
+        compression robustly.
         """
         redirects = 0
         current_url = url
@@ -49,25 +51,44 @@ class SafeHTTPClient:
             async with self.semaphore:
                 await self._rate_limit()
                 try:
-                    # We use stream to enforce max_response_size strictly without reading it all at once if it's too big
+                    # Stream response to enforce size limit and handle content properly
                     async with self.client.stream(method, current_url, **kwargs) as response:
                         content = b""
-                        async for chunk in response.aiter_bytes():
-                            content += chunk
-                            if len(content) > self.max_response_size:
-                                raise httpx.RequestError(f"Response size exceeded {self.max_response_size} bytes")
+                        try:
+                            # aiter_bytes decodes compressed content (gzip, deflate, br)
+                            async for chunk in response.aiter_bytes():
+                                content += chunk
+                                if len(content) > self.max_response_size:
+                                    raise httpx.RequestError(f"Response size exceeded {self.max_response_size} bytes")
+                        except (httpx.DecodingError, zlib.error, Exception) as decode_err:
+                            logger.warning(f"Decompression error for {current_url} ({decode_err}), falling back to raw stream.")
+                            # Fallback: attempt raw bytes if decompression fails
+                            try:
+                                content = b""
+                                async for raw_chunk in response.aiter_raw():
+                                    content += raw_chunk
+                                    if len(content) > self.max_response_size:
+                                        break
+                            except Exception:
+                                content = b""
+
+                        # Clean headers: remove content-encoding and transfer-encoding because 'content' is already raw/decoded
+                        clean_headers = [
+                            (k, v) for k, v in response.headers.raw 
+                            if k.lower() not in (b"content-encoding", b"transfer-encoding")
+                        ]
                         
-                        # Reconstruct the response with read content
+                        # Reconstruct response with cleaned headers and decompressed content
                         res = httpx.Response(
                             status_code=response.status_code,
-                            headers=response.headers,
+                            headers=clean_headers,
                             content=content,
                             request=response.request,
                             extensions=response.extensions
                         )
                         
                 except httpx.RequestError as e:
-                    logger.error(f"HTTP request error for {current_url}: {e}")
+                    logger.warning(f"HTTP request error for {current_url}: {e.__class__.__name__} - {str(e)}")
                     raise
                 
             if res.status_code in (301, 302, 303, 307, 308):

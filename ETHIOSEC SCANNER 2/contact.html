@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EthioSecScan — scan your website for security, OWASP and AI-explained vulnerabilities. Scan. Understand. Secure.">
+    <title>EthioSecScan — Scan. Understand. Secure.</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="sty.css">
+</head>
+
+<body>
+
+    <!-- ================= BACKGROUND ================= -->
+    <div class="volcano-bg">
+        <div class="lava-glow glow-one"></div>
+        <div class="lava-glow glow-two"></div>
+        <span class="crack crack-1"></span>
+        <span class="crack crack-2"></span>
+        <span class="crack crack-3"></span>
+        <span class="crack crack-4"></span>
+        <span class="crack crack-5"></span>
+        <span class="crack crack-6"></span>
+    </div>
+
+    <!-- ================= NAVBAR ================= -->
+    <header class="navbar">
+        <a href="index.html" class="logo">
+            <span class="logo-icon">◈</span>
+            <span>EthioSec<span>Scan</span></span>
+        </a>
+
+        <nav class="nav-links" id="navLinks">
+            <a href="index.html" class="active">HOME</a>
+            <a href="features.html">FEATURES</a>
+            <a href="contact.html">CONTACT US</a>
+            <a href="dashboardfinal.html" class="login-link" id="openDashboard" hidden>DASHBOARD</a>
+            <a href="login.html" class="login-link" id="openLogin">LOGIN / REGISTER</a>
+        </nav>
+
+        <button class="menu-btn" id="menuBtn" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </header>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <main>
+
+        <!-- ================= HERO ================= -->
+        <!-- ================= CONTACT ================= -->
+        <section class="contact-section" id="contact">
+            <div class="contact-info">
+                <span class="section-label">GET IN TOUCH</span>
+                <h2>Let's Talk.</h2>
+                <p>Have questions about website scanning? We'd love to hear from you.</p>
+
+                <div class="contact-detail">
+                    <span>✉</span>
+                    <div>
+                        <small>EMAIL</small>
+                        <strong>hello@ethiosecscan.com</strong>
+                    </div>
+                </div>
+
+                <div class="contact-detail">
+                    <span>⌖</span>
+                    <div>
+                        <small>PLATFORM</small>
+                        <strong>Available Worldwide</strong>
+                    </div>
+                </div>
+            </div>
+
+            <form class="contact-form" id="contactForm">
+                <div class="form-row">
+                    <input type="text" id="contactName" placeholder="Your name" required>
+                    <input type="email" id="contactEmail" placeholder="Your email" required>
+                </div>
+                <input type="text" id="contactSubject" placeholder="Subject" required>
+                <textarea id="contactMessage" rows="6" placeholder="Tell us how we can help..." required></textarea>
+                <button type="submit" class="submit-btn">SEND MESSAGE →</button>
+            </form>
+        </section>
+
+    </main>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-column footer-about">
+                <h3>About EthioSecScan</h3>
+                <p>Scan. Understand. Secure. — website security scanning built for modern teams.</p>
+            </div>
+            <div class="footer-column">
+                <h3>Quick Links</h3>
+                <a href="index.html">Home</a>
+                <a href="features.html">Features</a>
+                <a href="contact.html">Contact</a>
+                <a href="login.html" id="footerLogin">Login</a>
+            </div>
+            <div class="footer-column">
+                <h3>Support</h3>
+                <a href="#">Documentation</a>
+                <a href="#">Help Center</a>
+                <a href="#">Community</a>
+                <a href="#">API Docs</a>
+            </div>
+            <div class="footer-column">
+                <h3>Connect With Us</h3>
+                <a href="#">Twitter</a>
+                <a href="#">Facebook</a>
+                <a href="#">LinkedIn</a>
+                <a href="#">Instagram</a>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <div class="footer-copyright">
+                © 2026 EthioSecScan. All rights reserved.
+            </div>
+            <div class="footer-legal">
+                <a href="#">Privacy Policy</a>
+                <span>|</span>
+                <a href="#">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================= NOTIFICATION TOAST ================= -->
+    <div class="notification" id="notification">
+        <span id="notificationIcon">✓</span>
+        <p id="notificationText">Message sent successfully.</p>
+    </div>
+
+    <!-- Pure Frontend Mock Bridge -->
+    <script>
+        window.EthioAuth = window.EthioAuth || {
+            isAuthenticated: () => localStorage.getItem("isLoggedIn") === "true",
+            scanDestination: (target) => {
+                const authed = localStorage.getItem("isLoggedIn") === "true";
+                return authed
+                    ? `scanfinal.html?target=${encodeURIComponent(target)}`
+                    : `login.html?target=${encodeURIComponent(target)}`;
+            }
+        };
+
+        // Sync footer login link if authenticated
+        const isAuth = localStorage.getItem("isLoggedIn") === "true";
+        const footerLog = document.getElementById("footerLogin");
+        if (isAuth && footerLog) {
+            footerLog.textContent = "Dashboard";
+            footerLog.href = "dashboardfinal.html";
+        }
+    </script>
+
+    <!-- Main Landing Page Script -->
+    <script src="script.js"></script>
+</body>
+</html>

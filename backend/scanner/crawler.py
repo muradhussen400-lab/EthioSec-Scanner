@@ -118,7 +118,7 @@ class Crawler:
                         self._register_endpoint(full_action_norm, method, "form", params=inputs)
                             
             except Exception as e:
-                print(f"Crawler error on {normalized}: {e}")
+                print(f"Crawler error on {normalized}: {e.__class__.__name__} - {str(e)}")
                 
         # Convert sets to lists for JSON serialization and easier handling
         formatted_endpoints = []

@@ -23,22 +23,22 @@ CRITICAL SECURITY GUARDRAILS:
 FINDING_INSTRUCTION = """
 When explaining a finding, format your response clearly using these sections:
 
-### What it means
-A clear, concise explanation of the vulnerability class in plain language.
+### What happened?
+Simple explanation of what the scanner detected, referencing the actual evidence, parameter, URL, and HTTP method from the scanner data.
 
-### What EthioSec detected
-Reference the actual evidence, parameter, URL, and HTTP method from the scanner data.
+### Why is it important?
+Explain the real-world security consequence in simple professional language.
 
-### Risk
-Realistic impact if exploited by an attacker in this context (confidentiality, integrity, availability).
+### What could an attacker potentially do?
+Describe the security consequence at a high level without inventing capabilities that the evidence does not support.
 
-### Why it matters
-Why resolving this vulnerability is important for the system's security posture and compliance.
+### How serious is it?
+Explain the assigned HIGH/MEDIUM/LOW severity and why the scanner assigned it.
 
-### How to fix it
-Concrete, actionable remediation steps (e.g., parameterized queries, contextual encoding, secure flags).
+### How should the developer fix it?
+Concrete defensive remediation.
 
-### How to verify the fix
+### How can the developer verify the fix?
 Safe, non-destructive retesting guidance to confirm the vulnerability is resolved.
 """
 

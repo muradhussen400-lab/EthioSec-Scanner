@@ -14,7 +14,7 @@ def setup_module(module):
     routers.run_scan_task = lambda scan_id: None
 
 def teardown_module(module):
-    Base.metadata.drop_all(bind=engine)
+    pass
 
 def test_health():
     response = client.get("/health")
@@ -90,3 +90,77 @@ def test_ai_authorization():
     # User B tries to ask AI about User A's scan
     res_ai_b = client.post("/api/ai/chat", json={"message": "Summarize this scan", "scan_id": scan_id}, headers={"Authorization": f"Bearer {token_b}"})
     assert res_ai_b.status_code == 403
+
+def test_user_profile_and_settings():
+    res_a = client.post("/api/auth/login", json={"email": "userA@test.com", "password": "passwordA"})
+    token_a = res_a.json()["token"]
+    
+    # Update profile
+    res_prof = client.put("/api/user/profile", json={"full_name": "Updated User A", "website": "https://example.com"}, headers={"Authorization": f"Bearer {token_a}"})
+    assert res_prof.status_code == 200
+    assert res_prof.json()["full_name"] == "Updated User A"
+    assert res_prof.json()["website"] == "https://example.com"
+    
+    # Update settings
+    res_sett = client.put("/api/user/settings", json={"default_scan_depth": "deep", "notif_scan_completed": True}, headers={"Authorization": f"Bearer {token_a}"})
+    assert res_sett.status_code == 200
+    assert res_sett.json()["default_scan_depth"] == "deep"
+
+def test_scan_modules_and_deletion():
+    res_a = client.post("/api/auth/login", json={"email": "userA@test.com", "password": "passwordA"})
+    token_a = res_a.json()["token"]
+    
+    # Create target
+    res_t = client.post("/api/targets", json={"url": "http://127.0.0.1:3000"}, headers={"Authorization": f"Bearer {token_a}"})
+    target_id = res_t.json()["id"]
+    
+    # Create scan with specific modules
+    res_s = client.post("/api/scans", json={
+        "target_id": target_id,
+        "authorized": True,
+        "scan_depth": "standard",
+        "modules": {"sqli": True, "xss": False, "headers": False, "tls": False}
+    }, headers={"Authorization": f"Bearer {token_a}"})
+    assert res_s.status_code == 200
+    scan_id = res_s.json()["scan_id"]
+    
+    # Verify scan status and modules
+    res_status = client.get(f"/api/scans/{scan_id}/status", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_status.status_code == 200
+    assert res_status.json()["checks"]["sqli"] is True
+    assert res_status.json()["checks"]["xss"] is False
+    
+    # Dashboard summary
+    res_dash = client.get("/api/dashboard/summary", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_dash.status_code == 200
+    assert "total_scans" in res_dash.json()
+    
+    # Complete the scan for reporting test
+    db_session = SessionLocal()
+    scan_obj = db_session.query(Scan).filter(Scan.id == scan_id).first()
+    scan_obj.status = "completed"
+    scan_obj.security_score = 95
+    db_session.commit()
+    db_session.close()
+
+    # Reports list and detail
+    res_reps = client.get("/api/reports", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_reps.status_code == 200
+    res_rep = client.get(f"/api/reports/{scan_id}", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_rep.status_code == 200
+    assert res_rep.json()["scan_id"] == scan_id
+    
+    # Delete single scan
+    res_del = client.delete(f"/api/scans/{scan_id}", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_del.status_code == 200
+    
+    # Bulk delete remaining scans
+    res_bulk_del = client.delete("/api/scans", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_bulk_del.status_code == 200
+    assert res_bulk_del.json()["status"] == "success"
+    
+    # Verify history is empty
+    res_empty = client.get("/api/scans", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_empty.status_code == 200
+    assert len(res_empty.json()["scans"]) == 0
+

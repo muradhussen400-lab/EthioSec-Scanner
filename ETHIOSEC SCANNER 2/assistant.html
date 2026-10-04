@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        if (localStorage.getItem("isLoggedIn") !== "true") {
+            window.location.href = "login.html";
+        }
+    </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Assistant - EthioSecScan</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="assistantstyle.css">
+</head>
+<body>
+
+  <div class="dashboard-bg">
+    <div class="glow-one"></div>
+    <div class="glow-two"></div>
+  </div>
+
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="layout">
+
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <h2>EthioSecScan</h2>
+      </div>
+                        <nav class="sidebar-nav">
+        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
+        <a href="scanfinal.html" class="side-link"><span class="side-icon">⚡</span> New Scan</a>
+        <a href="scan_history.html" class="side-link"><span class="side-icon">🕒</span> History</a>
+        <a href="results.html" class="side-link"><span class="side-icon">📈</span> Results</a>
+        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
+        <a href="assistant.html" class="side-link active"><span class="side-icon">🤖</span> AI Assistant</a>
+        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
+        <a href="settings.html" class="side-link"><span class="side-icon">⚙️</span> Settings</a>
+        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
+      </nav>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+    </aside>
+
+    <main class="page-container">
+
+      <div class="page-header">
+        <div class="header-content">
+          <h1>AI Security Assistant</h1>
+          <p>Ask about findings the scanner already produced</p>
+        </div>
+        <a href="results.html" class="ghost-btn" id="backLink" hidden>← Back to results</a>
+      </div>
+
+      <section class="panel chat-panel">
+
+        <!-- Context chips show which scan/finding is in focus -->
+        <div class="context-row" id="contextRow">
+          <span class="context-chip muted" id="chipNone">No scan in focus — answers will be general</span>
+        </div>
+
+        <div class="chat" id="chat"></div>
+
+        <div class="suggestions" id="suggestions">
+          <button class="suggestion" type="button">How do I fix this?</button>
+          <button class="suggestion" type="button">How severe is this really?</button>
+          <button class="suggestion" type="button">What does the OWASP tag mean?</button>
+        </div>
+
+        <form class="composer" id="composer">
+          <input type="text" id="message" placeholder="Ask about this scan…" autocomplete="off">
+          <button class="primary-btn" id="sendBtn" type="submit">Send</button>
+        </form>
+
+        <p class="guardrail">
+          The assistant only explains findings the scanner produced. It never decides on its own that something is vulnerable.
+        </p>
+
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Pure Frontend Runtime Shim -->
+  <script>
+    window.EthioShell = window.EthioShell || {
+      init: () => true,
+      escapeHTML: (str) => {
+        if (!str) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      },
+      timeAgo: () => "Just now",
+      severityClass: (sev) => "sev-" + (sev || "info").toLowerCase(),
+      toast: (msg) => {
+        const t = document.getElementById("toast");
+        if (t) {
+          t.textContent = msg;
+          t.classList.add("show");
+          setTimeout(() => t.classList.remove("show"), 3000);
+        }
+      }
+    };
+
+    window.EthioAuth = window.EthioAuth || {
+      isAuthenticated: () => true,
+      getQueryParam: (param) => new URLSearchParams(window.location.search).get(param)
+    };
+
+    window.EthioAPI = window.EthioAPI || {
+      askAssistant: async ({ message, scan_id, finding_id }) => {
+        return {
+          reply: `Based on your scan (${scan_id || "general"}), here is what you need to know regarding "${message}": Ensure inputs are parameterized and headers like Content-Security-Policy and X-Frame-Options are strictly configured.`
+        };
+      }
+    };
+  </script>
+
+  <!-- Main UI script -->
+  <script src="assistantjava.js"></script>
+</body>
+</html>
+

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Any
 import datetime
@@ -12,12 +12,12 @@ import secrets
 import string
 
 from database import get_db
-from models import User, Scan, ScanTarget, Finding
+from models import User, Scan, ScanTarget, Finding, UserSettings
 from schemas import (
-    UserRegister, UserLogin, UserOut, TokenResponse,
+    UserRegister, UserLogin, UserOut, UserProfileUpdate, TokenResponse,
     TargetCreate, TargetOut,
     ScanCreate, ScanStatusOut, ScanResultOut, FindingOut, DashboardSummaryOut, DashboardTrend, ScanCounts,
-    AIRequest, AIResponse
+    AIRequest, AIResponse, UserSettingsUpdate, UserSettingsOut, AIAssistantRequestNew
 )
 from security import get_password_hash, verify_password, create_access_token, get_current_user, timedelta, ACCESS_TOKEN_EXPIRE_MINUTES
 from scanner.engine import run_scan_task
@@ -47,7 +47,7 @@ def rate_limiter(request: Request):
         return
         
     if now - request_counts[client_ip]["time"] < 60:
-        if request_counts[client_ip]["count"] > 20: # 20 requests per minute
+        if request_counts[client_ip]["count"] > 30: # 30 requests per minute
             raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
         request_counts[client_ip]["count"] += 1
     else:
@@ -111,7 +111,6 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
     redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
     
-    # 1. Exchange code for token
     token_url = "https://oauth2.googleapis.com/token"
     data = {
         "code": code,
@@ -127,7 +126,6 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
         token_data = response.json()
         access_token = token_data.get("access_token")
         
-        # 2. Get user info
         user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
         headers = {"Authorization": f"Bearer {access_token}"}
         user_info_response = await client.get(user_info_url, headers=headers)
@@ -138,7 +136,6 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
         email = user_info.get("email")
         full_name = user_info.get("name")
         
-        # 3. Find or create user
         user = db.query(User).filter(User.email == email).first()
         if not user:
             random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
@@ -152,7 +149,6 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
             db.commit()
             db.refresh(user)
         
-        # 4. Generate EthioSec JWT
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         jwt_token = create_access_token(
             data={"sub": user.email}, expires_delta=access_token_expires
@@ -182,36 +178,29 @@ def dashboard_summary(range: str = "week", current_user: User = Depends(get_curr
     latest = scans[0]
     total_scans = len(scans)
     
-    # gather findings for the latest scan to get counts
     findings = db.query(Finding).filter(Finding.scan_id == latest.id).all()
-    c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "passed": 0, "not_tested": 0, "error": 0, "total": 0}
+    c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "scanner_error": 0, "total": 0}
     for f in findings:
-
-        if f.status in c:
-
-            c[f.status] += 1
-
-        if f.status not in ["passed", "not_tested", "info"]:
-
+        if f.status == "NOT_DETECTED":
+            c["not_detected"] += 1
+        elif f.status != "SCANNER_ERROR":
             if f.severity in c:
-
                 c[f.severity] += 1
-
             c["total"] += 1
 
     trend = DashboardTrend(
         labels=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
         mine=[1]*7, all=[2]*7, trendLabels=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], trend=[75]*7,
-        websites=len(set([urlparse(s.target_url).hostname or s.target_url for s in scans])), requests=total_scans*150, response=210
+        websites=len(set([urlparse(s.target_url).hostname or s.target_url for s in scans])), requests=total_scans*120, response=180
     )
     
     return DashboardSummaryOut(
         security_score=latest.security_score or 0,
-        last_scan=latest.finished_at,
+        last_scan=latest.finished_at or latest.created_at,
         last_target=latest.target_url,
         vulnerabilities=c["critical"] + c["high"],
         warnings=c["medium"] + c["low"],
-        passed_checks=c["passed"],
+        passed_checks=c["not_detected"],
         issues=c["total"],
         total_scans=total_scans,
         breakdown={"security": latest.security_score or 0, "performance": max(40, (latest.security_score or 0) - 7), "seo": min(100, (latest.security_score or 0) + 3)},
@@ -221,7 +210,6 @@ def dashboard_summary(range: str = "week", current_user: User = Depends(get_curr
 # TARGETS
 @router.post("/targets", response_model=TargetOut)
 def create_target(target_in: TargetCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Strict validation
     parsed = urlparse(target_in.url)
     if parsed.scheme not in ["http", "https"]:
         raise HTTPException(status_code=400, detail="Target URL must use http or https scheme")
@@ -266,7 +254,8 @@ def create_scan(scan_in: ScanCreate, current_user: User = Depends(get_current_us
     new_scan = Scan(
         user_id=current_user.id,
         target_url=target.url,
-        depth=scan_in.depth,
+        depth=scan_in.depth or "standard",
+        modules=scan_in.modules or {},
         status="queued",
         auth_context_1=scan_in.auth_context_1,
         auth_context_2=scan_in.auth_context_2
@@ -294,6 +283,14 @@ def start_scan(id: str, background_tasks: BackgroundTasks, current_user: User = 
     audit_logger.info(f"Scan started (ID: {scan.id}) by user {current_user.email}")
     return {"scan_id": scan.id, "status": "started"}
 
+@router.post("/scans/{id}/cancel", dependencies=[Depends(rate_limiter)])
+def cancel_scan(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
+    if scan and scan.status == "running":
+        scan.status = "cancelled"
+        db.commit()
+    return {"ok": True}
+
 @router.get("/scans")
 def list_scans(limit: int = 100, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     scans = db.query(Scan).filter(Scan.user_id == current_user.id).order_by(Scan.created_at.desc()).limit(limit).all()
@@ -301,19 +298,13 @@ def list_scans(limit: int = 100, current_user: User = Depends(get_current_user),
     scan_list = []
     for s in scans:
         findings = db.query(Finding).filter(Finding.scan_id == s.id).all()
-        c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "passed": 0, "not_tested": 0, "error": 0, "total": 0}
+        c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "scanner_error": 0, "total": 0}
         for f in findings:
-
-            if f.status in c:
-
-                c[f.status] += 1
-
-            if f.status not in ["passed", "not_tested", "info"]:
-
+            if f.status == "NOT_DETECTED":
+                c["not_detected"] += 1
+            elif f.status != "SCANNER_ERROR":
                 if f.severity in c:
-
                     c[f.severity] += 1
-
                 c["total"] += 1
         
         scan_list.append({
@@ -328,6 +319,16 @@ def list_scans(limit: int = 100, current_user: User = Depends(get_current_user),
         })
     return {"scans": scan_list, "total": len(scan_list)}
 
+@router.delete("/scans")
+def delete_all_scans(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    scans = db.query(Scan).filter(Scan.user_id == current_user.id).all()
+    count = len(scans)
+    for s in scans:
+        db.delete(s)
+    db.commit()
+    audit_logger.info(f"All scans ({count}) deleted by user {current_user.email}")
+    return {"status": "success", "message": f"Deleted {count} scans"}
+
 @router.get("/scans/{id}/status", response_model=ScanStatusOut)
 def scan_status(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
@@ -340,7 +341,8 @@ def scan_status(id: str, current_user: User = Depends(get_current_user), db: Ses
         status=scan.status,
         progress=scan.progress,
         stage=scan.stage,
-        checks=scan.checks or {"headers": False, "ssl": False, "dns": False, "meta": False, "owasp": False, "ai": False}
+        depth=scan.depth,
+        checks=scan.modules if (scan.modules and isinstance(scan.modules, dict) and len(scan.modules) > 0) else (scan.checks or {"misconfig": False, "https": False, "access_control": False, "auth": False, "sqli": False, "xss": False})
     )
 
 @router.get("/scans/{id}/results", response_model=ScanResultOut)
@@ -348,23 +350,19 @@ def scan_results(id: str, current_user: User = Depends(get_current_user), db: Se
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
-    if scan.status != "completed":
+    if scan.status not in ("completed", "failed"):
         raise HTTPException(status_code=409, detail="Scan is not completed yet")
         
     findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
-    c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "passed": 0, "not_tested": 0, "error": 0, "total": 0}
+    c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "scanner_error": 0, "total": 0}
     for f in findings:
-
-        if f.status in c:
-
-            c[f.status] += 1
-
-        if f.status not in ["passed", "not_tested", "info"]:
-
+        if f.status == "NOT_DETECTED":
+            c["not_detected"] += 1
+        elif f.status == "SCANNER_ERROR":
+            c["scanner_error"] += 1
+        else:
             if f.severity in c:
-
                 c[f.severity] += 1
-
             c["total"] += 1
 
     return ScanResultOut(
@@ -372,7 +370,7 @@ def scan_results(id: str, current_user: User = Depends(get_current_user), db: Se
         target=scan.target_url,
         depth=scan.depth,
         scanned_at=scan.finished_at or scan.created_at,
-        security_score=scan.security_score or 0,
+        security_score=scan.security_score if scan.security_score is not None else 0,
         counts=ScanCounts(**c),
         findings=findings
     )
@@ -380,10 +378,13 @@ def scan_results(id: str, current_user: User = Depends(get_current_user), db: Se
 @router.delete("/scans/{id}")
 def delete_scan(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
-    if scan:
-        db.delete(scan)
-        db.commit()
-    return {"ok": True}
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found or access denied")
+    
+    db.delete(scan)
+    db.commit()
+    audit_logger.info(f"Scan deleted (ID: {scan.id}) by user {current_user.email}")
+    return {"status": "success", "message": "Scan deleted"}
 
 # FINDINGS
 @router.get("/findings/{id}")
@@ -393,32 +394,54 @@ def get_finding(id: str, current_user: User = Depends(get_current_user), db: Ses
         raise HTTPException(status_code=404, detail="Finding not found")
     return {"finding": finding}
 
-# AI ASSISTANT
-@router.post("/ai/assistant", response_model=AIResponse)
-def ai_assistant(req: AIRequest, current_user: User = Depends(get_current_user)):
-    reply = "As an AI, I suggest patching the vulnerabilities starting with critical ones."
-    return AIResponse(reply=reply, scan_id=req.scan_id, finding_id=req.finding_id)
-
-# SETTINGS
-@router.get("/user/profile")
+# USER PROFILE & SETTINGS
+@router.get("/user/profile", response_model=UserOut)
 def user_profile(current_user: User = Depends(get_current_user)):
-    return {"user": current_user}
+    return current_user
 
-@router.put("/user/profile")
-def update_profile(current_user: User = Depends(get_current_user)):
-    return {"user": current_user}
+@router.put("/user/profile", response_model=UserOut)
+def update_profile(updates: UserProfileUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if updates.full_name is not None:
+        user.full_name = updates.full_name
+    if updates.website is not None:
+        user.website = updates.website
+    db.commit()
+    db.refresh(user)
+    return user
 
-@router.put("/user/password")
-def update_password(current_user: User = Depends(get_current_user)):
-    return {"ok": True}
+@router.get("/user/settings", response_model=UserSettingsOut)
+def get_user_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
 
-@router.get("/user/settings")
-def get_settings(current_user: User = Depends(get_current_user)):
-    return {"settings": {}}
-
-@router.put("/user/settings")
-def save_settings(current_user: User = Depends(get_current_user)):
-    return {"settings": {}}
+@router.put("/user/settings", response_model=UserSettingsOut)
+def update_user_settings(updates: UserSettingsUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.add(settings)
+    
+    if updates.default_scan_depth is not None:
+        settings.default_scan_depth = updates.default_scan_depth
+    if updates.notif_scan_completed is not None:
+        settings.notif_scan_completed = updates.notif_scan_completed
+    if updates.notif_scan_failed is not None:
+        settings.notif_scan_failed = updates.notif_scan_failed
+    if updates.notif_security_findings is not None:
+        settings.notif_security_findings = updates.notif_security_findings
+        
+    settings.updated_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    db.commit()
+    db.refresh(settings)
+    return settings
 
 # REPORTS
 @router.get("/reports")
@@ -427,27 +450,22 @@ def list_reports(current_user: User = Depends(get_current_user), db: Session = D
     reports = []
     for s in scans:
         findings = db.query(Finding).filter(Finding.scan_id == s.id).all()
-        c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "passed": 0, "not_tested": 0, "error": 0, "total": 0}
+        c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "inconclusive": 0, "scanner_error": 0, "total": 0}
         for f in findings:
-
-            if f.status in c:
-
-                c[f.status] += 1
-
-            if f.status not in ["passed", "not_tested", "info"]:
-
+            if f.status == "NOT_DETECTED":
+                c["not_detected"] += 1
+            elif f.status != "SCANNER_ERROR":
                 if f.severity in c:
-
                     c[f.severity] += 1
-
                 c["total"] += 1
         reports.append({
             "id": "r" + s.id,
             "scan_id": s.id,
             "target": s.target_url,
-            "security_score": s.security_score,
+            "depth": s.depth,
+            "security_score": s.security_score if s.security_score is not None else 0,
             "counts": c,
-            "generated_at": s.finished_at
+            "generated_at": s.finished_at or s.created_at
         })
     return {"reports": reports}
 
@@ -459,39 +477,34 @@ def get_report(id: str, current_user: User = Depends(get_current_user), db: Sess
         raise HTTPException(status_code=404, detail="Report not found")
         
     findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
-    c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "passed": 0, "not_tested": 0, "error": 0, "total": 0}
+    c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "inconclusive": 0, "scanner_error": 0, "total": 0}
     by_type = {}
     for f in findings:
-
-        if f.status in c:
-
-            c[f.status] += 1
-
-        if f.status not in ["passed", "not_tested", "info"]:
-
+        if f.status == "NOT_DETECTED":
+            c["not_detected"] += 1
+        elif f.status != "SCANNER_ERROR":
             if f.severity in c:
-
                 c[f.severity] += 1
-
             c["total"] += 1
             
         if f.type not in by_type:
-            by_type[f.type] = {"name": f.type, "total": 0, "open": 0}
+            by_type[f.type] = {"name": f.type, "total": 0, "confirmed": 0}
         by_type[f.type]["total"] += 1
-        if f.status != "passed":
-            by_type[f.type]["open"] += 1
+        if f.status != "NOT_DETECTED":
+            by_type[f.type]["confirmed"] += 1
 
     open_issues = c["total"]
-    executive_summary = f"The scan of {scan.target_url} finished with a security score of {scan.security_score}/100. {open_issues} issue(s) need attention. {c['passed']} check(s) passed."
-    categories = [{"name": v["name"], "score": max(0, int(((v["total"] - v["open"]) / v["total"]) * 100))} for v in by_type.values()]
+    executive_summary = f"The automated security assessment of {scan.target_url} completed with a security score of {scan.security_score}/100. {open_issues} vulnerability/remediation item(s) require attention. {c['not_detected']} baseline check(s) passed successfully."
+    categories = [{"name": v["name"].replace("_", " ").title(), "score": max(0, int(((v["total"] - v["confirmed"]) / v["total"]) * 100))} for v in by_type.values()]
     
     return {
         "id": "r" + scan.id,
         "scan_id": scan.id,
         "target": scan.target_url,
+        "depth": scan.depth,
         "security_score": scan.security_score,
         "counts": c,
-        "generated_at": scan.finished_at,
+        "generated_at": scan.finished_at or scan.created_at,
         "executive_summary": executive_summary,
         "categories": categories,
         "findings": findings
@@ -534,3 +547,35 @@ async def ai_chat(req: AIRequest, current_user: User = Depends(get_current_user)
     reply = await ask_ai(context, req.message)
     return {"reply": reply, "scan_id": req.scan_id, "finding_id": req.finding_id}
 
+@router.post("/ai-assistant")
+async def ai_assistant_sse(req: AIAssistantRequestNew, current_user: User = Depends(get_current_user)):
+    import google.generativeai as genai
+    import json
+    
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured on the server")
+        
+    genai.configure(api_key=api_key)
+    
+    model = genai.GenerativeModel('gemini-pro')
+    
+    system_prompt = "You are a senior Application Security Engineer. Analyze the provided JSON evidence and return a plain-language explanation of the real-world business risk, followed by specific, actionable remediation code."
+    
+    user_prompt = f"CWE ID: {req.cwe_id}\nSeverity: {req.severity}\nTarget Endpoint: {req.target_endpoint}\nHTTP Response Snippet:\n{req.response_snippet}"
+
+    async def sse_generator():
+        try:
+            response = await model.generate_content_async(
+                f"{system_prompt}\n\n{user_prompt}", 
+                stream=True
+            )
+            async for chunk in response:
+                if chunk.text:
+                    payload = json.dumps({"text": chunk.text})
+                    yield f"data: {payload}\n\n"
+        except Exception as e:
+            payload = json.dumps({"error": str(e)})
+            yield f"data: {payload}\n\n"
+            
+    return StreamingResponse(sse_generator(), media_type="text/event-stream")

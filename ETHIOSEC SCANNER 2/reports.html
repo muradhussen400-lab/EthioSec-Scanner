@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        if (localStorage.getItem("isLoggedIn") !== "true") {
+            window.location.href = "login.html";
+        }
+    </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports - EthioSecScan</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="reportstyle.css">
+  <style>
+    /* Print styling for clean offline PDF exports */
+    @media print {
+      body { background: #ffffff !important; color: #000000 !important; }
+      .sidebar, .sidebar-toggle, .sidebar-overlay, .dashboard-bg, .report-list-panel, .doc-actions, .toast { display: none !important; }
+      .layout { display: block !important; }
+      .page-container { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
+      .reports-grid { display: block !important; }
+      .report-doc { border: none !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; color: #000000 !important; }
+      .report-doc * { color: #000000 !important; }
+      .score-strip .score-tile { border: 1px solid #ccc !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background -->
+  <div class="dashboard-bg">
+    <div class="glow-one"></div>
+    <div class="glow-two"></div>
+  </div>
+
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🛡️</div>
+        <span class="logo-text">EthioSecScan</span>
+      </div>
+                        <nav class="sidebar-nav">
+        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
+        <a href="scanfinal.html" class="side-link"><span class="side-icon">⚡</span> New Scan</a>
+        <a href="scan_history.html" class="side-link"><span class="side-icon">🕒</span> History</a>
+        <a href="results.html" class="side-link"><span class="side-icon">📈</span> Results</a>
+        <a href="reports.html" class="side-link active"><span class="side-icon">📄</span> Reports</a>
+        <a href="assistant.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
+        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
+        <a href="settings.html" class="side-link"><span class="side-icon">⚙️</span> Settings</a>
+        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
+      </nav>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+      <div class="scanner-status">
+        <div class="status-dot"></div>
+        <span>Reports Engine Ready</span>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="page-container">
+
+      <div class="page-header">
+        <div class="header-content">
+          <h1>Reports</h1>
+          <p>Formal, shareable version of every completed scan</p>
+        </div>
+        <a href="scanfinal.html" class="primary-btn">🔍 New scan</a>
+      </div>
+
+      <div class="reports-grid">
+
+        <!-- ---------- list ---------- -->
+        <section class="panel report-list-panel">
+          <div class="card-header">
+            <h2>Past reports</h2>
+            <span class="header-hint" id="reportCount">—</span>
+          </div>
+          <div class="report-list" id="reportList">
+            <p class="loading-state">Loading reports…</p>
+          </div>
+        </section>
+
+        <!-- ---------- document ---------- -->
+        <section class="panel report-doc" id="reportDoc">
+          <p class="empty-state">Select a report on the left to open it.</p>
+        </section>
+
+      </div>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Mobile Sidebar Script -->
+  <script>
+    const toggle = document.getElementById("sidebarToggle");
+    const overlay = document.getElementById("sidebarOverlay");
+    const sidebar = document.getElementById("sidebar");
+    if (toggle && sidebar) {
+      toggle.addEventListener("click", () => {
+        sidebar.classList.toggle("open");
+        overlay?.classList.toggle("show");
+      });
+      overlay?.addEventListener("click", () => {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("show");
+      });
+    }
+  </script>
+
+  <!-- Reports Controller -->
+  <script src="reportjava.js"></script>
+</body>
+</html>
+

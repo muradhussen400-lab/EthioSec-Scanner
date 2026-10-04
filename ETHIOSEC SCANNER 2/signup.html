@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - EthioSecScan</title>
+    <link rel="stylesheet" href="signupstyle.css">
+</head>
+
+<body>
+
+    <!-- Background -->
+    <div class="signup-bg">
+        <div class="glow-left"></div>
+        <div class="glow-right"></div>
+    </div>
+
+    <!-- Signup Container -->
+    <div class="signup-wrapper">
+
+        <!-- Left Side - Info -->
+        <div class="signup-info">
+            <div class="info-content">
+                <div class="info-logo">
+                    <span class="logo-icon">◈</span>
+                </div>
+                <h2>Secure Your Website</h2>
+                <p>Join thousands of users who trust EthioSecScan for their website security and performance analysis.
+                </p>
+
+                <div class="benefits">
+                    <div class="benefit">
+                        <span class="benefit-icon">✓</span>
+                        <div>
+                            <strong>Real-time Scanning</strong>
+                            <small>Instant security checks</small>
+                        </div>
+                    </div>
+                    <div class="benefit">
+                        <span class="benefit-icon">✓</span>
+                        <div>
+                            <strong>Detailed Reports</strong>
+                            <small>Comprehensive analysis</small>
+                        </div>
+                    </div>
+                    <div class="benefit">
+                        <span class="benefit-icon">✓</span>
+                        <div>
+                            <strong>24/7 Support</strong>
+                            <small>Always here to help</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side - Signup Form -->
+        <div class="signup-card">
+
+            <!-- Header -->
+            <div class="signup-header">
+                <span class="section-label">JOIN US TODAY</span>
+                <h1>Create Account</h1>
+                <p id="signupSubtext">Start scanning and analyzing your websites in minutes</p>
+            </div>
+
+            <!-- Signup Form -->
+            <form class="signup-form" id="signupForm" novalidate>
+
+                <!-- Inline error banner -->
+                <div class="form-error" id="formError" role="alert" hidden></div>
+
+                <!-- Full Name -->
+                <div class="form-group">
+                    <label for="fullname">Full Name</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">👤</span>
+                        <input type="text" id="fullname" placeholder="" required>
+                    </div>
+                </div>
+
+                <!-- Email -->
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">✉</span>
+                        <input type="email" id="email" placeholder="" required>
+                    </div>
+                    <span class="input-hint">We'll send a verification link</span>
+                </div>
+
+
+
+                <!-- Password -->
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔐</span>
+                        <input type="password" id="password" placeholder="" required>
+                        <button type="button" class="show-password" id="togglePasswordBtn"
+                            aria-label="Toggle password view">👁</button>
+                    </div>
+                    <span class="input-hint">At least 8 characters (mix of letters, numbers, symbols)</span>
+                </div>
+
+                <!-- Confirm Password -->
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">✓</span>
+                        <input type="password" id="confirm-password" placeholder="" required>
+                        <button type="button" class="show-password" id="togglePasswordBtn" </div>
+                    </div>
+
+                    <!-- Terms & Conditions -->
+                    <div class="form-agreement">
+                        <label class="terms-checkbox">
+                            <input type="checkbox" id="terms" required>
+                            <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy
+                                    Policy</a></span>
+                        </label>
+                    </div>
+
+                    <!-- Newsletter Opt-in -->
+                    <div class="form-agreement">
+                        <label class="newsletter-checkbox">
+                            <input type="checkbox" id="newsletter">
+                            <span>Send me updates about new features and security tips</span>
+                        </label>
+                    </div>
+
+                    <!-- Signup Button -->
+                    <button type="submit" class="signup-btn" id="signupBtn">
+                        <span>CREATE ACCOUNT</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+
+            </form>
+
+            <!-- Divider -->
+            <div class="form-divider">
+                <span>OR</span>
+            </div>
+
+            <!-- Social Signup -->
+            <div class="social-signup">
+                <button type="button" class="social-btn google" id="googleBtn">
+                    <span>G</span>
+                    Google
+                </button>
+                <button type="button" class="social-btn github" id="githubBtn">
+                    <span>⚙</span>
+                    GitHub
+                </button>
+            </div>
+
+            <!-- Login Link -->
+            <div class="login-section">
+                <p>Already have an account?
+                    <a href="login.html" class="login-link" id="loginLink">Sign in</a>
+                </p>
+            </div>
+
+            <!-- Footer Links -->
+            <div class="signup-footer">
+                <a href="index.html">← Back to Home</a>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Direct standalone controller -->
+    <script src="signupjava.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,257 @@
+/* =====================================================
+   SCAN PROGRESS PAGE (livestyle.css)
+   Loads after shell.css.
+   ===================================================== */
+
+:root {
+    --primary: #cc2f0c;
+    --primary-light: #ff4b20;
+    --accent: #1bb369;
+    --danger: #ff6b6b;
+    --surface: rgba(255, 255, 255, 0.03);
+    --surface-hover: rgba(255, 255, 255, 0.06);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #ffffff;
+    --text-muted: #b0a9a6;
+}
+
+.progress-panel { padding: 30px; }
+
+.progress-top {
+    display: flex;
+    align-items: center;
+    gap: 34px;
+    flex-wrap: wrap;
+    padding-bottom: 26px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* ---------- ring ---------- */
+
+.progress-ring {
+    position: relative;
+    width: 170px;
+    height: 170px;
+    flex-shrink: 0;
+}
+
+.progress-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.07);
+    stroke-width: 9;
+}
+
+.ring-progress {
+    fill: none;
+    stroke: url(#liveGradient);
+    stroke-width: 9;
+    stroke-linecap: round;
+    stroke-dasharray: 377;
+    stroke-dashoffset: 377;
+    transition: stroke-dashoffset 0.6s ease;
+}
+
+.ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.ring-center span {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.ring-center small {
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--primary-light);
+}
+
+/* ---------- copy ---------- */
+
+.progress-copy { flex: 1; min-width: 260px; }
+
+.progress-copy h2 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 19px;
+    margin-bottom: 8px;
+}
+
+.progress-copy p {
+    color: var(--text-muted);
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin-bottom: 18px;
+}
+
+.progress-copy code {
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--primary-light);
+}
+
+.progress-bar {
+    height: 10px;
+    border-radius: 10px;
+    background: var(--surface-hover);
+    overflow: hidden;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width 0.6s ease;
+}
+
+.meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-top: 16px;
+    color: var(--text-muted);
+    font-size: 11.5px;
+}
+
+.meta-row strong { color: var(--text); font-weight: 600; }
+
+/* ---------- checks ---------- */
+
+.check-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 15px;
+    border-radius: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.check-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #5a5350;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.check.running {
+    color: var(--text);
+    border-color: rgba(204, 47, 12, 0.35);
+}
+
+.check.running .check-dot {
+    background: var(--primary-light);
+    box-shadow: 0 0 10px var(--primary-light);
+    animation: pulseDot 1.2s ease-in-out infinite;
+}
+
+.check.done {
+    color: var(--accent);
+    border-color: rgba(27, 179, 105, 0.3);
+    background: rgba(27, 179, 105, 0.07);
+}
+
+.check.done .check-dot {
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    animation: none;
+}
+
+@keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* ---------- log ---------- */
+
+.log-panel {
+    padding: 18px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid var(--border);
+    margin-bottom: 22px;
+}
+
+.log-title {
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.log {
+    list-style: none;
+    max-height: 190px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'SF Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.9;
+    color: var(--text-muted);
+    padding-right: 6px;
+}
+
+.log::-webkit-scrollbar {
+    width: 6px;
+}
+.log::-webkit-scrollbar-track {
+    background: transparent;
+}
+.log::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.log li::before {
+    content: "› ";
+    color: var(--primary-light);
+}
+
+.log li.ok { color: var(--accent); }
+.log li.err { color: var(--danger); }
+
+/* ---------- actions ---------- */
+
+.progress-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+    .progress-top { gap: 22px; justify-content: center; text-align: center; }
+    .progress-copy { text-align: left; }
+    .progress-actions .ghost-btn,
+    .progress-actions .primary-btn { width: 100%; }
+}

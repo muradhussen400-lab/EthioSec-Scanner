@@ -14,6 +14,10 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    website: Optional[str] = None
+
 class UserOut(UserBase):
     id: str
     role: str
@@ -58,6 +62,7 @@ class ScanStatusOut(BaseModel):
     status: str
     progress: int
     stage: str
+    depth: Optional[str] = "standard"
     checks: Dict[str, Any]
 
 class FindingOut(BaseModel):
@@ -89,9 +94,8 @@ class ScanCounts(BaseModel):
     medium: int
     low: int
     info: int
-    passed: int
-    not_tested: int
-    error: int
+    not_detected: int
+    scanner_error: int
     total: int
 
 class ScanResultOut(BaseModel):
@@ -131,7 +135,28 @@ class AIRequest(BaseModel):
     finding_id: Optional[str] = Field(None, description="Optional ID of the finding to focus the question on.")
     history: Optional[List[Dict[str, Any]]] = Field(None, description="Optional recent conversation history.")
 
+class AIAssistantRequestNew(BaseModel):
+    cwe_id: str = Field(..., description="CWE ID of the vulnerability")
+    severity: str = Field(..., description="Severity of the vulnerability")
+    target_endpoint: str = Field(..., description="Target endpoint where the vulnerability was found")
+    response_snippet: str = Field(..., description="HTTP response snippet containing evidence of the vulnerability")
+
 class AIResponse(BaseModel):
     reply: str
     scan_id: Optional[str] = None
     finding_id: Optional[str] = None
+
+class UserSettingsUpdate(BaseModel):
+    default_scan_depth: Optional[str] = None
+    notif_scan_completed: Optional[bool] = None
+    notif_scan_failed: Optional[bool] = None
+    notif_security_findings: Optional[bool] = None
+
+class UserSettingsOut(BaseModel):
+    default_scan_depth: str
+    notif_scan_completed: bool
+    notif_scan_failed: bool
+    notif_security_findings: bool
+    updated_at: str
+
+    model_config = ConfigDict(from_attributes=True)

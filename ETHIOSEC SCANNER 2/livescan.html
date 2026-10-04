@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        if (localStorage.getItem("isLoggedIn") !== "true") {
+            window.location.href = "login.html";
+        }
+    </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan in progress - EthioSecScan</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="livestyle.css">
+</head>
+<body>
+
+  <!-- Background -->
+  <div class="dashboard-bg">
+    <div class="glow-one"></div>
+    <div class="glow-two"></div>
+  </div>
+
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🛡️</div>
+        <span class="logo-text">EthioSecScan</span>
+      </div>
+                        <nav class="sidebar-nav">
+        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
+        <a href="scanfinal.html" class="side-link active"><span class="side-icon">⚡</span> New Scan</a>
+        <a href="scan_history.html" class="side-link"><span class="side-icon">🕒</span> History</a>
+        <a href="results.html" class="side-link"><span class="side-icon">📈</span> Results</a>
+        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
+        <a href="assistant.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
+        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
+        <a href="settings.html" class="side-link"><span class="side-icon">⚙️</span> Settings</a>
+        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
+      </nav>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+      <div class="scanner-status">
+        <div class="status-dot"></div>
+        <span>Engine Active</span>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="page-container">
+
+      <div class="page-header">
+        <div class="header-content">
+          <h1>Scanning website</h1>
+          <p id="scanTarget">Preparing target…</p>
+        </div>
+        <a href="scanfinal.html" class="ghost-btn">← Back to scanner</a>
+      </div>
+
+      <section class="panel progress-panel">
+
+        <div class="progress-top">
+          <div class="progress-ring">
+            <svg viewBox="0 0 140 140">
+              <defs>
+                <linearGradient id="liveGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#cc2f0c" />
+                  <stop offset="100%" stop-color="#1bb369" />
+                </linearGradient>
+              </defs>
+              <circle cx="70" cy="70" r="60" class="ring-bg" />
+              <circle cx="70" cy="70" r="60" class="ring-progress" id="ringProgress" />
+            </svg>
+            <div class="ring-center">
+              <span id="progressPercent">0%</span>
+              <small id="statusLabel">queued</small>
+            </div>
+          </div>
+
+          <div class="progress-copy">
+            <h2 id="stageText">Queued — initializing scanning worker</h2>
+            <p id="stageHint">Target accepted. Engine running pipeline diagnostics and module handshakes.</p>
+
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="meta-row">
+              <span>Scan ID: <strong id="scanIdLabel">—</strong></span>
+              <span>Depth: <strong id="depthLabel">Deep Audit</strong></span>
+              <span>Elapsed: <strong id="elapsed">0s</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Check item grid -->
+        <div class="check-grid" id="checkGrid">
+          <div class="check" data-check="misconfig"><span class="check-dot"></span> Security misconfiguration</div>
+          <div class="check" data-check="https"><span class="check-dot"></span> SSL / TLS</div>
+          <div class="check" data-check="access_control"><span class="check-dot"></span> Broken Access Control</div>
+          <div class="check" data-check="auth"><span class="check-dot"></span> Authentication</div>
+          <div class="check" data-check="sqli"><span class="check-dot"></span> SQL Injection</div>
+          <div class="check" data-check="xss"><span class="check-dot"></span> Cross-Site Scripting (XSS)</div>
+          <div class="check" data-check="headers"><span class="check-dot"></span> Security Headers &amp; Cookies</div>
+        </div>
+
+        <div class="log-panel">
+          <div class="log-title">Pipeline</div>
+          <ul class="log" id="log"></ul>
+        </div>
+
+        <div class="progress-actions">
+          <button class="ghost-btn" id="cancelScan" type="button">Cancel scan</button>
+          <a class="primary-btn" id="viewResults" href="#" hidden>View results →</a>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Pure Frontend Runtime Shim -->
+  <script>
+    window.EthioShell = window.EthioShell || {
+      init: () => true,
+      escapeHTML: (str) => {
+        if (!str) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      },
+      toast: (msg) => {
+        const t = document.getElementById("toast");
+        if (t) {
+          t.textContent = msg;
+          t.classList.add("show");
+          setTimeout(() => t.classList.remove("show"), 3000);
+        }
+      }
+    };
+
+    window.EthioAuth = window.EthioAuth || {
+      isAuthenticated: () => true,
+      getQueryParam: (p) => new URLSearchParams(window.location.search).get(p)
+    };
+
+    // Mobile sidebar toggle handler
+    const toggle = document.getElementById("sidebarToggle");
+    const overlay = document.getElementById("sidebarOverlay");
+    const sidebar = document.getElementById("sidebar");
+    if (toggle && sidebar) {
+      toggle.addEventListener("click", () => {
+        sidebar.classList.toggle("open");
+        overlay?.classList.toggle("show");
+      });
+      overlay?.addEventListener("click", () => {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("show");
+      });
+    }
+  </script>
+
+  <!-- Live Scan Script -->
+  <script src="livejava.js"></script>
+</body>
+</html>
+

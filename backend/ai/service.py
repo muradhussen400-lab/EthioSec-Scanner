@@ -69,7 +69,7 @@ async def ask_ai(system_context: str, user_message: str, timeout: float = DEFAUL
                 if "not found" in err_msg or "pull model" in err_msg:
                     return f"The configured Ollama model '{model}' was not found. Please pull it using 'ollama pull {model}'."
                 if "connection refused" in err_msg or "connect" in err_msg:
-                    return f"Could not connect to Ollama at {host}. Please ensure the service is running."
+                    return "AI Assistant unavailable — local AI service is not running."
                 raise e
 
         # Run the synchronous API call in an executor with timeout

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        if (localStorage.getItem("isLoggedIn") !== "true" || !localStorage.getItem("token")) {
+            window.location.href = "login.html";
+        }
+    </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Security Scan - EthioSec Scanner</title>
+  <link rel="stylesheet" href="scanstylefinal.css">
+  <style>
+    .depth-profiles {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .profile-card {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+    .profile-card:hover {
+      border-color: rgba(204, 47, 12, 0.5);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .profile-card.active {
+      border-color: #cc2f0c;
+      background: rgba(204, 47, 12, 0.08);
+      box-shadow: 0 0 15px rgba(204, 47, 12, 0.15);
+    }
+    .profile-card input[type="radio"] {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      accent-color: #cc2f0c;
+    }
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .profile-badge {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-std { background: rgba(27, 179, 105, 0.2); color: #1bb369; border: 1px solid rgba(27, 179, 105, 0.4); }
+    .badge-deep { background: rgba(255, 138, 61, 0.2); color: #ff8a3d; border: 1px solid rgba(255, 138, 61, 0.4); }
+    .badge-future { background: rgba(255, 255, 255, 0.1); color: #b0a9a6; }
+    .profile-specs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--text-muted, #b0a9a6);
+      margin-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 8px;
+    }
+    .spec-item strong {
+      color: #eaeaea;
+      display: block;
+      font-size: 0.82rem;
+    }
+    .profile-card.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background glows -->
+  <div class="dashboard-bg">
+    <div class="glow-one"></div>
+    <div class="glow-two"></div>
+  </div>
+
+  <!-- Mobile sidebar toggle -->
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🛡️</div>
+        <span class="logo-text">EthioSecScan</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
+        <a href="scanfinal.html" class="side-link active"><span class="side-icon">⚡</span> New Scan</a>
+        <a href="scan_history.html" class="side-link"><span class="side-icon">🕒</span> History</a>
+        <a href="results.html" class="side-link"><span class="side-icon">📈</span> Results</a>
+        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
+        <a href="assistant.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
+        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
+        <a href="settings.html" class="side-link"><span class="side-icon">⚙️</span> Settings</a>
+        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
+      </nav>
+      
+      <script>
+        function logout(e) {
+            e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+      </script>
+      
+      <div class="scanner-status">
+        <div class="status-dot"></div>
+        <span>Scanner Engine Ready</span>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="scanner-container">
+
+      <div class="page-header">
+        <div class="header-content">
+          <h1>New Security Scan</h1>
+          <p>Configure and launch an authorized web vulnerability assessment</p>
+        </div>
+        <a href="dashboardfinal.html" class="ghost-btn">← Back to dashboard</a>
+      </div>
+
+      <section class="scanner-grid">
+
+        <!-- ---------- Target + settings ---------- -->
+        <div class="panel scan-config">
+
+          <div class="workflow-step">
+            <div class="step-title">
+              <span class="step-num">01</span> Target Specification
+            </div>
+            
+            <div class="url-input" style="margin-bottom: 8px;">
+              <span class="url-icon">🌐</span>
+              <input type="url" id="url" placeholder="https://example.com" autocomplete="url">
+              <button class="clear-url" id="clearUrl" title="Clear">✕</button>
+            </div>
+            <p class="input-help" id="urlHelp">Specify the fully qualified domain or endpoint to audit.</p>
+            <div class="chips" id="recentTargets" style="margin-top: 12px;"></div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-title">
+              <span class="step-num">02</span> Vulnerability Check Selection
+            </div>
+            <div class="settings-head">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">The backend engine will execute only the selected security checks.</span>
+              <button class="link-btn" id="toggleAll" type="button">Select all</button>
+            </div>
+
+            <div class="settings">
+              <label class="setting">
+                <div class="setting-text">
+                  <strong>SQL Injection (SQLi)</strong>
+                  <small>CWE-89 syntax, boolean error, and quote escape checks</small>
+                </div>
+                <input type="checkbox" id="modSqli" data-module="sqli" checked>
+                <span class="switch"></span>
+              </label>
+              <label class="setting">
+                <div class="setting-text">
+                  <strong>Cross-Site Scripting (XSS)</strong>
+                  <small>CWE-79 reflected input parameter and form fuzzing</small>
+                </div>
+                <input type="checkbox" id="modXss" data-module="xss" checked>
+                <span class="switch"></span>
+              </label>
+              <label class="setting">
+                <div class="setting-text">
+                  <strong>Security Headers & Cookies</strong>
+                  <small>CSP, HSTS, X-Content-Type, CORS, Referrer policy</small>
+                </div>
+                <input type="checkbox" id="modHeaders" data-module="headers" checked>
+                <span class="switch"></span>
+              </label>
+              <label class="setting">
+                <div class="setting-text">
+                  <strong>TLS / HTTPS Transport Security</strong>
+                  <small>CWE-319 cleartext communication and protocol verification</small>
+                </div>
+                <input type="checkbox" id="modSsl" data-module="https" checked>
+                <span class="switch"></span>
+              </label>
+              <label class="setting">
+                <div class="setting-text">
+                  <strong>Authentication & Session Security</strong>
+                  <small>CWE-287 credential transmission and auth form posture</small>
+                </div>
+                <input type="checkbox" id="modAuth" data-module="auth" checked>
+                <span class="switch"></span>
+              </label>
+              <label class="setting">
+                <div class="setting-text">
+                  <strong>Broken Access Control</strong>
+                  <small>CWE-284 IDOR endpoint analysis and authorization flaws</small>
+                </div>
+                <input type="checkbox" id="modAccess" data-module="access_control" checked>
+                <span class="switch"></span>
+              </label>
+              <label class="setting">
+                <div class="setting-text">
+                  <strong>Security Misconfiguration & Exposed Files</strong>
+                  <small>CWE-16 exposed metadata (.git, .env) and dangerous HTTP methods</small>
+                </div>
+                <input type="checkbox" id="modMisconfig" data-module="exposed_files" checked>
+                <span class="switch"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-title">
+              <span class="step-num">03</span> Scan Profile & Depth
+            </div>
+            
+            <div class="depth-profiles">
+              <!-- Standard Profile -->
+              <label class="profile-card active" id="cardStandard">
+                <input type="radio" name="depth" value="standard" checked>
+                <div class="profile-header">
+                  <strong>Standard Scan</strong>
+                  <span class="profile-badge badge-std">Fast Baseline</span>
+                </div>
+                <p style="font-size:0.85rem; margin:0; color:var(--text-muted);">Rapid vulnerability assessment suitable for routine health checks and quick surface testing.</p>
+                <div class="profile-specs">
+                  <div class="spec-item">
+                    <strong>Discovery Scope:</strong> Up to 15 pages (Depth: 2)
+                  </div>
+                  <div class="spec-item">
+                    <strong>Coverage:</strong> Selected active/passive checks on primary endpoints
+                  </div>
+                </div>
+              </label>
+              
+              <!-- Deep Profile -->
+              <label class="profile-card" id="cardDeep">
+                <input type="radio" name="depth" value="deep">
+                <div class="profile-header">
+                  <strong>Deep Scan</strong>
+                  <span class="profile-badge badge-deep">Exhaustive Audit</span>
+                </div>
+                <p style="font-size:0.85rem; margin:0; color:var(--text-muted);">Extended crawling across nested routes, aggressive parameter discovery, and exposed file inspections.</p>
+                <div class="profile-specs">
+                  <div class="spec-item">
+                    <strong>Discovery Scope:</strong> Up to 50 pages (Depth: 4)
+                  </div>
+                  <div class="spec-item">
+                    <strong>Coverage:</strong> Full crawler discovery + all selected checks + file checks
+                  </div>
+                </div>
+              </label>
+
+              <!-- Super Profile (Future/Enterprise) -->
+              <div class="profile-card disabled" title="Enterprise continuous scanning is in roadmap">
+                <div class="profile-header">
+                  <strong>Super Scan</strong>
+                  <span class="profile-badge badge-future">Enterprise / Future</span>
+                </div>
+                <p style="font-size:0.85rem; margin:0; color:var(--text-muted);">Continuous asynchronous attack surface monitoring and multi-agent distributed testing. (Unavailable in current profile)</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-title">
+              <span class="step-num">04</span> Legal Authorization
+            </div>
+            <label class="authorize" for="authorized" style="margin-top: 0;">
+              <input type="checkbox" id="authorized">
+              <span>
+                <strong>I confirm that I own this target or have explicit written authorization to perform security testing.</strong>
+                <small>EthioSec strictly enforces target safety constraints, SSRF blocking, and audit logging.</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="workflow-step" style="margin-bottom: 0;">
+            <div class="step-title">
+              <span class="step-num">05</span> Launch Assessment
+            </div>
+            <button class="scan-button" id="scanButton" type="button" disabled style="width: 100%; margin-top: 10px; font-size: 1.05rem; padding: 16px;">
+              <span>⚡</span> START REAL SCAN
+            </button>
+          </div>
+
+        </div>
+
+        <!-- ---------- Right column ---------- -->
+        <div class="right-column">
+
+          <div class="panel info-card">
+            <div class="card-header"><h2>Scanner Architecture</h2></div>
+
+            <div class="step">
+              <div class="step-number">1</div>
+              <div>
+                <strong>SSRF & Target Safety</strong>
+                <p>Private subnets, metadata IPs, and localhost targets are safely filtered.</p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">2</div>
+              <div>
+                <strong>Real Check Execution</strong>
+                <p>Only your chosen checks run. Results reflect real evidence or explicit Not Detected states.</p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">3</div>
+              <div>
+                <strong>Actionable Remediation</strong>
+                <p>Clear CWE/OWASP mapping with exact parameter and response evidence.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel stats-card">
+            <div class="stat">
+              <span>Last Scan</span>
+              <strong id="lastScan">—</strong>
+            </div>
+            <div class="stat">
+              <span>URLs Scanned</span>
+              <strong id="totalScans">0</strong>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ---------- Recent Scans section ---------- -->
+      <section class="panel history-card" id="history">
+        <div class="card-header">
+          <h2>Recent Scans</h2>
+          <a href="scan_history.html" class="link-btn">View all →</a>
+        </div>
+        <div class="history-list" id="historyList">
+          <p class="empty-state">Loading real scans…</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Scanner Controller -->
+  <script src="scanjavafinal.js"></script>
+</body>
+</html>
