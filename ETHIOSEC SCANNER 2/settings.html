@@ -1,509 +1,1125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script>
-        if (localStorage.getItem("isLoggedIn") !== "true") {
-            window.location.href = "login.html";
-        }
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings — EthioSecScan</title>
+    <meta name="description" content="Manage your authenticated profile, credentials, scanner preferences, and notification defaults on EthioSecScan.">
 
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings - EthioSecScan</title>
-  <link rel="stylesheet" href="shell.css">
-  <link rel="stylesheet" href="settingsstyle.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Unified Stylesheets (Page-specific first, Shared Shell last) -->
+    <link rel="stylesheet" href="settingsstyle.css">
+    <link rel="stylesheet" href="shared_nav_header.css">
+
+    <!-- Shared Auth & Identity -->
+    <script src="shared_auth.js"></script>
 </head>
 <body>
 
-  <!-- Background -->
-  <div class="dashboard-bg">
-    <div class="glow-one"></div>
-    <div class="glow-two"></div>
-  </div>
+    <!-- Mobile sidebar toggle & overlay -->
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open navigation menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="layout">
 
-  <div class="layout">
-
-    <!-- ============ SIDEBAR ============ -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <div class="logo-icon">🛡️</div>
-        <span class="logo-text">EthioSecScan</span>
-      </div>
-                        <nav class="sidebar-nav">
-        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
-        <a href="scanfinal.html" class="side-link"><span class="side-icon">⚡</span> New Scan</a>
-        <a href="scan_history.html" class="side-link"><span class="side-icon">🕒</span> History</a>
-        <a href="results.html" class="side-link"><span class="side-icon">📈</span> Results</a>
-        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
-        <a href="assistant.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
-        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
-        <a href="settings.html" class="side-link active"><span class="side-icon">⚙️</span> Settings</a>
-        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
-      </nav>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      <div class="scanner-status">
-        <div class="status-dot"></div>
-        <span>Settings Synced</span>
-      </div>
-    </aside>
-
-    <main class="page-container">
-
-      <div class="page-header">
-        <div class="header-content">
-          <h1>Settings</h1>
-          <p>Manage your profile, security, and scan preferences</p>
-        </div>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" type="button">
-          <span id="themeIcon">🌙</span>
-        </button>
-      </div>
-
-      <div class="settings-tabs" id="settingsTabs">
-        <button class="tab-btn active" data-section="profile" type="button"><span>👤</span> Profile</button>
-        <button class="tab-btn" data-section="security" type="button"><span>🔐</span> Security</button>
-        <button class="tab-btn" data-section="scanning" type="button"><span>🔍</span> Scan Defaults</button>
-        <button class="tab-btn" data-section="preferences" type="button"><span>🎨</span> Preferences</button>
-        <button class="tab-btn" data-section="notifications" type="button"><span>🔔</span> Notifications</button>
-      </div>
-
-      <!-- ================= PROFILE ================= -->
-      <section class="settings-section active" id="profile">
-        <div class="panel">
-          <div class="card-header">
-            <h2>Profile</h2>
-            <span class="badge-pill verified">✓ Verified</span>
-          </div>
-
-          <div class="profile-top">
-            <div class="avatar"><span id="avatarLetter">A</span></div>
-            <div class="profile-meta">
-              <h3 id="previewName">Security Analyst</h3>
-              <p id="previewEmail">analyst@ethiosec.local</p>
-              <span class="role-tag" id="previewRole">Security Administrator</span>
-            </div>
-          </div>
-
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="fullName">Full Name</label>
-              <input type="text" id="fullName" autocomplete="name" placeholder="Your name">
-            </div>
-            <div class="form-group">
-              <label for="username">Username</label>
-              <input type="text" id="username" autocomplete="username" placeholder="username">
-            </div>
-            <div class="form-group full">
-              <label for="email">Email Address</label>
-              <input type="email" id="email" autocomplete="email" placeholder="you@example.com">
-            </div>
-            <div class="form-group">
-              <label for="role">Account Role</label>
-              <input type="text" id="role" value="Security Administrator" disabled>
-              <small class="field-hint">Set by your workspace owner</small>
-            </div>
-            <div class="form-group">
-              <label for="timezone">Timezone</label>
-              <select id="timezone">
-                <option value="EAT" selected>East Africa Time (EAT)</option>
-                <option value="UTC">UTC</option>
-                <option value="CET">Central European Time (CET)</option>
-                <option value="ET">Eastern Time (ET)</option>
-                <option value="PT">Pacific Time (PT)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ================= SECURITY ================= -->
-      <section class="settings-section" id="security">
-
-        <div class="panel">
-          <div class="card-heading">
-            <div class="card-icon primary">🔑</div>
-            <div>
-              <h3>Change Password</h3>
-              <p>Use at least 8 characters with a number and a symbol.</p>
-            </div>
-          </div>
-
-          <div class="password-fields">
-            <div class="form-group">
-              <label for="currentPassword">Current Password</label>
-              <div class="password-input">
-                <input type="password" id="currentPassword" placeholder="Enter current password">
-                <button class="password-toggle" type="button" aria-label="Show password">👁</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="newPassword">New Password</label>
-              <div class="password-input">
-                <input type="password" id="newPassword" placeholder="Enter new password">
-                <button class="password-toggle" type="button" aria-label="Show password">👁</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="confirmPassword">Confirm Password</label>
-              <div class="password-input">
-                <input type="password" id="confirmPassword" placeholder="Repeat new password">
-                <button class="password-toggle" type="button" aria-label="Show password">👁</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="password-strength">
-            <div class="strength-label">
-              <span>Password strength</span>
-              <strong id="strengthText">Not checked</strong>
-            </div>
-            <div class="strength-bar"><span id="strengthBar"></span></div>
-            <ul class="strength-rules" id="strengthRules">
-              <li data-rule="length">8+ characters</li>
-              <li data-rule="case">Upper and lower case</li>
-              <li data-rule="number">A number</li>
-              <li data-rule="symbol">A symbol</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="panel toggle-row">
-          <div class="card-heading">
-            <div class="card-icon accent">🛡️</div>
-            <div>
-              <h3>Two-Factor Authentication</h3>
-              <p>Require a verification challenge when signing in.</p>
-            </div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="twoFactor" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="panel toggle-row">
-          <div class="card-heading">
-            <div class="card-icon warning">🚨</div>
-            <div>
-              <h3>Login Alerts</h3>
-              <p>Notify me when a new session signs in.</p>
-            </div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="loginAlerts" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="panel">
-          <div class="card-heading">
-            <div class="card-icon primary">💻</div>
-            <div>
-              <h3>Active Sessions</h3>
-              <p>Current device connection details.</p>
-            </div>
-          </div>
-
-          <div class="session-list">
-            <div class="session">
-              <div class="session-left">
-                <div class="session-icon">💻</div>
-                <div class="session-info">
-                  <strong>This browser <span class="session-current">CURRENT</span></strong>
-                  <small>Active session in local storage</small>
+        <!-- ============ APPROVED APPLICATION SIDEBAR ============ -->
+        <aside class="sidebar" id="sidebar">
+            <a href="dashboardfinal.html" class="sidebar-logo">
+                <div class="logo-shield-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4" stroke-width="2"/>
+                    </svg>
                 </div>
-              </div>
-              <span class="session-online">● Online</span>
-            </div>
-          </div>
-        </div>
+                <div class="logo-text-group">
+                    <span class="logo-title">EthioSecScan</span>
+                    <span class="logo-subtitle">Scan • Detect • Secure</span>
+                </div>
+            </a>
 
-        <div class="panel danger-zone">
-          <div class="danger-content">
-            <div>
-              <h3>Clear Local Data</h3>
-              <p>Removes cached mock scans, custom credentials, and resets application state.</p>
-            </div>
-            <button class="btn btn-danger" id="deleteAccount" type="button">Reset Storage</button>
-          </div>
-        </div>
+            <!-- Navigation Links -->
+            <nav class="sidebar-nav">
+                <a href="dashboardfinal.html" class="side-link" id="navDashboard">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="9"></rect>
+                            <rect x="14" y="3" width="7" height="5"></rect>
+                            <rect x="14" y="12" width="7" height="9"></rect>
+                            <rect x="3" y="16" width="7" height="5"></rect>
+                        </svg>
+                    </span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="scanfinal.html" class="side-link" id="navNewScan">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>New Scan</span>
+                </a>
+                <a href="scan_history.html" class="side-link" id="navHistory">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </span>
+                    <span>History</span>
+                </a>
+                <a href="results.html" class="side-link" id="navResults">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </span>
+                    <span>Results</span>
+                </a>
+                <a href="reports.html" class="side-link" id="navReports">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                    </span>
+                    <span>Reports</span>
+                </a>
+                <a href="assistant.html" class="side-link" id="navAssistant">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                            <circle cx="12" cy="5" r="2"></circle>
+                            <path d="M12 7v4"></path>
+                            <line x1="8" y1="16" x2="8" y2="16"></line>
+                            <line x1="16" y1="16" x2="16" y2="16"></line>
+                        </svg>
+                    </span>
+                    <span>AI Assistant</span>
+                </a>
 
-      </section>
+                <div class="nav-divider"></div>
 
-      <!-- ================= SCAN DEFAULTS ================= -->
-      <section class="settings-section" id="scanning">
-        <div class="panel">
-          <div class="card-header">
-            <h2>Default Scan Checks</h2>
-            <span class="header-hint">Pre-selected on the Scanner page</span>
-          </div>
+                <a href="settings.html" class="side-link active" id="navSettings">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </span>
+                    <span>Settings</span>
+                </a>
+                <a href="#" class="side-link" id="sidebarLogoutLink" onclick="logout(event)">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>Logout</span>
+                </a>
+            </nav>
 
-          <div class="preference-list">
-            <div class="preference">
-              <div class="preference-info">
-                <strong>SQL Injection</strong>
-                <p>Check for CWE-89 vulnerabilities.</p>
-              </div>
-              <label class="switch"><input type="checkbox" id="defSqli" checked><span class="slider"></span></label>
+            <!-- Bottom System Status Box -->
+            <div class="service-status-box" id="serviceStatusBox" title="All services operational">
+                <div class="service-status-dot" id="serviceStatusDot"></div>
+                <div class="service-status-text">
+                    <span class="service-name">System Healthy</span>
+                    <span class="service-state" id="serviceStateText">All services running</span>
+                </div>
             </div>
-            <div class="preference">
-              <div class="preference-info">
-                <strong>Cross-Site Scripting (XSS)</strong>
-                <p>Reflected and stored XSS checks.</p>
-              </div>
-              <label class="switch"><input type="checkbox" id="defXss" checked><span class="slider"></span></label>
-            </div>
-            <div class="preference">
-              <div class="preference-info">
-                <strong>Security Headers</strong>
-                <p>HSTS, CSP, X-Frame-Options and cookie flags.</p>
-              </div>
-              <label class="switch"><input type="checkbox" id="defHeaders" checked><span class="slider"></span></label>
-            </div>
-            <div class="preference">
-              <div class="preference-info">
-                <strong>SSL / TLS</strong>
-                <p>Certificate validity and protocol version.</p>
-              </div>
-              <label class="switch"><input type="checkbox" id="defSsl" checked><span class="slider"></span></label>
-            </div>
-            <div class="preference">
-              <div class="preference-info">
-                <strong>Default Scan Depth</strong>
-                <p>How thorough a new scan starts out.</p>
-              </div>
-              <div class="preference-control">
-                <select id="defDepth">
-                  <option value="standard" selected>Standard</option>
-                  <option value="deep">Deep</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        </aside>
 
-      <!-- ================= PREFERENCES ================= -->
-      <section class="settings-section" id="preferences">
-        <div class="panel">
-          <div class="card-header">
-            <h2>Preferences</h2>
-            <span class="header-hint">Applied to every page</span>
-          </div>
+        <!-- ============ MAIN CONTENT AREA ============ -->
+        <main class="page-container">
 
-          <div class="preference-list">
-            <div class="preference">
-              <div class="preference-info">
-                <strong>Appearance</strong>
-                <p>Switch between the dark and light theme.</p>
-              </div>
-              <div class="theme-buttons">
-                <button class="theme-option active" data-theme-choice="dark" type="button">🌙 Dark</button>
-                <button class="theme-option" data-theme-choice="light" type="button">☀️ Light</button>
-              </div>
-            </div>
-            <div class="preference">
-              <div class="preference-info">
-                <strong>Accent Colour</strong>
-                <p>Used for highlights, charts and buttons.</p>
-              </div>
-              <div class="swatches" id="swatches">
-                <button class="swatch active" data-accent="#cc2f0c" style="--sw:#cc2f0c" title="Volcano" type="button"></button>
-                <button class="swatch" data-accent="#1bb369" style="--sw:#1bb369" title="Emerald" type="button"></button>
-                <button class="swatch" data-accent="#ffa500" style="--sw:#ffa500" title="Amber" type="button"></button>
-                <button class="swatch" data-accent="#8e2109" style="--sw:#8e2109" title="Ember" type="button"></button>
-              </div>
-            </div>
-            <div class="preference">
-              <div class="preference-info">
-                <strong>Animations</strong>
-                <p>Background glow, gauge fills and transitions.</p>
-              </div>
-              <label class="switch"><input type="checkbox" id="animations" checked><span class="slider"></span></label>
-            </div>
-            <div class="preference">
-              <div class="preference-info">
-                <strong>Compact Layout</strong>
-                <p>Tighter spacing so more fits on screen.</p>
-              </div>
-              <label class="switch"><input type="checkbox" id="compactMode"><span class="slider"></span></label>
-            </div>
-            <div class="preference">
-              <div class="preference-info">
-                <strong>Language</strong>
-                <p>Interface language.</p>
-              </div>
-              <div class="preference-control">
-                <select id="language">
-                  <option>English</option>
-                  <option>አማርኛ (Amharic)</option>
-                  <option>Français</option>
-                  <option>Español</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+            <!-- Page Header (Matches Design Reference) -->
+            <div class="page-header">
+                <div class="header-left-title-group">
+                    <div class="settings-title-icon-box">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </div>
+                    <div class="header-content">
+                        <h1 class="page-title">Settings</h1>
+                        <p class="page-subtitle">Manage your account, security, and scanner preferences</p>
+                    </div>
+                </div>
 
-      <!-- ================= NOTIFICATIONS ================= -->
-      <section class="settings-section" id="notifications">
-        <div class="panel">
-          <div class="card-header">
-            <h2>Notifications</h2>
-            <span class="header-hint">Choose what reaches you</span>
-          </div>
+                <div class="header-actions">
+                    <!-- Notification Bell with Dropdown Panel -->
+                    <div class="notif-dropdown-wrapper" id="notifDropdownWrapper">
+                        <button class="header-icon-btn" id="notifBtn" type="button" aria-label="Notifications" title="Notifications">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span class="notif-badge" id="notifBadge">3</span>
+                        </button>
 
-          <div class="notification-group">
-            <div class="notification-item">
-              <div class="notification-left">
-                <div class="notification-icon critical">⚠</div>
-                <div><strong>Critical Vulnerabilities</strong><small>Alert me the moment one is found.</small></div>
-              </div>
-              <label class="switch"><input type="checkbox" id="notifCritical" checked><span class="slider"></span></label>
-            </div>
-            <div class="notification-item">
-              <div class="notification-left">
-                <div class="notification-icon warning">!</div>
-                <div><strong>High Risk Findings</strong><small>High-severity issues from any scan.</small></div>
-              </div>
-              <label class="switch"><input type="checkbox" id="notifHigh" checked><span class="slider"></span></label>
-            </div>
-            <div class="notification-item">
-              <div class="notification-left">
-                <div class="notification-icon primary">🔐</div>
-                <div><strong>Security Events</strong><small>Password and sign-in activity.</small></div>
-              </div>
-              <label class="switch"><input type="checkbox" id="notifSecurity" checked><span class="slider"></span></label>
-            </div>
-            <div class="notification-item">
-              <div class="notification-left">
-                <div class="notification-icon accent">✓</div>
-                <div><strong>Scan Completed</strong><small>A summary when a scan finishes.</small></div>
-              </div>
-              <label class="switch"><input type="checkbox" id="notifComplete"><span class="slider"></span></label>
-            </div>
-            <div class="notification-item" style="opacity: 0.6">
-              <div class="notification-left">
-                <div class="notification-icon primary">📅</div>
-                <div><strong>Weekly Digest <span class="sev-badge sev-low" style="padding:2px 6px; font-size:0.7rem; float:right;">COMING SOON</span></strong><small>One email every Monday morning.</small></div>
-              </div>
-              <label class="switch"><input type="checkbox" id="notifDigest" disabled><span class="slider"></span></label>
-            </div>
-            <div class="notification-item">
-              <div class="notification-left">
-                <div class="notification-icon warning">🌙</div>
-                <div><strong>Quiet Hours</strong><small>Hold non-critical alerts 10pm–7am.</small></div>
-              </div>
-              <label class="switch"><input type="checkbox" id="notifQuiet"><span class="slider"></span></label>
-            </div>
-          </div>
-        </div>
-      </section>
+                        <div class="notif-dropdown-panel" id="notifPanel">
+                            <div class="notif-panel-header">
+                                <span class="notif-panel-title">Notifications</span>
+                                <button class="notif-clear-btn" id="markAllReadBtn" type="button">Mark all read</button>
+                            </div>
+                            <div class="notif-list" id="notifList">
+                                <div class="notif-item unread">
+                                    <div class="notif-icon-circle warn">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">Vulnerability Alert</div>
+                                        <div class="notif-desc">Target security scan found items requiring remediation.</div>
+                                        <div class="notif-time">Recent</div>
+                                    </div>
+                                </div>
+                                <div class="notif-item">
+                                    <div class="notif-icon-circle success">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">Scanner Engine Ready</div>
+                                        <div class="notif-desc">FastAPI engine connected with database synchronized.</div>
+                                        <div class="notif-time">Online</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-      <!-- ================= SAVE BAR ================= -->
-      <div class="save-bar">
-        <span class="save-status" id="saveStatus">
-          <span class="save-status-dot"></span> All changes saved
-        </span>
-        <div class="save-actions">
-          <button class="btn btn-secondary" id="resetDefaults" type="button">Reset to defaults</button>
-          <button class="btn btn-primary" id="saveChanges" type="button"><span>✓</span> Save changes</button>
-        </div>
-      </div>
+                    <!-- User Profile Dropdown Pill -->
+                    <div class="user-pill-dropdown-container">
+                        <div class="user-pill-btn" id="userPillBtn" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" title="User Profile">
+                            <div class="user-avatar-small" id="headerAvatar">MH</div>
+                            <div class="user-pill-info">
+                                <span class="user-pill-name" id="headerUserName">Miftah Hussen</span>
+                                <span class="user-pill-role" id="headerUserRole">Security Analyst</span>
+                            </div>
+                            <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        
+                        <!-- Dropdown Menu -->
+                        <div class="user-menu-popover" id="userMenuPopover">
+                            <div class="user-menu-header">
+                                <span class="popover-name" id="menuUserName">Miftah Hussen</span>
+                                <span class="popover-email" id="menuUserEmail">miftah@example.com</span>
+                                <span class="popover-role" id="menuUserRole">Security Analyst</span>
+                            </div>
+                            <div class="user-menu-divider"></div>
+                            <a href="#profile" class="user-menu-item" id="menuProfileLink">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <span>Profile</span>
+                            </a>
+                            <a href="settings.html" class="user-menu-item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                                <span>Settings</span>
+                            </a>
+                            <a href="#" class="user-menu-item text-danger" onclick="logout(event)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                <span>Logout</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-      <footer class="page-footer">
-        <span><i class="footer-pulse"></i> Security system operational</span>
-        <span>EthioSecScan · Settings v2.0</span>
-      </footer>
+            <!-- Tab Navigation (5 Supported Functional Sections) -->
+            <nav class="settings-tabs" id="settingsTabs" role="tablist" aria-label="Settings Categories">
+                <button class="tab-btn active" data-section="profile" id="tab-profile" role="tab" aria-selected="true" aria-controls="profile" type="button">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    Profile
+                </button>
+                <button class="tab-btn" data-section="security" id="tab-security" role="tab" aria-selected="false" aria-controls="security" type="button">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    Security
+                </button>
+                <button class="tab-btn" data-section="scan-defaults" id="tab-scan-defaults" role="tab" aria-selected="false" aria-controls="scan-defaults" type="button">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+                    Scan Defaults
+                </button>
+                <button class="tab-btn" data-section="preferences" id="tab-preferences" role="tab" aria-selected="false" aria-controls="preferences" type="button">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+                    Preferences
+                </button>
+                <button class="tab-btn" data-section="notifications" id="tab-notifications" role="tab" aria-selected="false" aria-controls="notifications" type="button">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    Notifications
+                </button>
+            </nav>
 
-    </main>
-  </div>
+            <!-- ================= 1. PROFILE SECTION (EXACT DESIGN REFERENCE MATCH) ================= -->
+            <section class="settings-section active" id="profile" role="tabpanel" aria-labelledby="tab-profile">
+                <div class="settings-profile-layout">
+                    <!-- Top Two Columns -->
+                    <div class="profile-cards-grid">
+                        <!-- Left Card (~65% width): Profile Information -->
+                        <div class="settings-card profile-info-card">
+                            <div class="card-title-header">
+                                <div class="card-title-icon-box">
+                                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-main-title">Profile Information</h2>
+                                    <p class="card-main-desc">Update your personal information and account details.</p>
+                                </div>
+                            </div>
 
-  <div class="toast" id="toast" role="status" aria-live="polite">
-    <span class="toast-icon">✓</span>
-    <div>
-      <strong id="toastTitle">Settings saved</strong>
-      <small id="toastMsg">Your changes are stored on your account</small>
+                            <!-- Avatar Row -->
+                            <div class="profile-avatar-row">
+                                <div class="profile-avatar-circle-wrap" id="profileAvatarWrap" title="Profile Avatar">
+                                    <div class="avatar-circle-large" id="avatarLarge"><span id="avatarLetter">MH</span></div>
+                                    <div class="photo-camera-badge" title="Upload avatar">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                    </div>
+                                </div>
+                                <div class="profile-avatar-meta">
+                                    <div class="profile-name-with-badge">
+                                        <h3 class="profile-display-name" id="previewName">Miftah Hussen</h3>
+                                        <span class="verified-icon-check" title="Verified Account">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+                                        </span>
+                                    </div>
+                                    <span class="verified-account-text" id="verifiedAccountText">Verified Account</span>
+                                </div>
+                            </div>
+
+                            <!-- Profile Form -->
+                            <form id="profileForm" onsubmit="saveProfile(event)">
+                                <div class="settings-form-grid">
+                                    <!-- Row 1: Full Name & Website -->
+                                    <div class="form-field-group">
+                                        <label for="fullName">Full Name <span class="req-star">*</span></label>
+                                        <div class="input-with-icon">
+                                            <span class="input-lead-icon">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                            </span>
+                                            <input type="text" id="fullName" placeholder="Miftah Hussen" required autocomplete="name">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-field-group">
+                                        <label for="website">Website / Domain</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-lead-icon">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                            </span>
+                                            <input type="text" id="website" placeholder="https://ethio-ecommerce.local">
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 2: Email & Role -->
+                                    <div class="form-field-group">
+                                        <label for="email">Email Address</label>
+                                        <div class="input-with-icon readonly-field">
+                                            <span class="input-lead-icon">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                                            </span>
+                                            <input type="email" id="email" readonly value="miftah@example.com">
+                                            <span class="input-trail-badge">
+                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                                Read only
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-field-group">
+                                        <label for="role">Role</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-lead-icon">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                            </span>
+                                            <select id="role">
+                                                <option value="Security Analyst" selected>Security Analyst</option>
+                                                <option value="Administrator">Administrator</option>
+                                                <option value="Security Auditor">Security Auditor</option>
+                                            </select>
+                                            <span class="select-chevron-icon">
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 3: User ID & Member Since -->
+                                    <div class="form-field-group">
+                                        <label for="userId">User ID</label>
+                                        <div class="input-with-icon readonly-field">
+                                            <span class="input-lead-icon">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><line x1="15" y1="8" x2="17" y2="8"></line><line x1="15" y1="12" x2="17" y2="12"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+                                            </span>
+                                            <input type="text" id="userId" readonly value="usr_7f3e9d2c4a6b">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-field-group">
+                                        <label for="memberSince">Member Since</label>
+                                        <div class="input-with-icon readonly-field">
+                                            <span class="input-lead-icon">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                            </span>
+                                            <input type="text" id="memberSince" readonly value="Apr 12, 2025">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Form Actions (Matches Design Reference) -->
+                                <div class="profile-actions-row">
+                                    <button class="btn btn-save-profile" id="btnSaveProfile" type="submit">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                        <span class="btn-spinner" id="profileSpinner"></span>
+                                        <span class="btn-text">Save Profile</span>
+                                    </button>
+                                    <button class="btn btn-cancel" id="btnCancelProfile" type="button" onclick="cancelProfileEdit()">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                        <span>Cancel</span>
+                                    </button>
+                                    <span class="action-feedback" id="profileFeedback"></span>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Right Card (~35% width): Account Overview -->
+                        <div class="settings-card account-overview-card">
+                            <div class="card-title-header">
+                                <div class="card-title-icon-box">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-main-title">Account Overview</h2>
+                                </div>
+                            </div>
+
+                            <div class="overview-list">
+                                <div class="overview-item">
+                                    <div class="overview-icon-box">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                    </div>
+                                    <div class="overview-meta">
+                                        <span class="overview-label">Full Name</span>
+                                        <span class="overview-value" id="overviewFullName">Miftah Hussen</span>
+                                    </div>
+                                </div>
+
+                                <div class="overview-item">
+                                    <div class="overview-icon-box">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                                    </div>
+                                    <div class="overview-meta">
+                                        <span class="overview-label">Email</span>
+                                        <span class="overview-value" id="overviewEmail">miftah@example.com</span>
+                                    </div>
+                                </div>
+
+                                <div class="overview-item">
+                                    <div class="overview-icon-box">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                    </div>
+                                    <div class="overview-meta">
+                                        <span class="overview-label">Role</span>
+                                        <span class="overview-value" id="overviewRole">Security Analyst</span>
+                                    </div>
+                                </div>
+
+                                <div class="overview-item">
+                                    <div class="overview-icon-box">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><line x1="15" y1="8" x2="17" y2="8"></line><line x1="15" y1="12" x2="17" y2="12"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+                                    </div>
+                                    <div class="overview-meta">
+                                        <span class="overview-label">User ID</span>
+                                        <span class="overview-value" id="overviewUserId">usr_7f3e9d2c4a6b</span>
+                                    </div>
+                                </div>
+
+                                <div class="overview-item">
+                                    <div class="overview-icon-box">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    </div>
+                                    <div class="overview-meta">
+                                        <span class="overview-label">Member Since</span>
+                                        <span class="overview-value" id="overviewMemberSince">Apr 12, 2025</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Full-Width Banner: Your Account is Secure -->
+                    <div class="security-banner-card">
+                        <div class="security-banner-left">
+                            <div class="security-banner-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                    <polyline points="9 12 11 14 15 10"></polyline>
+                                </svg>
+                            </div>
+                            <div class="security-banner-titles">
+                                <h4 class="security-banner-title">Your Account is Secure</h4>
+                                <p class="security-banner-desc">Your account is protected with strong encryption and multi-layer security.</p>
+                            </div>
+                        </div>
+                        <div class="security-banner-badge">
+                            <span class="banner-badge-dot">●</span>
+                            <span>Verified</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= 2. SECURITY SECTION (DEDICATED PANEL) ================= -->
+            <section class="settings-section" id="security" role="tabpanel" aria-labelledby="tab-security">
+                <div class="settings-security-layout">
+                    <div class="security-cards-grid">
+                        <!-- Left Card: Authentication & Password -->
+                        <div class="settings-card security-password-card">
+                            <div class="card-title-header">
+                                <div class="card-title-icon-box">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-main-title">Authentication &amp; Password</h2>
+                                    <p class="card-main-desc">Update credentials securely with salted Argon2id password protection.</p>
+                                </div>
+                            </div>
+
+                            <form id="passwordForm" onsubmit="changePassword(event)">
+                                <div class="form-field-group">
+                                    <label for="currentPassword">Current Password <span class="req-star">*</span></label>
+                                    <div class="input-with-icon">
+                                        <span class="input-lead-icon">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        </span>
+                                        <input type="password" id="currentPassword" placeholder="Enter current password" required autocomplete="current-password">
+                                        <button class="password-toggle-btn" type="button" aria-label="Toggle password visibility" onclick="togglePassVisibility('currentPassword', this)">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="form-field-group">
+                                    <label for="newPassword">New Password <span class="req-star">*</span></label>
+                                    <div class="input-with-icon">
+                                        <span class="input-lead-icon">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        </span>
+                                        <input type="password" id="newPassword" placeholder="Enter new password (min. 8 characters)" required minlength="8" autocomplete="new-password">
+                                        <button class="password-toggle-btn" type="button" aria-label="Toggle password visibility" onclick="togglePassVisibility('newPassword', this)">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="form-field-group">
+                                    <label for="confirmPassword">Confirm New Password <span class="req-star">*</span></label>
+                                    <div class="input-with-icon">
+                                        <span class="input-lead-icon">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        </span>
+                                        <input type="password" id="confirmPassword" placeholder="Confirm new password" required minlength="8" autocomplete="new-password">
+                                        <button class="password-toggle-btn" type="button" aria-label="Toggle password visibility" onclick="togglePassVisibility('confirmPassword', this)">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="security-btn-row">
+                                    <button class="btn btn-change-password" id="btnChangePassword" type="submit">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        <span class="btn-spinner" id="passwordSpinner"></span>
+                                        <span class="btn-text">Change Password</span>
+                                    </button>
+                                    <span class="action-feedback" id="passwordFeedback"></span>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Right Column: Password Strength & Active Session -->
+                        <div class="security-side-column">
+                            <!-- Card 1: Password Strength -->
+                            <div class="settings-card security-meter-card">
+                                <div class="card-title-header">
+                                    <div class="card-title-icon-box">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="card-main-title">Password Strength</h2>
+                                        <p class="card-main-desc">Entropy and complexity score.</p>
+                                    </div>
+                                </div>
+
+                                <div class="strength-track">
+                                    <div class="strength-fill" id="strengthBar"></div>
+                                </div>
+                                <div class="strength-status-text" id="strengthText">Enter password</div>
+
+                                <ul class="strength-checklist" id="strengthRules">
+                                    <li class="strength-check-item" id="ruleLength">
+                                        <span class="check-icon">✓</span>
+                                        <span>At least 8 characters</span>
+                                    </li>
+                                    <li class="strength-check-item" id="ruleCase">
+                                        <span class="check-icon">✓</span>
+                                        <span>Upper and lower case letters</span>
+                                    </li>
+                                    <li class="strength-check-item" id="ruleNumber">
+                                        <span class="check-icon">✓</span>
+                                        <span>At least one number</span>
+                                    </li>
+                                    <li class="strength-check-item" id="ruleSymbol">
+                                        <span class="check-icon">✓</span>
+                                        <span>At least one special character</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Card 2: Active Session -->
+                            <div class="settings-card active-session-card">
+                                <div class="card-title-header">
+                                    <div class="card-title-icon-box">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="card-main-title">Active Session</h2>
+                                        <p class="card-main-desc">Current authenticated session.</p>
+                                    </div>
+                                </div>
+
+                                <div class="session-info-list">
+                                    <div class="session-info-row">
+                                        <div class="session-row-icon">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                        </div>
+                                        <div class="session-row-meta">
+                                            <span class="session-row-label">Location</span>
+                                            <span class="session-row-val" id="sessionLocation">Local (127.0.0.1)</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="session-info-row">
+                                        <div class="session-row-icon">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                                        </div>
+                                        <div class="session-row-meta">
+                                            <span class="session-row-label">Device</span>
+                                            <span class="session-row-val" id="sessionDevice">Chrome on Windows</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="session-info-row">
+                                        <div class="session-row-icon">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                        </div>
+                                        <div class="session-row-meta">
+                                            <span class="session-row-label">Login Time</span>
+                                            <span class="session-row-val" id="sessionLoginTime">Apr 20, 2025 14:32</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="session-action-wrap">
+                                    <button class="btn btn-outline-danger" type="button" onclick="logout(event)">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                        <span>Log Out Current Session</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- ================= 3. SCAN DEFAULTS SECTION ================= -->
+            <section class="settings-section" id="scan-defaults" role="tabpanel" aria-labelledby="tab-scan-defaults">
+                <!-- Default Scan Depth Card -->
+                <div class="panel">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <h2>Default Scan Profile &amp; Depth</h2>
+                            <p class="section-desc">Select the baseline audit depth pre-configured whenever you start a New Scan.</p>
+                        </div>
+                        <span class="badge-pill verified" id="scanDepthSyncBadge">● Persisted</span>
+                    </div>
+
+                    <div class="form-group" style="max-width: 480px;">
+                        <label for="defaultScanDepth">Default Audit Profile</label>
+                        <select id="defaultScanDepth" onchange="onScanDepthChanged()">
+                            <option value="quick">Quick (Surface Recon — Fast reconnaissance, headers &amp; ports)</option>
+                            <option value="standard" selected>Standard (Balanced Assessment — OWASP Top 10 defaults)</option>
+                            <option value="deep">Deep (Comprehensive Vulnerability Audit — All payloads &amp; crawler paths)</option>
+                        </select>
+                        <p class="field-hint">Saved directly to your account and loaded automatically on the New Scan page.</p>
+                    </div>
+                </div>
+
+                <!-- Supported Scanner Modules Card -->
+                <div class="panel">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <h2>Supported Vulnerability Detection Engines</h2>
+                            <p class="section-desc">Enable or disable specific heuristic security checks for your default scanning profile.</p>
+                        </div>
+                    </div>
+
+                    <div class="modules-grid" id="modulesGrid">
+                        <!-- Module 1: SQLi -->
+                        <div class="module-card">
+                            <div class="module-card-left">
+                                <div class="module-icon-box">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                                </div>
+                                <div class="module-meta">
+                                    <div class="module-meta-title-row">
+                                        <strong>SQL Injection</strong>
+                                        <span class="module-cwe-pill">CWE-89</span>
+                                    </div>
+                                    <p>Automated error, boolean, and union-based injection probing on parameters.</p>
+                                </div>
+                            </div>
+                            <label class="switch" title="Toggle SQL Injection Check">
+                                <input type="checkbox" id="mod_sqli" checked onchange="markScanDefaultsPending()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Module 2: XSS -->
+                        <div class="module-card">
+                            <div class="module-card-left">
+                                <div class="module-icon-box">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                                </div>
+                                <div class="module-meta">
+                                    <div class="module-meta-title-row">
+                                        <strong>Cross-Site Scripting</strong>
+                                        <span class="module-cwe-pill">CWE-79</span>
+                                    </div>
+                                    <p>Reflected and stored XSS detection across URL parameters and forms.</p>
+                                </div>
+                            </div>
+                            <label class="switch" title="Toggle XSS Check">
+                                <input type="checkbox" id="mod_xss" checked onchange="markScanDefaultsPending()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Module 3: Access Control / IDOR -->
+                        <div class="module-card">
+                            <div class="module-card-left">
+                                <div class="module-icon-box">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                </div>
+                                <div class="module-meta">
+                                    <div class="module-meta-title-row">
+                                        <strong>Access Control &amp; IDOR</strong>
+                                        <span class="module-cwe-pill">CWE-639</span>
+                                    </div>
+                                    <p>Auditing broken object-level authorization, verb tampering, and role bypass.</p>
+                                </div>
+                            </div>
+                            <label class="switch" title="Toggle Access Control Check">
+                                <input type="checkbox" id="mod_access_control" checked onchange="markScanDefaultsPending()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Module 4: Security Headers -->
+                        <div class="module-card">
+                            <div class="module-card-left">
+                                <div class="module-icon-box">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                </div>
+                                <div class="module-meta">
+                                    <div class="module-meta-title-row">
+                                        <strong>Security Headers</strong>
+                                        <span class="module-cwe-pill">OWASP A05</span>
+                                    </div>
+                                    <p>Checks CSP, HSTS, X-Frame-Options, X-Content-Type, and CORS policies.</p>
+                                </div>
+                            </div>
+                            <label class="switch" title="Toggle Security Headers Check">
+                                <input type="checkbox" id="mod_headers" checked onchange="markScanDefaultsPending()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Module 5: SSL / TLS -->
+                        <div class="module-card">
+                            <div class="module-card-left">
+                                <div class="module-icon-box">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><path d="M12 6v6l4 2"></path></svg>
+                                </div>
+                                <div class="module-meta">
+                                    <div class="module-meta-title-row">
+                                        <strong>SSL / TLS &amp; HTTPS</strong>
+                                        <span class="module-cwe-pill">CWE-319</span>
+                                    </div>
+                                    <p>Validates certificate chain validity, cipher strength, and plaintext redirects.</p>
+                                </div>
+                            </div>
+                            <label class="switch" title="Toggle SSL Check">
+                                <input type="checkbox" id="mod_https" checked onchange="markScanDefaultsPending()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Module 6: Exposed Sensitive Files -->
+                        <div class="module-card">
+                            <div class="module-card-left">
+                                <div class="module-icon-box">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                                </div>
+                                <div class="module-meta">
+                                    <div class="module-meta-title-row">
+                                        <strong>Exposed Sensitive Files</strong>
+                                        <span class="module-cwe-pill">CWE-200</span>
+                                    </div>
+                                    <p>Identifies leaked .git repositories, .env files, database backups, and configs.</p>
+                                </div>
+                            </div>
+                            <label class="switch" title="Toggle Sensitive Files Check">
+                                <input type="checkbox" id="mod_exposed_files" checked onchange="markScanDefaultsPending()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Module 7: Information Disclosure -->
+                        <div class="module-card">
+                            <div class="module-card-left">
+                                <div class="module-icon-box">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                </div>
+                                <div class="module-meta">
+                                    <div class="module-meta-title-row">
+                                        <strong>Information Disclosure</strong>
+                                        <span class="module-cwe-pill">CWE-200</span>
+                                    </div>
+                                    <p>Detects server banner leaks, unhandled exceptions, and internal debug headers.</p>
+                                </div>
+                            </div>
+                            <label class="switch" title="Toggle Information Disclosure Check">
+                                <input type="checkbox" id="mod_info_disclosure" checked onchange="markScanDefaultsPending()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Module 8: Cookie Security -->
+                        <div class="module-card">
+                            <div class="module-card-left">
+                                <div class="module-icon-box">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="8" cy="9" r="1.5"></circle><circle cx="15" cy="10" r="1.5"></circle><circle cx="10" cy="15" r="1.5"></circle><circle cx="14" cy="15" r="1"></circle></svg>
+                                </div>
+                                <div class="module-meta">
+                                    <div class="module-meta-title-row">
+                                        <strong>Cookie Security &amp; Flags</strong>
+                                        <span class="module-cwe-pill">CWE-614</span>
+                                    </div>
+                                    <p>Audits session cookies for HttpOnly, Secure, and SameSite attribute flags.</p>
+                                </div>
+                            </div>
+                            <label class="switch" title="Toggle Cookie Security Check">
+                                <input type="checkbox" id="mod_cookies" checked onchange="markScanDefaultsPending()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-primary" id="btnSaveScanDefaults" type="button" onclick="saveScanDefaults()">
+                            <span class="btn-spinner" id="scanDefaultsSpinner"></span>
+                            <span class="btn-text">Save Scan Defaults</span>
+                        </button>
+                        <button class="btn btn-secondary" id="btnResetScanDefaults" type="button" onclick="openResetModal()">
+                            <span>Reset to Defaults…</span>
+                        </button>
+                        <span class="action-feedback" id="scanDefaultsFeedback"></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= 4. PREFERENCES SECTION ================= -->
+            <section class="settings-section" id="preferences" role="tabpanel" aria-labelledby="tab-preferences">
+                <!-- Theme Card -->
+                <div class="panel">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <h2>Application Theme &amp; Design Tokens</h2>
+                            <p class="section-desc">EthioSecScan design system specifications and high-contrast accessibility standards.</p>
+                        </div>
+                        <span class="badge-pill verified">● Active Brand Theme</span>
+                    </div>
+
+                    <div class="theme-info-box">
+                        <div class="theme-badge-title">
+                            <span class="theme-dot"></span>
+                            <strong>EthioSec Dark Charcoal &amp; Crimson SOC Palette</strong>
+                        </div>
+                        <p class="theme-desc">
+                            The platform uses an approved high-contrast dark theme optimized for low-glare Security Operations Center (SOC) environments and audit readability.
+                        </p>
+
+                        <div class="swatches-grid">
+                            <div class="swatch-card">
+                                <div class="swatch-color" style="background: #0B0C0E; border: 1px solid #292D33;"></div>
+                                <span class="swatch-label">Background</span>
+                                <code class="swatch-hex">#0B0C0E</code>
+                            </div>
+                            <div class="swatch-card">
+                                <div class="swatch-color" style="background: #101114; border: 1px solid #292D33;"></div>
+                                <span class="swatch-label">Sidebar</span>
+                                <code class="swatch-hex">#101114</code>
+                            </div>
+                            <div class="swatch-card">
+                                <div class="swatch-color" style="background: #141619; border: 1px solid #292D33;"></div>
+                                <span class="swatch-label">Card Surface</span>
+                                <code class="swatch-hex">#141619</code>
+                            </div>
+                            <div class="swatch-card">
+                                <div class="swatch-color" style="background: #292D33;"></div>
+                                <span class="swatch-label">Border</span>
+                                <code class="swatch-hex">#292D33</code>
+                            </div>
+                            <div class="swatch-card">
+                                <div class="swatch-color" style="background: #E83B25; box-shadow: 0 0 10px rgba(232, 59, 37, 0.4);"></div>
+                                <span class="swatch-label">Accent Red</span>
+                                <code class="swatch-hex">#E83B25</code>
+                            </div>
+                        </div>
+
+                        <div class="theme-note">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                            <span>Light mode is intentionally unavailable in this build to prevent contrast failure on security severity charts and live telemetry graphs.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- UI & Interaction Preferences -->
+                <div class="panel">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <h2>User Interface &amp; Interaction Preferences</h2>
+                            <p class="section-desc">Customize UI transitions, data density, and technical terminology standards.</p>
+                        </div>
+                    </div>
+
+                    <form id="preferencesForm" onsubmit="saveUiPreferences(event)">
+                        <div class="preference-list">
+                            <div class="preference-row">
+                                <div class="preference-info">
+                                    <div class="preference-info-header">
+                                        <div class="preference-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                                        </div>
+                                        <strong>Smooth UI Animations &amp; Transitions</strong>
+                                    </div>
+                                    <p>Enable smooth micro-animations on interactive tabs, card hovers, and scan telemetry charts.</p>
+                                </div>
+                                <label class="switch" title="Toggle UI Animations">
+                                    <input type="checkbox" id="prefAnimations" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="preference-row">
+                                <div class="preference-info">
+                                    <div class="preference-info-header">
+                                        <div class="preference-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                                        </div>
+                                        <strong>Compact Table Density</strong>
+                                    </div>
+                                    <p>Display denser row spacing in Scan History and Results tables for data-heavy security auditing.</p>
+                                </div>
+                                <label class="switch" title="Toggle Compact Density">
+                                    <input type="checkbox" id="prefCompact">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="preference-row">
+                                <div class="preference-info">
+                                    <div class="preference-info-header">
+                                        <div class="preference-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                        </div>
+                                        <strong>Technical Taxonomy &amp; Language</strong>
+                                    </div>
+                                    <p>Taxonomy standard used for vulnerability descriptions, CVSS scoring, and CWE remediation.</p>
+                                </div>
+                                <div class="preference-control">
+                                    <select id="prefLanguage">
+                                        <option value="en" selected>English (US) — OWASP / CWE Standard</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-primary" id="btnSavePreferences" type="submit">
+                                <span class="btn-spinner" id="prefSpinner"></span>
+                                <span class="btn-text">Save Preferences</span>
+                            </button>
+                            <span class="action-feedback" id="prefFeedback"></span>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ================= 5. NOTIFICATIONS SECTION ================= -->
+            <section class="settings-section" id="notifications" role="tabpanel" aria-labelledby="tab-notifications">
+                <div class="panel">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <h2>Scanner &amp; Vulnerability Alerts</h2>
+                            <p class="section-desc">Configure automated operational alerts. These settings are persisted to your authenticated account on the server.</p>
+                        </div>
+                        <span class="badge-pill sync-saved" id="notifSyncBadge">● All changes saved</span>
+                    </div>
+
+                    <form id="settingsForm" onsubmit="saveNotifications(event)">
+                        <div class="preference-list">
+                            <div class="preference-row">
+                                <div class="preference-info">
+                                    <div class="preference-info-header">
+                                        <div class="preference-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                        </div>
+                                        <strong>Scan Completion Alerts</strong>
+                                    </div>
+                                    <p>Receive notifications and sound alerts when an automated security scan finishes auditing target endpoints.</p>
+                                </div>
+                                <label class="switch" title="Toggle Scan Completion Alerts">
+                                    <input type="checkbox" id="notifScanCompleted" onchange="markNotifPending()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="preference-row">
+                                <div class="preference-info">
+                                    <div class="preference-info-header">
+                                        <div class="preference-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                                        </div>
+                                        <strong>Scan Error &amp; Failure Alerts</strong>
+                                    </div>
+                                    <p>Trigger alerts when an audit fails due to network timeouts, rate limiting, or unreachable host ports.</p>
+                                </div>
+                                <label class="switch" title="Toggle Scan Error Alerts">
+                                    <input type="checkbox" id="notifScanFailed" onchange="markNotifPending()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="preference-row">
+                                <div class="preference-info">
+                                    <div class="preference-info-header">
+                                        <div class="preference-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                        </div>
+                                        <strong>High &amp; Critical Risk Findings Alert</strong>
+                                    </div>
+                                    <p>Immediately flag and prioritize confirmed High and Critical vulnerabilities upon scanner detection.</p>
+                                </div>
+                                <label class="switch" title="Toggle Critical Risk Findings Alert">
+                                    <input type="checkbox" id="notifSecurityFindings" onchange="markNotifPending()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-primary" id="btnSaveNotifications" type="submit">
+                                <span class="btn-spinner" id="notifSpinner"></span>
+                                <span class="btn-text">Save Notifications</span>
+                            </button>
+                            <span class="action-feedback" id="notifFeedback"></span>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Reset Confirmation Modal -->
+            <div class="modal-overlay" id="resetModal" role="dialog" aria-modal="true" aria-labelledby="modalResetTitle">
+                <div class="modal-dialog">
+                    <div class="modal-header">
+                        <h3 id="modalResetTitle">Restore Scanner Defaults?</h3>
+                        <button class="modal-close-btn" type="button" onclick="closeResetModal()" aria-label="Close dialog">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to restore scanner defaults? This will reset the default audit depth to <strong>Standard</strong> and re-enable all 8 supported detection modules.</p>
+                        <p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">Your account credentials and notification preferences will remain unchanged.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" type="button" onclick="closeResetModal()">Cancel</button>
+                        <button class="btn btn-primary" type="button" onclick="confirmResetDefaults()">Confirm Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast Notification -->
+            <div class="toast" id="toast" role="status" aria-live="polite">
+                <span class="toast-icon">✓</span>
+                <div>
+                    <strong id="toastTitle">Settings Saved</strong>
+                    <small id="toastMsg">Your preferences have been updated on your account.</small>
+                </div>
+            </div>
+
+        </main>
     </div>
-  </div>
 
-  <!-- Pure Frontend Runtime Shim -->
-  <script>
-    window.EthioShell = window.EthioShell || {
-      init: () => true,
-      escapeHTML: (str) => {
-        if (!str) return "";
-        return String(str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      },
-      toast: (msg, type = "info") => {
-        const t = document.getElementById("toast");
-        const title = document.getElementById("toastTitle");
-        const desc = document.getElementById("toastMsg");
-        if (t) {
-          if (desc) desc.textContent = msg;
-          if (title) title.textContent = type === "error" ? "Action Required" : "Preferences Saved";
-          t.classList.add("show");
-          setTimeout(() => t.classList.remove("show"), 3200);
+    <!-- Mobile Sidebar Controller -->
+    <script>
+        const sidebarToggle = document.getElementById("sidebarToggle");
+        const sidebarOverlay = document.getElementById("sidebarOverlay");
+        const sidebar = document.getElementById("sidebar");
+
+        if (sidebarToggle && sidebar) {
+            sidebarToggle.addEventListener("click", () => {
+                sidebar.classList.toggle("open");
+                sidebarOverlay?.classList.toggle("show");
+            });
+            sidebarOverlay?.addEventListener("click", () => {
+                sidebar.classList.remove("open");
+                sidebarOverlay.classList.remove("show");
+            });
         }
-      }
-    };
+    </script>
 
-    // Mobile sidebar toggle handler
-    const toggle = document.getElementById("sidebarToggle");
-    const overlay = document.getElementById("sidebarOverlay");
-    const sidebar = document.getElementById("sidebar");
-    if (toggle && sidebar) {
-      toggle.addEventListener("click", () => {
-        sidebar.classList.toggle("open");
-        overlay?.classList.toggle("show");
-      });
-      overlay?.addEventListener("click", () => {
-        sidebar.classList.remove("open");
-        overlay.classList.remove("show");
-      });
-    }
-  </script>
-
-  <!-- Settings Controller -->
-  <script src="settingsjava.js"></script>
+    <!-- Settings Logic -->
+    <script src="settingsjava.js"></script>
+    <script src="notifications.js"></script>
 </body>
 </html>
-

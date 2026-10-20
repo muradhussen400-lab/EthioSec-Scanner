@@ -50,7 +50,7 @@ async def check_http_methods(scanner: SecurityScanner, url: str, client: SafeHTT
     if test_case.status != "SCANNER_ERROR":
         test_case.evaluate()
         
-    if test_case.status in ["HIGH", "LOW", "SCANNER_ERROR"]:
+    if test_case.status in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "SCANNER_ERROR"]:
         scanner._add_finding(
             f_type="http_methods",
             severity="low" if test_case.status != "SCANNER_ERROR" else "info",

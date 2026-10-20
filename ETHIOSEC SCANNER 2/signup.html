@@ -1,178 +1,281 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - EthioSecScan</title>
-    <link rel="stylesheet" href="signupstyle.css">
+    <title>Create Your Account — EthioSec Scanner</title>
+    <meta name="description" content="Register an EthioSec Scanner account to start securing and auditing your web applications.">
+    <link rel="stylesheet" href="auth_theme.css">
 </head>
-
 <body>
 
-    <!-- Background -->
-    <div class="signup-bg">
-        <div class="glow-left"></div>
-        <div class="glow-right"></div>
-    </div>
+    <!-- Ambient Red Background Glow -->
+    <div class="ambient-glow" aria-hidden="true"></div>
 
-    <!-- Signup Container -->
-    <div class="signup-wrapper">
+    <!-- Main Two-Column Auth Card -->
+    <main class="auth-container">
 
-        <!-- Left Side - Info -->
-        <div class="signup-info">
-            <div class="info-content">
-                <div class="info-logo">
-                    <span class="logo-icon">◈</span>
+        <!-- =================================================================
+             LEFT PROMOTIONAL COLUMN (Exact match to reference design)
+             ================================================================= -->
+        <section class="promo-column" aria-label="Platform Overview">
+            
+            <!-- Brand Header -->
+            <a href="index.html" class="promo-brand" title="EthioSec Scanner Homepage">
+                <div class="promo-brand-logo">
+                    <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22 2L6 8.5V20.8C6 30.5 12.8 39.5 22 42C31.2 39.5 38 30.5 38 20.8V8.5L22 2Z" fill="#A90012" stroke="#FF2028" stroke-width="2"/>
+                        <path d="M22 6L9 11.3V21.4C9 28.7 14.5 35.8 22 37.9C29.5 35.8 35 28.7 35 21.4V11.3L22 6Z" fill="#FF2028" opacity="0.3"/>
+                        <path d="M22 13L24.5 18.5H30.5L25.6 22.2L27.5 28L22 24.3L16.5 28L18.4 22.2L13.5 18.5H19.5L22 13Z" fill="#FFFFFF"/>
+                    </svg>
                 </div>
-                <h2>Secure Your Website</h2>
-                <p>Join thousands of users who trust EthioSecScan for their website security and performance analysis.
-                </p>
+                <div class="promo-brand-text">
+                    <div class="promo-brand-title">EthioSec <span>Scanner</span></div>
+                    <div class="promo-brand-sub">Secure Today, Safer Tomorrow</div>
+                </div>
+            </a>
 
-                <div class="benefits">
-                    <div class="benefit">
-                        <span class="benefit-icon">✓</span>
-                        <div>
-                            <strong>Real-time Scanning</strong>
-                            <small>Instant security checks</small>
-                        </div>
+            <!-- Headline -->
+            <h1 class="promo-headline">
+                Detect Real Vulnerabilities.
+                <span class="accent-red">Build a Safer Web.</span>
+            </h1>
+
+            <p class="promo-description">
+                EthioSec Scanner helps you find and fix web application vulnerabilities with accurate detection, detailed reports, and AI-powered insights.
+            </p>
+
+            <!-- 4 Features List -->
+            <div class="promo-features">
+                
+                <div class="feature-item">
+                    <div class="feature-icon-wrap" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="m9 12 2 2 4-4"/>
+                        </svg>
                     </div>
-                    <div class="benefit">
-                        <span class="benefit-icon">✓</span>
-                        <div>
-                            <strong>Detailed Reports</strong>
-                            <small>Comprehensive analysis</small>
-                        </div>
-                    </div>
-                    <div class="benefit">
-                        <span class="benefit-icon">✓</span>
-                        <div>
-                            <strong>24/7 Support</strong>
-                            <small>Always here to help</small>
-                        </div>
+                    <div class="feature-text">
+                        <div class="feature-title">Scan & Detect</div>
+                        <div class="feature-desc">SQLi, XSS, IDOR and more</div>
                     </div>
                 </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon-wrap" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                    </div>
+                    <div class="feature-text">
+                        <div class="feature-title">Detailed Reports</div>
+                        <div class="feature-desc">Clear, actionable, easy to read</div>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon-wrap" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="18" x="3" y="3" rx="2"/>
+                            <path d="M9 9h6v6H9z"/>
+                            <path d="M9 1v2m6-2v2M9 21v2m6-2v2M1 9h2m-2 6h2m18-6h2m-2 6h2"/>
+                        </svg>
+                    </div>
+                    <div class="feature-text">
+                        <div class="feature-title">AI Assistant</div>
+                        <div class="feature-desc">Get expert help and explanations</div>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon-wrap" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 18 22 12 16 6"/>
+                            <polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                    </div>
+                    <div class="feature-text">
+                        <div class="feature-title">Professional Platform</div>
+                        <div class="feature-desc">For students, developers and security professionals</div>
+                    </div>
+                </div>
+
             </div>
-        </div>
 
-        <!-- Right Side - Signup Form -->
-        <div class="signup-card">
-
-            <!-- Header -->
-            <div class="signup-header">
-                <span class="section-label">JOIN US TODAY</span>
-                <h1>Create Account</h1>
-                <p id="signupSubtext">Start scanning and analyzing your websites in minutes</p>
+            <!-- Bottom Graphic (Hacker with Glowing Laptop) -->
+            <div class="promo-graphic-container">
+                <img src="hacker_cyber_graphic.jpg" alt="Cybersecurity Scanner Shield Graphics" class="promo-graphic-img">
             </div>
 
-            <!-- Signup Form -->
-            <form class="signup-form" id="signupForm" novalidate>
+        </section>
 
-                <!-- Inline error banner -->
-                <div class="form-error" id="formError" role="alert" hidden></div>
-
-                <!-- Full Name -->
-                <div class="form-group">
-                    <label for="fullname">Full Name</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">👤</span>
-                        <input type="text" id="fullname" placeholder="" required>
-                    </div>
+        <!-- =================================================================
+             RIGHT FORM COLUMN (Create Your Account)
+             ================================================================= -->
+        <section class="form-column" aria-label="Sign Up Panel">
+            <div>
+                
+                <!-- Top Switch Link -->
+                <div class="top-switch-bar">
+                    <span>Already have an account?</span>
+                    <a href="login.html" id="loginLink">Login</a>
                 </div>
 
-                <!-- Email -->
-                <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">✉</span>
-                        <input type="email" id="email" placeholder="" required>
+                <!-- Form Header -->
+                <div class="form-header">
+                    <div class="form-title-group">
+                        <div class="accent-bar" aria-hidden="true"></div>
+                        <h2 class="form-title">Create Your Account</h2>
                     </div>
-                    <span class="input-hint">We'll send a verification link</span>
+                    <p class="form-subtitle" id="signupSubtext">Join EthioSec Scanner and start securing your web applications today.</p>
                 </div>
 
+                <!-- Inline Feedback Alert Banner -->
+                <div class="alert-banner error" id="formError" role="alert" style="display:none;"></div>
+                <div class="alert-banner success" id="formSuccess" role="status" style="display:none;"></div>
 
-
-                <!-- Password -->
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">🔐</span>
-                        <input type="password" id="password" placeholder="" required>
-                        <button type="button" class="show-password" id="togglePasswordBtn"
-                            aria-label="Toggle password view">👁</button>
-                    </div>
-                    <span class="input-hint">At least 8 characters (mix of letters, numbers, symbols)</span>
-                </div>
-
-                <!-- Confirm Password -->
-                <div class="form-group">
-                    <label for="confirm-password">Confirm Password</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">✓</span>
-                        <input type="password" id="confirm-password" placeholder="" required>
-                        <button type="button" class="show-password" id="togglePasswordBtn" </div>
+                <!-- Signup Form -->
+                <form class="auth-form" id="signupForm" novalidate>
+                    
+                    <!-- Full Name -->
+                    <div class="form-group">
+                        <label for="fullname" class="form-label">Full Name</label>
+                        <div class="input-container">
+                            <span class="input-icon-left" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </span>
+                            <input type="text" id="fullname" class="form-input" placeholder="Enter your full name" autocomplete="name" required>
+                        </div>
                     </div>
 
-                    <!-- Terms & Conditions -->
-                    <div class="form-agreement">
-                        <label class="terms-checkbox">
-                            <input type="checkbox" id="terms" required>
-                            <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy
-                                    Policy</a></span>
-                        </label>
+                    <!-- Email Address -->
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email Address</label>
+                        <div class="input-container">
+                            <span class="input-icon-left" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect width="20" height="16" x="2" y="4" rx="2"></rect>
+                                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                                </svg>
+                            </span>
+                            <input type="email" id="email" class="form-input" placeholder="Enter your email address" autocomplete="email" required>
+                        </div>
                     </div>
 
-                    <!-- Newsletter Opt-in -->
-                    <div class="form-agreement">
-                        <label class="newsletter-checkbox">
-                            <input type="checkbox" id="newsletter">
-                            <span>Send me updates about new features and security tips</span>
-                        </label>
+                    <!-- Password -->
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-container">
+                            <span class="input-icon-left" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            </span>
+                            <input type="password" id="password" class="form-input" placeholder="Create a password (min. 8 characters)" autocomplete="new-password" required>
+                            <button type="button" class="toggle-password-btn" id="togglePasswordBtn" aria-label="Toggle password visibility">
+                                <svg id="eyeIcon1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Signup Button -->
-                    <button type="submit" class="signup-btn" id="signupBtn">
-                        <span>CREATE ACCOUNT</span>
-                        <span class="btn-arrow">→</span>
+                    <!-- Confirm Password -->
+                    <div class="form-group">
+                        <label for="confirmPassword" class="form-label">Confirm Password</label>
+                        <div class="input-container">
+                            <span class="input-icon-left" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                    <path d="m9 12 2 2 4-4"/>
+                                </svg>
+                            </span>
+                            <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm your password" autocomplete="new-password" required>
+                            <button type="button" class="toggle-password-btn" id="toggleConfirmBtn" aria-label="Toggle confirm password visibility">
+                                <svg id="eyeIcon2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Role Selector (Matching reference image) -->
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <div class="role-section">
+                            <label class="role-radio-card selected" id="roleCardUser">
+                                <input type="radio" name="accountRole" value="user" class="role-radio-input" checked>
+                                <div class="role-info">
+                                    <span class="role-title">Regular User</span>
+                                    <span class="role-desc">Scan your own applications and view reports</span>
+                                </div>
+                            </label>
+                            <label class="role-radio-card" id="roleCardAdmin">
+                                <input type="radio" name="accountRole" value="admin" class="role-radio-input">
+                                <div class="role-info">
+                                    <span class="role-title">Organization Admin</span>
+                                    <span class="role-desc">Manage team members and organization settings</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Primary Red Create Account Button -->
+                    <button type="submit" class="btn-submit-primary" id="signupBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <line x1="19" y1="8" x2="19" y2="14"/>
+                            <line x1="22" y1="11" x2="16" y2="11"/>
+                        </svg>
+                        <span>Create Account</span>
                     </button>
 
-            </form>
+                    <!-- Divider -->
+                    <div class="auth-divider">
+                        <div class="divider-line"></div>
+                        <span class="divider-text">OR</span>
+                        <div class="divider-line"></div>
+                    </div>
 
-            <!-- Divider -->
-            <div class="form-divider">
-                <span>OR</span>
+                    <!-- Continue with Google Button -->
+                    <button type="button" class="btn-social-google" id="googleBtn">
+                        <svg class="google-icon-svg" viewBox="0 0 24 24">
+                            <path d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.15z" fill="#4285F4"/>
+                            <path d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.94H1.24v3.15C3.26 21.36 7.33 24 12 24z" fill="#34A853"/>
+                            <path d="M5.28 14.26a7.18 7.18 0 0 1 0-4.52V6.59H1.24a11.96 11.96 0 0 0 0 10.82l4.04-3.15z" fill="#FBBC05"/>
+                            <path d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.24 6.59l4.04 3.15c.95-2.84 3.6-4.99 6.72-4.99z" fill="#EA4335"/>
+                        </svg>
+                        <span>Continue with Google</span>
+                    </button>
+
+                </form>
+
             </div>
 
-            <!-- Social Signup -->
-            <div class="social-signup">
-                <button type="button" class="social-btn google" id="googleBtn">
-                    <span>G</span>
-                    Google
-                </button>
-                <button type="button" class="social-btn github" id="githubBtn">
-                    <span>⚙</span>
-                    GitHub
-                </button>
-            </div>
+            <!-- Footer -->
+            <footer class="auth-footer">
+                <div class="terms-text">
+                    By creating an account, you agree to our <a href="contact.html">Terms of Service</a> and <a href="contact.html">Privacy Policy</a>.
+                </div>
+                <div class="copyright-text">
+                    &copy; 2025 EthioSec Scanner. All rights reserved.
+                </div>
+            </footer>
 
-            <!-- Login Link -->
-            <div class="login-section">
-                <p>Already have an account?
-                    <a href="login.html" class="login-link" id="loginLink">Sign in</a>
-                </p>
-            </div>
+        </section>
 
-            <!-- Footer Links -->
-            <div class="signup-footer">
-                <a href="index.html">← Back to Home</a>
-            </div>
+    </main>
 
-        </div>
-
-    </div>
-
-    <!-- Direct standalone controller -->
-    <script src="signupjava.js"></script>
+    <script src="signupjava.js?v=2026.3"></script>
 </body>
-
 </html>

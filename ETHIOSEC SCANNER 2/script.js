@@ -5,11 +5,11 @@
 document.addEventListener("DOMContentLoaded", () => {
 
     /* ============ SESSION-AWARE NAV ============ */
-    const isMockSignedIn = localStorage.getItem("isLoggedIn") === "true";
+    const hasValidSession = Boolean(localStorage.getItem("token") && localStorage.getItem("isLoggedIn") === "true");
     const dash = document.getElementById("openDashboard");
     const login = document.getElementById("openLogin");
 
-    if (isMockSignedIn) {
+    if (hasValidSession) {
         if (dash) dash.hidden = false;
         if (login) login.hidden = true;
     }

@@ -1,27 +1,42 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, status, Response
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List, Any
+from typing import List, Any, Optional
 import datetime
 import time
 from urllib.parse import urlparse
 import uuid
 import os
+import json
+import csv
+import io
 import httpx
 import secrets
 import string
+import logging
 
 from database import get_db
 from models import User, Scan, ScanTarget, Finding, UserSettings
 from schemas import (
     UserRegister, UserLogin, UserOut, UserProfileUpdate, TokenResponse,
+    VerifyEmailRequest, ResendVerificationRequest, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, MessageResponse,
     TargetCreate, TargetOut,
     ScanCreate, ScanStatusOut, ScanResultOut, FindingOut, DashboardSummaryOut, DashboardTrend, ScanCounts,
     AIRequest, AIResponse, UserSettingsUpdate, UserSettingsOut, AIAssistantRequestNew
 )
-from security import get_password_hash, verify_password, create_access_token, get_current_user, timedelta, ACCESS_TOKEN_EXPIRE_MINUTES
+from security import (
+    get_password_hash, verify_password, create_access_token,
+    get_current_user, get_current_verified_user,
+    timedelta, ACCESS_TOKEN_EXPIRE_MINUTES, REQUIRE_EMAIL_VERIFICATION
+)
+from email_service import email_service, hash_verification_secret, verify_secret_hash
+from rate_limiter import (
+    limit_login, limit_register, limit_verify, limit_resend, limit_reset, limit_scans, limit_ai, _limiter
+)
+# Backward-compatibility alias for legacy test fixtures
+request_counts = _limiter._records
 from scanner.engine import run_scan_task
-import logging
+from ai.executive_summary import aggregate_finding_counts
 
 # Configure audit logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -29,67 +44,303 @@ audit_logger = logging.getLogger("ethiosec.audit")
 
 router = APIRouter()
 
-# Basic In-Memory Rate Limiter (Development only, upgrade to Redis for production)
-request_counts = {}
+# ==============================================================================
+# AUTHENTICATION & EMAIL VERIFICATION
+# ==============================================================================
 
-def rate_limiter(request: Request):
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    
-    # Simple cleanup to prevent memory leak in development
-    if len(request_counts) > 1000:
-        keys_to_delete = [k for k, v in request_counts.items() if now - v["time"] > 60]
-        for k in keys_to_delete:
-            del request_counts[k]
-
-    if client_ip not in request_counts:
-        request_counts[client_ip] = {"count": 1, "time": now}
-        return
-        
-    if now - request_counts[client_ip]["time"] < 60:
-        if request_counts[client_ip]["count"] > 30: # 30 requests per minute
-            raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
-        request_counts[client_ip]["count"] += 1
-    else:
-        request_counts[client_ip] = {"count": 1, "time": now}
-
-# AUTH
-@router.post("/auth/register", response_model=TokenResponse, dependencies=[Depends(rate_limiter)])
+@router.post("/auth/register", response_model=TokenResponse, dependencies=[Depends(limit_register)])
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == user_in.email).first():
-        raise HTTPException(status_code=409, detail="Email already registered")
+    email_norm = user_in.email.strip().lower()
+    
+    if db.query(User).filter(User.email == email_norm).first():
+        audit_logger.warning(f"Registration attempted with existing email: {email_norm}")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    
+    # Generate verification code
+    code = email_service.generate_verification_code()
+    code_hash = hash_verification_secret(code)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    expires_at = (now + datetime.timedelta(minutes=15)).isoformat()
     
     new_user = User(
-        email=user_in.email,
+        email=email_norm,
         full_name=user_in.full_name,
         website=user_in.website,
         password_hash=get_password_hash(user_in.password),
-        role="Security Administrator"
+        role="Security Administrator",
+        is_verified=not REQUIRE_EMAIL_VERIFICATION, # False when verification required
+        verification_code_hash=code_hash,
+        verification_expires_at=expires_at,
+        verification_attempts=0,
+        verification_sent_at=now.isoformat()
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": new_user.email}, expires_delta=access_token_expires
-    )
-    audit_logger.info(f"User registered successfully: {new_user.email}")
-    return {"token": access_token, "user": new_user}
-
-@router.post("/auth/login", response_model=TokenResponse, dependencies=[Depends(rate_limiter)])
-def login(user_in: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == user_in.email).first()
-    if not user or not verify_password(user_in.password, user.password_hash):
-        audit_logger.warning(f"Failed login attempt for email: {user_in.email}")
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    # Send verification email
+    if REQUIRE_EMAIL_VERIFICATION:
+        email_service.send_verification_email(new_user.email, code)
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": new_user.email, "is_verified": new_user.is_verified},
+        expires_delta=access_token_expires
+    )
+    audit_logger.info(f"User registered successfully: {new_user.email} (verified={new_user.is_verified})")
+    return {"token": access_token, "user": new_user}
+
+@router.post("/auth/verify-email", response_model=TokenResponse, dependencies=[Depends(limit_verify)])
+def verify_email(req: VerifyEmailRequest, db: Session = Depends(get_db)):
+    email_norm = req.email.strip().lower()
+    user = db.query(User).filter(User.email == email_norm).first()
+    
+    generic_error = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid or expired verification code."
+    )
+    
+    if not user:
+        raise generic_error
+        
+    if user.is_verified:
+        # Already verified, generate fresh token
+        token = create_access_token(data={"sub": user.email, "is_verified": True})
+        return {"token": token, "user": user}
+        
+    # Check max attempt limit
+    if user.verification_attempts >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum verification attempts exceeded. Please request a new verification code."
+        )
+        
+    # Check expiration
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if not user.verification_expires_at:
+        raise generic_error
+        
+    try:
+        expires_time = datetime.datetime.fromisoformat(user.verification_expires_at)
+        if now > expires_time:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Verification code has expired. Please request a new code."
+            )
+    except (ValueError, TypeError):
+        raise generic_error
+
+    # Verify secret hash with constant-time comparison
+    if not verify_secret_hash(req.code, user.verification_code_hash):
+        user.verification_attempts += 1
+        db.commit()
+        audit_logger.warning(f"Failed verification attempt for user: {user.email}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification code.")
+
+    # Successful verification - activate account atomically
+    user.is_verified = True
+    user.verification_code_hash = None
+    user.verification_expires_at = None
+    user.verification_attempts = 0
+    db.commit()
+    db.refresh(user)
+
+    audit_logger.info(f"User email verified successfully: {user.email}")
+    token = create_access_token(data={"sub": user.email, "is_verified": True})
+    return {"token": token, "user": user}
+
+@router.post("/auth/resend-verification", response_model=MessageResponse, dependencies=[Depends(limit_resend)])
+def resend_verification(req: ResendVerificationRequest, db: Session = Depends(get_db)):
+    email_norm = req.email.strip().lower()
+    user = db.query(User).filter(User.email == email_norm).first()
+    
+    # Uniform response to avoid account enumeration
+    success_msg = MessageResponse(message="If an unverified account exists for this email, a new verification code has been sent.")
+    
+    if not user or user.is_verified:
+        return success_msg
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    
+    # Enforce 60-second cooldown
+    if user.verification_sent_at:
+        try:
+            last_sent = datetime.datetime.fromisoformat(user.verification_sent_at)
+            if (now - last_sent).total_seconds() < 60:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Please wait 60 seconds before requesting another verification code."
+                )
+        except (ValueError, TypeError):
+            pass
+
+    # Generate new code, invalidating previous code
+    code = email_service.generate_verification_code()
+    user.verification_code_hash = hash_verification_secret(code)
+    user.verification_expires_at = (now + datetime.timedelta(minutes=15)).isoformat()
+    user.verification_attempts = 0
+    user.verification_sent_at = now.isoformat()
+    db.commit()
+
+    email_service.send_verification_email(user.email, code)
+    audit_logger.info(f"Resent verification code to: {user.email}")
+    return success_msg
+
+@router.post("/auth/login", response_model=TokenResponse, dependencies=[Depends(limit_login)])
+def login(user_in: UserLogin, db: Session = Depends(get_db)):
+    email_norm = user_in.email.strip().lower()
+    user = db.query(User).filter(User.email == email_norm).first()
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    # Check for active account lockout
+    if user and user.locked_until:
+        try:
+            locked_time = datetime.datetime.fromisoformat(user.locked_until)
+            if now < locked_time:
+                audit_logger.warning(f"Login attempt on locked account: {email_norm}")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Account is temporarily locked due to multiple failed login attempts. Please try again later."
+                )
+            else:
+                user.failed_login_attempts = 0
+                user.locked_until = None
+                db.commit()
+        except (ValueError, TypeError):
+            pass
+
+    if not user:
+        audit_logger.warning(f"Failed login attempt for non-existent email: {email_norm}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+
+    is_valid, needs_rehash = verify_password(user_in.password, user.password_hash)
+    if not is_valid:
+        user.failed_login_attempts += 1
+        if user.failed_login_attempts >= 5:
+            user.locked_until = (now + datetime.timedelta(minutes=15)).isoformat()
+            audit_logger.warning(f"Account temporarily locked for 15 minutes due to failed logins: {user.email}")
+        db.commit()
+        audit_logger.warning(f"Failed login attempt for email: {user.email}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+
+    # Successful credentials: reset failed count
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    
+    # Automatically upgrade legacy bcrypt hashes to Argon2id
+    if needs_rehash:
+        user.password_hash = get_password_hash(user_in.password)
+        audit_logger.info(f"Transparently upgraded password hash to Argon2id for: {user.email}")
+    db.commit()
+    db.refresh(user)
+
+    # Check email verification status
+    if REQUIRE_EMAIL_VERIFICATION and not user.is_verified:
+        audit_logger.info(f"Unverified user login attempt: {user.email}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified. Please verify your email before logging in.",
+            headers={"X-Error-Code": "EMAIL_NOT_VERIFIED"}
+        )
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email, "is_verified": user.is_verified},
+        expires_delta=access_token_expires
     )
     audit_logger.info(f"User logged in successfully: {user.email}")
     return {"token": access_token, "user": user}
+
+@router.post("/auth/logout", response_model=MessageResponse)
+def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Revokes the current session by invalidating tokens issued prior to this timestamp."""
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    current_user.session_revoked_at = now
+    db.commit()
+    audit_logger.info(f"User logged out and session revoked: {current_user.email}")
+    return MessageResponse(message="Logged out successfully. All active sessions have been revoked.")
+
+@router.post("/auth/forgot-password", response_model=MessageResponse, dependencies=[Depends(limit_reset)])
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    email_norm = req.email.strip().lower()
+    user = db.query(User).filter(User.email == email_norm).first()
+    
+    # Constant response to prevent account enumeration
+    response = MessageResponse(message="If an account with that email exists, password reset instructions have been sent.")
+    
+    if not user:
+        return response
+        
+    now = datetime.datetime.now(datetime.timezone.utc)
+    token = email_service.generate_reset_token()
+    user.reset_token_hash = hash_verification_secret(token)
+    user.reset_expires_at = (now + datetime.timedelta(minutes=15)).isoformat()
+    user.reset_attempts = 0
+    db.commit()
+    
+    email_service.send_password_reset_email(user.email, token)
+    audit_logger.info(f"Password reset token issued for: {user.email}")
+    return response
+
+@router.post("/auth/reset-password", response_model=MessageResponse, dependencies=[Depends(limit_reset)])
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    email_norm = req.email.strip().lower()
+    user = db.query(User).filter(User.email == email_norm).first()
+    generic_error = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token.")
+    
+    if not user or not user.reset_token_hash or not user.reset_expires_at:
+        raise generic_error
+        
+    if user.reset_attempts >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum reset attempts exceeded. Please request a new password reset."
+        )
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    try:
+        expires_time = datetime.datetime.fromisoformat(user.reset_expires_at)
+        if now > expires_time:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password reset token has expired.")
+    except (ValueError, TypeError):
+        raise generic_error
+
+    if not verify_secret_hash(req.token, user.reset_token_hash):
+        user.reset_attempts += 1
+        db.commit()
+        audit_logger.warning(f"Failed password reset attempt for: {user.email}")
+        raise generic_error
+
+    # Valid reset: update password to Argon2id, clear secret, and revoke all active sessions
+    user.password_hash = get_password_hash(req.new_password)
+    user.reset_token_hash = None
+    user.reset_expires_at = None
+    user.reset_attempts = 0
+    user.session_revoked_at = now.isoformat()
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    db.commit()
+    
+    audit_logger.info(f"Password successfully reset and sessions revoked for: {user.email}")
+    return MessageResponse(message="Password reset successful. Please log in with your new password.")
+
+@router.post("/auth/change-password", response_model=MessageResponse)
+def change_password(req: ChangePasswordRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    is_valid, _ = verify_password(req.current_password, user.password_hash)
+    if not is_valid:
+        audit_logger.warning(f"Failed password change attempt: incorrect current password for {user.email}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect current password.")
+        
+    now = datetime.datetime.now(datetime.timezone.utc)
+    user.password_hash = get_password_hash(req.new_password)
+    user.session_revoked_at = now.isoformat()
+    db.commit()
+    audit_logger.info(f"Password successfully changed for: {user.email}")
+    return MessageResponse(message="Password successfully updated.")
 
 @router.get("/auth/me")
 def read_users_me(current_user: User = Depends(get_current_user)):
@@ -133,7 +384,7 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail="Failed to fetch user info from Google.")
         
         user_info = user_info_response.json()
-        email = user_info.get("email")
+        email = user_info.get("email", "").strip().lower()
         full_name = user_info.get("name")
         
         user = db.query(User).filter(User.email == email).first()
@@ -143,7 +394,8 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
                 email=email,
                 full_name=full_name,
                 password_hash=get_password_hash(random_password),
-                role="Security Administrator"
+                role="Security Administrator",
+                is_verified=True # Email ownership verified by Google OAuth
             )
             db.add(user)
             db.commit()
@@ -151,15 +403,19 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
         
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         jwt_token = create_access_token(
-            data={"sub": user.email}, expires_delta=access_token_expires
+            data={"sub": user.email, "is_verified": user.is_verified},
+            expires_delta=access_token_expires
         )
         
         frontend_redirect = f"{os.getenv('FRONTEND_URL', 'http://localhost:5500')}/login.html?google_token={jwt_token}"
         return RedirectResponse(frontend_redirect)
 
-# DASHBOARD
+# ==============================================================================
+# DASHBOARD (Requires Verified User)
+# ==============================================================================
+
 @router.get("/dashboard/summary", response_model=DashboardSummaryOut)
-def dashboard_summary(range: str = "week", current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def dashboard_summary(range: str = "week", current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scans = db.query(Scan).filter(Scan.user_id == current_user.id, Scan.status == "completed").order_by(Scan.finished_at.desc()).all()
     
     if not scans:
@@ -179,14 +435,7 @@ def dashboard_summary(range: str = "week", current_user: User = Depends(get_curr
     total_scans = len(scans)
     
     findings = db.query(Finding).filter(Finding.scan_id == latest.id).all()
-    c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "scanner_error": 0, "total": 0}
-    for f in findings:
-        if f.status == "NOT_DETECTED":
-            c["not_detected"] += 1
-        elif f.status != "SCANNER_ERROR":
-            if f.severity in c:
-                c[f.severity] += 1
-            c["total"] += 1
+    c = aggregate_finding_counts(findings)
 
     trend = DashboardTrend(
         labels=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
@@ -198,7 +447,7 @@ def dashboard_summary(range: str = "week", current_user: User = Depends(get_curr
         security_score=latest.security_score or 0,
         last_scan=latest.finished_at or latest.created_at,
         last_target=latest.target_url,
-        vulnerabilities=c["critical"] + c["high"],
+        vulnerabilities=c["high"],
         warnings=c["medium"] + c["low"],
         passed_checks=c["not_detected"],
         issues=c["total"],
@@ -207,9 +456,12 @@ def dashboard_summary(range: str = "week", current_user: User = Depends(get_curr
         range=trend
     )
 
-# TARGETS
+# ==============================================================================
+# SCAN TARGETS (Requires Verified User)
+# ==============================================================================
+
 @router.post("/targets", response_model=TargetOut)
-def create_target(target_in: TargetCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_target(target_in: TargetCreate, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     parsed = urlparse(target_in.url)
     if parsed.scheme not in ["http", "https"]:
         raise HTTPException(status_code=400, detail="Target URL must use http or https scheme")
@@ -223,27 +475,30 @@ def create_target(target_in: TargetCreate, current_user: User = Depends(get_curr
     return target
 
 @router.get("/targets", response_model=List[TargetOut])
-def list_targets(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_targets(current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     return db.query(ScanTarget).filter(ScanTarget.user_id == current_user.id).all()
 
 @router.get("/targets/{id}", response_model=TargetOut)
-def get_target(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_target(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     target = db.query(ScanTarget).filter(ScanTarget.id == id, ScanTarget.user_id == current_user.id).first()
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
     return target
 
 @router.delete("/targets/{id}")
-def delete_target(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_target(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     target = db.query(ScanTarget).filter(ScanTarget.id == id, ScanTarget.user_id == current_user.id).first()
     if target:
         db.delete(target)
         db.commit()
     return {"ok": True}
 
-# SCANS
-@router.post("/scans", dependencies=[Depends(rate_limiter)])
-def create_scan(scan_in: ScanCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+# ==============================================================================
+# SCANS (Requires Verified User & Ownership Isolation)
+# ==============================================================================
+
+@router.post("/scans", dependencies=[Depends(limit_scans)])
+def create_scan(scan_in: ScanCreate, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     if not scan_in.authorized:
         raise HTTPException(status_code=403, detail="You must authorize the scan")
         
@@ -251,10 +506,17 @@ def create_scan(scan_in: ScanCreate, current_user: User = Depends(get_current_us
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
     
+    chosen_depth = scan_in.depth
+    if not chosen_depth:
+        user_settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
+        if user_settings and user_settings.default_scan_depth:
+            chosen_depth = user_settings.default_scan_depth
+    chosen_depth = (chosen_depth or "standard").lower()
+
     new_scan = Scan(
         user_id=current_user.id,
         target_url=target.url,
-        depth=scan_in.depth or "standard",
+        depth=chosen_depth,
         modules=scan_in.modules or {},
         status="queued",
         auth_context_1=scan_in.auth_context_1,
@@ -267,8 +529,8 @@ def create_scan(scan_in: ScanCreate, current_user: User = Depends(get_current_us
     audit_logger.info(f"Scan created (ID: {new_scan.id}) by user {current_user.email} for target {target.url}")
     return {"scan_id": new_scan.id, "status": new_scan.status}
 
-@router.post("/scans/{id}/start", dependencies=[Depends(rate_limiter)])
-def start_scan(id: str, background_tasks: BackgroundTasks, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.post("/scans/{id}/start", dependencies=[Depends(limit_scans)])
+def start_scan(id: str, background_tasks: BackgroundTasks, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
@@ -283,29 +545,26 @@ def start_scan(id: str, background_tasks: BackgroundTasks, current_user: User = 
     audit_logger.info(f"Scan started (ID: {scan.id}) by user {current_user.email}")
     return {"scan_id": scan.id, "status": "started"}
 
-@router.post("/scans/{id}/cancel", dependencies=[Depends(rate_limiter)])
-def cancel_scan(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.post("/scans/{id}/cancel")
+def cancel_scan(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
-    if scan and scan.status == "running":
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan.status in ("running", "queued"):
         scan.status = "cancelled"
+        scan.stage = "Scan cancelled by user"
+        scan.finished_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
         db.commit()
-    return {"ok": True}
+    return {"ok": True, "status": scan.status, "message": "Scan cancelled"}
 
 @router.get("/scans")
-def list_scans(limit: int = 100, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_scans(limit: int = 100, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scans = db.query(Scan).filter(Scan.user_id == current_user.id).order_by(Scan.created_at.desc()).limit(limit).all()
     
     scan_list = []
     for s in scans:
         findings = db.query(Finding).filter(Finding.scan_id == s.id).all()
-        c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "scanner_error": 0, "total": 0}
-        for f in findings:
-            if f.status == "NOT_DETECTED":
-                c["not_detected"] += 1
-            elif f.status != "SCANNER_ERROR":
-                if f.severity in c:
-                    c[f.severity] += 1
-                c["total"] += 1
+        c = aggregate_finding_counts(findings)
         
         scan_list.append({
             "id": s.id,
@@ -320,7 +579,7 @@ def list_scans(limit: int = 100, current_user: User = Depends(get_current_user),
     return {"scans": scan_list, "total": len(scan_list)}
 
 @router.delete("/scans")
-def delete_all_scans(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_all_scans(current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scans = db.query(Scan).filter(Scan.user_id == current_user.id).all()
     count = len(scans)
     for s in scans:
@@ -330,10 +589,44 @@ def delete_all_scans(current_user: User = Depends(get_current_user), db: Session
     return {"status": "success", "message": f"Deleted {count} scans"}
 
 @router.get("/scans/{id}/status", response_model=ScanStatusOut)
-def scan_status(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def scan_status(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
+    
+    findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
+    c = aggregate_finding_counts(findings)
+    
+    req_modules = scan.modules if (scan.modules and isinstance(scan.modules, dict)) else {}
+    exec_checks = scan.checks if (scan.checks and isinstance(scan.checks, dict)) else {}
+    
+    # Extract detailed telemetry if available
+    module_details = exec_checks.get("module_details")
+    if not module_details:
+        from scanner.registry import CANONICAL_MODULES, resolve_module_selection
+        resolved = resolve_module_selection(req_modules)
+        module_details = {
+            mod_id: {
+                "id": mod_id,
+                "name": meta["name"],
+                "description": meta["description"],
+                "category": meta["owasp"],
+                "type": meta["type"],
+                "selected": resolved.get(mod_id, False),
+                "status": "pending" if resolved.get(mod_id, False) else "skipped",
+                "findings": 0,
+                "started_at": None,
+                "finished_at": None,
+                "message": "Waiting for execution." if resolved.get(mod_id, False) else "Skipped — module was not selected."
+            }
+            for mod_id, meta in CANONICAL_MODULES.items()
+        }
+
+    timeline = exec_checks.get("timeline")
+    pipeline_stages = exec_checks.get("pipeline_stages")
+    completed_map = exec_checks.get("completed_checks")
+    if not completed_map:
+        completed_map = {k: v for k, v in exec_checks.items() if isinstance(v, bool)}
     
     return ScanStatusOut(
         scan_id=scan.id,
@@ -342,11 +635,19 @@ def scan_status(id: str, current_user: User = Depends(get_current_user), db: Ses
         progress=scan.progress,
         stage=scan.stage,
         depth=scan.depth,
-        checks=scan.modules if (scan.modules and isinstance(scan.modules, dict) and len(scan.modules) > 0) else (scan.checks or {"misconfig": False, "https": False, "access_control": False, "auth": False, "sqli": False, "xss": False})
+        checks=req_modules if (len(req_modules) > 0) else (completed_map or {"misconfig": False, "https": False, "access_control": False, "auth": False, "sqli": False, "xss": False}),
+        completed_checks=completed_map,
+        modules=req_modules,
+        module_details=module_details,
+        timeline=timeline,
+        pipeline_stages=pipeline_stages,
+        findings_count=c,
+        created_at=scan.created_at,
+        finished_at=scan.finished_at
     )
 
 @router.get("/scans/{id}/results", response_model=ScanResultOut)
-def scan_results(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def scan_results(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
@@ -354,29 +655,33 @@ def scan_results(id: str, current_user: User = Depends(get_current_user), db: Se
         raise HTTPException(status_code=409, detail="Scan is not completed yet")
         
     findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
-    c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "scanner_error": 0, "total": 0}
-    for f in findings:
-        if f.status == "NOT_DETECTED":
-            c["not_detected"] += 1
-        elif f.status == "SCANNER_ERROR":
-            c["scanner_error"] += 1
-        else:
-            if f.severity in c:
-                c[f.severity] += 1
-            c["total"] += 1
+    c = aggregate_finding_counts(findings)
+
+    module_details = None
+    if scan.modules:
+        if isinstance(scan.modules, dict):
+            module_details = scan.modules.get("module_details", scan.modules)
+        elif isinstance(scan.modules, str):
+            try:
+                m_obj = json.loads(scan.modules)
+                module_details = m_obj.get("module_details", m_obj)
+            except Exception:
+                pass
 
     return ScanResultOut(
         scan_id=scan.id,
         target=scan.target_url,
         depth=scan.depth,
+        status=scan.status,
         scanned_at=scan.finished_at or scan.created_at,
-        security_score=scan.security_score if scan.security_score is not None else 0,
+        security_score=scan.security_score,
         counts=ScanCounts(**c),
-        findings=findings
+        findings=findings,
+        module_details=module_details
     )
 
 @router.delete("/scans/{id}")
-def delete_scan(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_scan(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found or access denied")
@@ -386,15 +691,21 @@ def delete_scan(id: str, current_user: User = Depends(get_current_user), db: Ses
     audit_logger.info(f"Scan deleted (ID: {scan.id}) by user {current_user.email}")
     return {"status": "success", "message": "Scan deleted"}
 
-# FINDINGS
+# ==============================================================================
+# FINDINGS (Requires Verified User & Scan Ownership)
+# ==============================================================================
+
 @router.get("/findings/{id}")
-def get_finding(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_finding(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     finding = db.query(Finding).join(Scan).filter(Finding.id == id, Scan.user_id == current_user.id).first()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
     return {"finding": finding}
 
+# ==============================================================================
 # USER PROFILE & SETTINGS
+# ==============================================================================
+
 @router.get("/user/profile", response_model=UserOut)
 def user_profile(current_user: User = Depends(get_current_user)):
     return current_user
@@ -413,7 +724,7 @@ def update_profile(updates: UserProfileUpdate, current_user: User = Depends(get_
     return user
 
 @router.get("/user/settings", response_model=UserSettingsOut)
-def get_user_settings(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_user_settings(current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
     if not settings:
         settings = UserSettings(user_id=current_user.id)
@@ -423,7 +734,7 @@ def get_user_settings(current_user: User = Depends(get_current_user), db: Sessio
     return settings
 
 @router.put("/user/settings", response_model=UserSettingsOut)
-def update_user_settings(updates: UserSettingsUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_user_settings(updates: UserSettingsUpdate, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
     if not settings:
         settings = UserSettings(user_id=current_user.id)
@@ -443,21 +754,17 @@ def update_user_settings(updates: UserSettingsUpdate, current_user: User = Depen
     db.refresh(settings)
     return settings
 
-# REPORTS
+# ==============================================================================
+# REPORTS (Requires Verified User & Ownership Isolation)
+# ==============================================================================
+
 @router.get("/reports")
-def list_reports(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_reports(current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scans = db.query(Scan).filter(Scan.user_id == current_user.id, Scan.status == "completed").order_by(Scan.finished_at.desc()).all()
     reports = []
     for s in scans:
         findings = db.query(Finding).filter(Finding.scan_id == s.id).all()
-        c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "inconclusive": 0, "scanner_error": 0, "total": 0}
-        for f in findings:
-            if f.status == "NOT_DETECTED":
-                c["not_detected"] += 1
-            elif f.status != "SCANNER_ERROR":
-                if f.severity in c:
-                    c[f.severity] += 1
-                c["total"] += 1
+        c = aggregate_finding_counts(findings)
         reports.append({
             "id": "r" + s.id,
             "scan_id": s.id,
@@ -470,31 +777,25 @@ def list_reports(current_user: User = Depends(get_current_user), db: Session = D
     return {"reports": reports}
 
 @router.get("/reports/{id}")
-def get_report(id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    scan_id = id.replace("r", "")
+async def get_report(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
+    scan_id = id[1:] if id.startswith("r") else id
     scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == current_user.id, Scan.status == "completed").first()
     if not scan:
         raise HTTPException(status_code=404, detail="Report not found")
         
     findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
-    c = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "not_detected": 0, "inconclusive": 0, "scanner_error": 0, "total": 0}
+    c = aggregate_finding_counts(findings)
     by_type = {}
     for f in findings:
-        if f.status == "NOT_DETECTED":
-            c["not_detected"] += 1
-        elif f.status != "SCANNER_ERROR":
-            if f.severity in c:
-                c[f.severity] += 1
-            c["total"] += 1
-            
+        status = (f.status or "").upper()
         if f.type not in by_type:
             by_type[f.type] = {"name": f.type, "total": 0, "confirmed": 0}
         by_type[f.type]["total"] += 1
-        if f.status != "NOT_DETECTED":
+        if status not in ("NOT_DETECTED", "SCANNER_ERROR", "INCONCLUSIVE"):
             by_type[f.type]["confirmed"] += 1
 
-    open_issues = c["total"]
-    executive_summary = f"The automated security assessment of {scan.target_url} completed with a security score of {scan.security_score}/100. {open_issues} vulnerability/remediation item(s) require attention. {c['not_detected']} baseline check(s) passed successfully."
+    summary_data = await generate_executive_summary(scan, findings)
+    executive_summary_md = format_executive_summary_markdown(summary_data)
     categories = [{"name": v["name"].replace("_", " ").title(), "score": max(0, int(((v["total"] - v["confirmed"]) / v["total"]) * 100))} for v in by_type.values()]
     
     return {
@@ -505,16 +806,154 @@ def get_report(id: str, current_user: User = Depends(get_current_user), db: Sess
         "security_score": scan.security_score,
         "counts": c,
         "generated_at": scan.finished_at or scan.created_at,
-        "executive_summary": executive_summary,
+        "executive_summary": executive_summary_md,
+        "executive_summary_structured": summary_data,
         "categories": categories,
         "findings": findings
     }
 
-# AI ASSISTANT
-from ai import ask_ai, build_finding_context, build_scan_summary_context, build_general_context
+@router.post("/reports/{id}/ai-summary", dependencies=[Depends(limit_ai)])
+async def regenerate_report_ai_summary(
+    id: str,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db)
+):
+    scan_id = id[1:] if id.startswith("r") else id
+    scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == current_user.id, Scan.status == "completed").first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
+    summary_data = await generate_executive_summary(scan, findings)
+    return {
+        "scan_id": scan.id,
+        "summary": summary_data,
+        "markdown": format_executive_summary_markdown(summary_data)
+    }
 
-@router.post("/ai/chat", response_model=AIResponse, dependencies=[Depends(rate_limiter)])
-async def ai_chat(req: AIRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("/reports/{id}/export/json")
+def export_report_json(
+    id: str,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db)
+):
+    scan_id = id[1:] if id.startswith("r") else id
+    scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == current_user.id).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if scan.status not in ("completed", "failed"):
+        raise HTTPException(status_code=409, detail="Scan is still running; export is unavailable")
+
+    findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
+    c = aggregate_finding_counts(findings)
+
+    findings_data = []
+    for f in findings:
+        cat = map_finding_to_category(f)
+        findings_data.append({
+            "id": f.id,
+            "type": f.type,
+            "title": f.title,
+            "severity": f.severity,
+            "status": f.status,
+            "category": cat,
+            "confidence": f.confidence,
+            "url": f.url,
+            "parameter": f.parameter,
+            "http_method": f.http_method,
+            "evidence": f.evidence,
+            "impact": f.impact,
+            "remediation": f.remediation,
+            "owasp": f.owasp,
+            "cwe": f.cwe,
+            "created_at": f.created_at
+        })
+
+    report_data = {
+        "report_id": "r" + scan.id,
+        "scan_id": scan.id,
+        "target_url": scan.target_url,
+        "depth": scan.depth,
+        "status": scan.status,
+        "security_score": scan.security_score,
+        "counts": c,
+        "created_at": scan.created_at,
+        "finished_at": scan.finished_at,
+        "findings": findings_data
+    }
+    content = json.dumps(report_data, indent=2)
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="ethiosec_report_{scan.id}.json"'}
+    )
+
+@router.get("/reports/{id}/export/csv")
+def export_report_csv(
+    id: str,
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db)
+):
+    scan_id = id[1:] if id.startswith("r") else id
+    scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == current_user.id).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if scan.status not in ("completed", "failed"):
+        raise HTTPException(status_code=409, detail="Scan is still running; export is unavailable")
+
+    findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+    writer.writerow([
+        "Finding ID", "Type", "Title", "Severity", "Category", "Status",
+        "URL", "Parameter", "HTTP Method", "Evidence", "Remediation", "OWASP", "CWE"
+    ])
+    for f in findings:
+        cat = map_finding_to_category(f)
+        rem = "; ".join(f.remediation) if isinstance(f.remediation, list) else str(f.remediation or "")
+        writer.writerow([
+            f.id,
+            f.type or "",
+            f.title or "",
+            f.severity or "",
+            cat,
+            f.status or "",
+            f.url or "",
+            f.parameter or "",
+            f.http_method or "",
+            f.evidence or "",
+            rem,
+            f.owasp or "",
+            f.cwe or ""
+        ])
+
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="ethiosec_report_{scan.id}.csv"'}
+    )
+
+@router.get("/scans/{id}/export/json")
+def export_scan_json(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
+    return export_report_json(id=id, current_user=current_user, db=db)
+
+@router.get("/scans/{id}/export/csv")
+def export_scan_csv(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
+    return export_report_csv(id=id, current_user=current_user, db=db)
+
+# ==============================================================================
+# AI ASSISTANT (Requires Verified User & Isolation)
+# ==============================================================================
+
+from ai import (
+    ask_ai, build_finding_context, build_scan_summary_context, build_general_context,
+    aggregate_finding_counts, generate_executive_summary, format_executive_summary_markdown,
+    map_finding_to_category
+)
+
+@router.post("/ai/chat", response_model=AIResponse, dependencies=[Depends(limit_ai)])
+async def ai_chat(req: AIRequest, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     if req.finding_id:
         finding = db.query(Finding).filter(Finding.id == req.finding_id).first()
         if not finding:
@@ -544,38 +983,27 @@ async def ai_chat(req: AIRequest, current_user: User = Depends(get_current_user)
         # General cybersecurity question
         context = build_general_context()
         
-    reply = await ask_ai(context, req.message)
+    reply = await ask_ai(context, req.message, history=req.history)
     return {"reply": reply, "scan_id": req.scan_id, "finding_id": req.finding_id}
 
-@router.post("/ai-assistant")
-async def ai_assistant_sse(req: AIAssistantRequestNew, current_user: User = Depends(get_current_user)):
-    import google.generativeai as genai
+@router.post("/ai-assistant", dependencies=[Depends(limit_ai)])
+async def ai_assistant_sse(req: AIAssistantRequestNew, current_user: User = Depends(get_current_verified_user)):
     import json
-    
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured on the server")
-        
-    genai.configure(api_key=api_key)
-    
-    model = genai.GenerativeModel('gemini-pro')
-    
-    system_prompt = "You are a senior Application Security Engineer. Analyze the provided JSON evidence and return a plain-language explanation of the real-world business risk, followed by specific, actionable remediation code."
-    
+    from fastapi.responses import StreamingResponse
+
+    system_prompt = (
+        "You are a senior Application Security Engineer. Analyze the provided evidence and return "
+        "a plain-language explanation of the real-world business risk, followed by specific, actionable remediation code."
+    )
     user_prompt = f"CWE ID: {req.cwe_id}\nSeverity: {req.severity}\nTarget Endpoint: {req.target_endpoint}\nHTTP Response Snippet:\n{req.response_snippet}"
 
     async def sse_generator():
         try:
-            response = await model.generate_content_async(
-                f"{system_prompt}\n\n{user_prompt}", 
-                stream=True
-            )
-            async for chunk in response:
-                if chunk.text:
-                    payload = json.dumps({"text": chunk.text})
-                    yield f"data: {payload}\n\n"
-        except Exception as e:
-            payload = json.dumps({"error": str(e)})
+            reply = await ask_ai(system_prompt, user_prompt)
+            payload = json.dumps({"text": reply})
             yield f"data: {payload}\n\n"
-            
+        except Exception as e:
+            payload = json.dumps({"error": "Failed to generate AI analysis."})
+            yield f"data: {payload}\n\n"
+
     return StreamingResponse(sse_generator(), media_type="text/event-stream")

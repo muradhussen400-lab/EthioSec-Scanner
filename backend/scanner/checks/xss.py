@@ -1,4 +1,7 @@
-from scanner.engine import SecurityScanner
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from scanner.engine import SecurityScanner
+
 from scanner.http_client import SafeHTTPClient
 from urllib.parse import urlparse, urlencode, urlunparse
 from scanner.test_case import TestCaseResult
@@ -7,9 +10,26 @@ from bs4 import BeautifulSoup
 import random
 import string
 
-async def check_xss(scanner: SecurityScanner, endpoints: list, forms: list, client: SafeHTTPClient, depth: str = "standard"):
+class XSSCoverageRecord:
+    """
+    Transparent execution and attack surface coverage record for XSS testing.
+    Tracks candidate inputs, executed tests, and completed requests independently from SQLi.
+    """
+    def __init__(self):
+        self.candidate_inputs_discovered: int = 0
+        self.inputs_tested: int = 0
+        self.requests_completed: int = 0
+        self.tested_parameters: list = []
+        self.blocking_reason: str = None
+        self.scanner_error: str = None
+        self.findings_added: int = 0
+        self.verification_completed: bool = False
+
+async def check_xss(scanner: "SecurityScanner", endpoints: list, forms: list, client: SafeHTTPClient, depth: str = "standard") -> XSSCoverageRecord:
+    coverage = XSSCoverageRecord()
 
     async def _make_request(url: str, method: str, params: dict):
+        coverage.requests_completed += 1
         try:
             if method == "GET":
                 query = urlencode(params)
@@ -93,6 +113,10 @@ async def check_xss(scanner: SecurityScanner, endpoints: list, forms: list, clie
             else:
                 break
         
+        coverage.inputs_tested += 1
+        if param_to_inject not in coverage.tested_parameters:
+            coverage.tested_parameters.append(param_to_inject)
+
         test_case = TestCaseResult(
             category="xss",
             target_endpoint=url,
@@ -113,6 +137,7 @@ async def check_xss(scanner: SecurityScanner, endpoints: list, forms: list, clie
                 description="Technical failure prevented reliable testing.",
                 evidence=test_case.evidence, url=url, parameter=param_to_inject, http_method=method
             )
+            coverage.scanner_error = "Technical failure during baseline establishment."
             return
             
         profile = BaselineProfile(baseline_responses)
@@ -283,7 +308,7 @@ async def check_xss(scanner: SecurityScanner, endpoints: list, forms: list, clie
              test_case.evaluate()
 
         # Enforce exact status mapping to HIGH, MEDIUM, LOW, NOT_DETECTED, SCANNER_ERROR
-        if test_case.status in ["HIGH", "LOW"]:
+        if test_case.status in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
             finding_status = "MEDIUM" if vulnerable else "LOW"
             finding_severity = "medium" if vulnerable else "low"
             title = ""
@@ -312,19 +337,51 @@ async def check_xss(scanner: SecurityScanner, endpoints: list, forms: list, clie
                 request=str(evidence_params) if evidence_params else str(enc_params), 
                 response_summary=f"Evaluated via Context Analysis Pipeline"
             )
+            coverage.findings_added += 1
 
-    for endpoint in endpoints:
+    # Discover candidate inputs
+    candidate_endpoints = []
+    for ep in (endpoints or []):
+        params_list = list(ep.get("params", []))
+        if params_list:
+            candidate_endpoints.append(ep)
+            coverage.candidate_inputs_discovered += len(params_list)
+
+    candidate_forms = []
+    for form in (forms or []):
+        inputs = list(form.get("inputs", []))
+        if inputs:
+            candidate_forms.append(form)
+            coverage.candidate_inputs_discovered += len(inputs)
+
+    if coverage.candidate_inputs_discovered == 0:
+        coverage.blocking_reason = "No candidate query parameters or HTML form inputs were discovered on target endpoints."
+        coverage.verification_completed = False
+        return coverage
+
+    for endpoint in candidate_endpoints:
         url = endpoint["url"]
         method = endpoint["method"]
         params_list = endpoint["params"]
         baseline_params = {p: "test" for p in params_list}
         for param in params_list:
-            await test_parameter(url, method, baseline_params, param, "URL query")
+            try:
+                await test_parameter(url, method, baseline_params, param, "URL query")
+            except Exception as pe:
+                coverage.scanner_error = str(pe)
 
-    for form in forms:
+    for form in candidate_forms:
         action_url = form["action_url"]
         method = form["method"]
         inputs = form["inputs"]
         baseline_params = {name: "test" for name in inputs}
         for param in inputs:
-            await test_parameter(action_url, method, baseline_params, param, "form")
+            try:
+                await test_parameter(action_url, method, baseline_params, param, "form")
+            except Exception as pe:
+                coverage.scanner_error = str(pe)
+
+    if coverage.inputs_tested > 0 and not coverage.scanner_error:
+        coverage.verification_completed = True
+
+    return coverage

@@ -1,11 +1,14 @@
-from scanner.engine import SecurityScanner
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from scanner.engine import SecurityScanner
+
 from scanner.http_client import SafeHTTPClient
 from urllib.parse import urlparse
 from scanner.test_case import TestCaseResult
 from scanner.differential import BaselineEngine
 
 async def check_auth(
-    scanner: SecurityScanner, 
+    scanner: "SecurityScanner", 
     discovered_urls: list, 
     discovered_forms: list, 
     client: SafeHTTPClient,
@@ -83,7 +86,7 @@ async def check_auth(
                             
                         test_case.evaluate()
                         
-                        if test_case.status in ["HIGH", "LOW", "SCANNER_ERROR"]:
+                        if test_case.status in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "SCANNER_ERROR"]:
                             scanner._add_finding(
                                 f_type="auth", severity="high" if test_case.status == "HIGH" else "medium", status=test_case.status,
                                 title="Authentication Bypass / Missing Authentication",

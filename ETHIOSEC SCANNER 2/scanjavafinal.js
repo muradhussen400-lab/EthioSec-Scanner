@@ -1,433 +1,1153 @@
-if (!localStorage.getItem('token')) {
-    window.location.href = 'login.html';
-}
-/* =====================================================
-   SCANNER PAGE (scanjavafinal.js)
-   Real Backend API Client
-   ===================================================== */
+/**
+ * ETHIOSECSCAN — NEW SECURITY SCAN CONTROLLER (scanjavafinal.js)
+ * Real Backend API Integration & Seamless Truthful Scanning Telemetry
+ */
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    const urlInput = document.getElementById("url");
-    const urlWrap = document.querySelector(".url-input");
-    const clearUrlBtn = document.getElementById("clearUrl");
-    const urlHelp = document.getElementById("urlHelp");
+    const host = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") 
+        ? window.location.hostname 
+        : "127.0.0.1";
+    const API_BASE = `http://${host}:8000/api`;
+    const HEALTH_URL = `http://${host}:8000/health`;
 
-    const scanButton = document.getElementById("scanButton");
-    const toggleAllBtn = document.getElementById("toggleAll");
-    const authorized = document.getElementById("authorized");
+    // Authentication Guard
+    let token = localStorage.getItem("token");
+    if (!token) {
+        window.location.href = "login.html";
+        return;
+    }
 
-    const lastScanEl = document.getElementById("lastScan");
-    const totalScansEl = document.getElementById("totalScans");
-    const historyList = document.getElementById("historyList");
-    const recentTargets = document.getElementById("recentTargets");
-
-    const moduleInputs = Array.from(document.querySelectorAll("[data-module]"));
-    const depthRadios = Array.from(document.querySelectorAll('input[name="depth"]'));
+    // DOM Elements — Target & Config
+    const targetUrlInput = document.getElementById("targetUrl");
+    const clearUrlBtn = document.getElementById("clearUrlBtn");
+    const urlValidIcon = document.getElementById("urlValidIcon");
+    const targetHelperText = document.getElementById("targetHelperText");
+    const valFormatIndicator = document.getElementById("valFormatIndicator");
+    const valSchemeIndicator = document.getElementById("valSchemeIndicator");
+    
     const cardStandard = document.getElementById("cardStandard");
     const cardDeep = document.getElementById("cardDeep");
+    const cardSuper = document.getElementById("cardSuper");
 
-    /* =====================================================
-       HELPERS
-       ===================================================== */
+    const checksCountBadge = document.getElementById("checksCountBadge");
+    const checkCards = document.querySelectorAll(".check-card");
 
-    function getParam(key) {
-        const params = new URLSearchParams(window.location.search);
-        return params.get(key);
+    const summaryTargetUrl = document.getElementById("summaryTargetUrl");
+    const summaryProfileName = document.getElementById("summaryProfileName");
+    const summaryMaxPages = document.getElementById("summaryMaxPages");
+    const summaryMaxDepth = document.getElementById("summaryMaxDepth");
+    const summaryChecksCount = document.getElementById("summaryChecksCount");
+
+    const authCheckbox = document.getElementById("authCheckbox");
+    const launchBtn = document.getElementById("launchBtn");
+    
+    const reviewModal = document.getElementById("reviewModal");
+    const modalTargetUrl = document.getElementById("modalTargetUrl");
+    const modalProfileName = document.getElementById("modalProfileName");
+    const modalProfileLimits = document.getElementById("modalProfileLimits");
+    const modalChecksNum = document.getElementById("modalChecksNum");
+    const modalSelectedTags = document.getElementById("modalSelectedTags");
+    const modalAuthWarning = document.getElementById("modalAuthWarning");
+    const modalLaunchBtn = document.getElementById("modalLaunchBtn");
+
+    const sidebar = document.getElementById("sidebar");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const sidebarOverlay = document.getElementById("sidebarOverlay");
+
+    // DOM Elements — Active Scan Monitor & Notices
+    const serverNoticeBanner = document.getElementById("serverNoticeBanner");
+    const scanConfigGrid = document.getElementById("scanConfigGrid");
+    const activeScanSection = document.getElementById("activeScanSection");
+
+    const liveStatusPill = document.getElementById("liveStatusPill");
+    const liveStatusText = document.getElementById("liveStatusText");
+    const liveTargetUrl = document.getElementById("liveTargetUrl");
+    const liveTargetUrlText = document.getElementById("liveTargetUrlText");
+    const liveScanId = document.getElementById("liveScanId");
+    const liveProfileBadge = document.getElementById("liveProfileBadge");
+    const liveStartTime = document.getElementById("liveStartTime");
+    const liveElapsed = document.getElementById("liveElapsed");
+
+    const liveRingFill = document.getElementById("liveRingFill");
+    const liveProgressPercent = document.getElementById("liveProgressPercent");
+    const liveRingStatusLabel = document.getElementById("liveRingStatusLabel");
+    const liveStageHeadline = document.getElementById("liveStageHeadline");
+    const liveStageDesc = document.getElementById("liveStageDesc");
+    const liveChecksCountSummary = document.getElementById("liveChecksCountSummary");
+    const liveModulesStatusGrid = document.getElementById("liveModulesStatusGrid");
+
+    const liveCountHigh = document.getElementById("liveCountHigh");
+    const liveCountMedium = document.getElementById("liveCountMedium");
+    const liveCountLow = document.getElementById("liveCountLow");
+    const liveCountPassed = document.getElementById("liveCountPassed");
+    const liveCountTotal = document.getElementById("liveCountTotal");
+
+    const liveCancelBtn = document.getElementById("liveCancelBtn");
+    const liveViewResultsBtn = document.getElementById("liveViewResultsBtn");
+    const liveResetBtn = document.getElementById("liveResetBtn");
+
+    const RING_CIRCUMFERENCE = 2 * Math.PI * 58; // r=58 -> ~364.4px
+    if (liveRingFill) {
+        liveRingFill.style.strokeDasharray = RING_CIRCUMFERENCE;
+        liveRingFill.style.strokeDashoffset = RING_CIRCUMFERENCE;
     }
 
-    function escapeHTML(str) {
-        if (!str) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
+    // State
+    let selectedProfile = "standard"; // standard or deep
+    const profileLimits = {
+        standard: { name: "Standard Scan", pages: 15, depth: 2 },
+        deep: { name: "Deep Scan", pages: 50, depth: 4 }
+    };
 
-    function timeAgo(dateString) {
-        if (!dateString) return "Recently";
-        const date = new Date(dateString);
-        const seconds = Math.floor((new Date() - date) / 1000);
-        if (isNaN(seconds) || seconds < 60) return "Just now";
-        const minutes = Math.floor(seconds / 60);
-        if (minutes < 60) return `${minutes}m ago`;
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
-        const days = Math.floor(hours / 24);
-        return `${days}d ago`;
-    }
+    const modulesState = {
+        sqli: true,
+        xss: true,
+        headers: true,
+        cookies: false,
+        cors: false,
+        https: true,
+        auth: true,
+        access_control: true,
+        exposed_files: true,
+        http_methods: false,
+        info_disclosure: false,
+        misconfig: false
+    };
 
+    const moduleLabels = {
+        sqli: "SQL Injection",
+        xss: "Cross-Site Scripting (XSS)",
+        headers: "Security Headers",
+        cookies: "Cookie Security",
+        cors: "CORS Configuration",
+        https: "HTTPS/TLS Configuration",
+        auth: "Authentication Security",
+        access_control: "Broken Access Control",
+        exposed_files: "Exposed Files",
+        http_methods: "HTTP Methods",
+        info_disclosure: "Information Disclosure",
+        misconfig: "Security Misconfiguration"
+    };
+
+    const moduleIcons = {
+        sqli: "🗄️",
+        xss: "⚡",
+        headers: "🛡️",
+        cookies: "🍪",
+        cors: "🌐",
+        https: "🔒",
+        auth: "🔑",
+        access_control: "🚪",
+        exposed_files: "📁",
+        http_methods: "📡",
+        info_disclosure: "ℹ️",
+        misconfig: "⚙️"
+    };
+
+    let isSubmitting = false;
+    let currentActiveScanId = null;
+    let pollIntervalId = null;
+    let timerIntervalId = null;
+    let scanStartEpoch = null;
+
+    // Toast Feedback
     function showToast(message, type = "info") {
-        let toast = document.querySelector(".toast");
-        if (!toast) {
-            toast = document.createElement("div");
-            toast.className = "toast";
-            document.body.appendChild(toast);
-        }
+        const toast = document.getElementById("toast");
+        if (!toast) return;
         toast.textContent = message;
         toast.className = `toast show ${type === "error" ? "error" : ""}`;
-        setTimeout(() => toast.classList.remove("show"), 3500);
+        setTimeout(() => toast.classList.remove("show"), 4200);
     }
 
-    /* =====================================================
-       URL HANDLING
-       ===================================================== */
+    // Mobile Sidebar Handling
+    if (sidebarToggle && sidebar && sidebarOverlay) {
+        sidebarToggle.addEventListener("click", () => {
+            sidebar.classList.toggle("open");
+            sidebarOverlay.classList.toggle("open");
+        });
+        sidebarOverlay.addEventListener("click", () => {
+            sidebar.classList.remove("open");
+            sidebarOverlay.classList.remove("open");
+        });
+    }
 
-    function normalizeURL(value) {
-        const trimmed = (value || "").trim();
+    // User Profile Display
+    function updateUserData() {
+        const userName = localStorage.getItem("userName") || "";
+        const userNameLabel = document.getElementById("userNameLabel");
+        const userAvatarSmall = document.getElementById("userAvatarSmall");
+        if (userName) {
+            if (userNameLabel) userNameLabel.textContent = userName;
+            if (userAvatarSmall) {
+                const initials = userName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+                userAvatarSmall.textContent = initials || "U";
+            }
+        }
+    }
+    updateUserData();
+
+    // =========================================================================
+    // BACKEND CONNECTIVITY & HEALTH CHECK
+    // =========================================================================
+
+    async function checkBackendHealth(showFeedback = false) {
+        const statusDot = document.querySelector("#serviceStatusBox .service-status-dot");
+        const statusName = document.querySelector("#serviceStatusBox .service-name");
+        const statusState = document.querySelector("#serviceStatusBox .service-state");
+
+        // Try both window.location.hostname and loopback fallbacks
+        const endpointsToTry = [
+            HEALTH_URL,
+            "http://127.0.0.1:8000/health",
+            "http://localhost:8000/health"
+        ];
+        const uniqueEndpoints = [...new Set(endpointsToTry)];
+
+        let isOnline = false;
+        for (const ep of uniqueEndpoints) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2500);
+                const res = await fetch(ep, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (res.ok) {
+                    isOnline = true;
+                    break;
+                }
+            } catch (_) {}
+        }
+
+        if (isOnline) {
+            if (serverNoticeBanner) serverNoticeBanner.classList.remove("visible");
+            if (statusDot) {
+                statusDot.classList.remove("offline");
+                statusDot.classList.add("online");
+                statusDot.style.background = "#10B981";
+            }
+            if (statusName) statusName.textContent = "Backend Online";
+            if (statusState) statusState.textContent = "FastAPI 8000 operational";
+            if (showFeedback) showToast("FastAPI scanner backend is healthy and reachable!", "info");
+            return true;
+        }
+
+        if (serverNoticeBanner) serverNoticeBanner.classList.add("visible");
+        if (statusDot) {
+            statusDot.classList.remove("online");
+            statusDot.classList.add("offline");
+            statusDot.style.background = "#E83B25";
+        }
+        if (statusName) statusName.textContent = "Backend Offline";
+        if (statusState) statusState.textContent = "FastAPI 8000 unreachable";
+        if (showFeedback) {
+            showToast("FastAPI scanner backend is offline at http://127.0.0.1:8000. Start it via start.bat or uvicorn.", "error");
+        }
+        return false;
+    }
+    window.checkBackendHealth = checkBackendHealth;
+
+    // Automatic polling: Re-check backend every 5 seconds if the offline banner is visible
+    setInterval(() => {
+        if (serverNoticeBanner && serverNoticeBanner.classList.contains("visible")) {
+            checkBackendHealth(false);
+        }
+    }, 5000);
+
+    // =========================================================================
+    // URL VALIDATION & NORMALIZATION
+    // =========================================================================
+
+    function normalizeURL(urlStr) {
+        const trimmed = (urlStr || "").trim();
         if (!trimmed) return "";
         return /^https?:\/\//i.test(trimmed) ? trimmed : "https://" + trimmed;
     }
 
-    function isValidURL(value) {
+    function validateURL(urlStr) {
+        const trimmed = (urlStr || "").trim();
+        if (!trimmed) return { valid: false, scheme: false, hostname: false, isEmail: false, normalized: "" };
+
+        // Check if user accidentally entered an email address
+        if (trimmed.includes("@") || trimmed.toLowerCase().startsWith("mailto:")) {
+            return {
+                valid: false,
+                scheme: false,
+                hostname: false,
+                isEmail: true,
+                normalized: ""
+            };
+        }
+
+        const normalized = normalizeURL(trimmed);
         try {
-            const url = new URL(value);
-            return (url.protocol === "http:" || url.protocol === "https:") && (url.hostname.includes(".") || url.hostname === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(url.hostname));
+            const parsed = new URL(normalized);
+            const isHttpScheme = parsed.protocol === "http:" || parsed.protocol === "https:";
+            const hasValidHost = parsed.hostname.length > 0 && (
+                parsed.hostname.includes(".") || 
+                parsed.hostname === "localhost" || 
+                /^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname)
+            );
+
+            return {
+                valid: isHttpScheme && hasValidHost,
+                scheme: isHttpScheme,
+                hostname: hasValidHost,
+                isEmail: false,
+                normalized
+            };
         } catch {
-            return false;
+            return { valid: false, scheme: false, hostname: false, isEmail: false, normalized: "" };
         }
     }
 
-    function refreshUrlField() {
-        if (urlWrap && urlInput) {
-            urlWrap.classList.toggle("filled", urlInput.value.trim().length > 0);
+    function onUrlInputChanged() {
+        const raw = targetUrlInput.value.trim();
+        clearUrlBtn.style.display = raw.length > 0 ? "flex" : "none";
+
+        if (!raw) {
+            urlValidIcon.style.display = "none";
+            valFormatIndicator.className = "validation-indicator";
+            valFormatIndicator.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle></svg><span>URL Format</span>';
+            valSchemeIndicator.className = "validation-indicator";
+            valSchemeIndicator.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle></svg><span>HTTP/HTTPS Scheme</span>';
+            targetHelperText.textContent = "Specify the fully qualified domain or endpoint to audit.";
+            targetHelperText.classList.remove("error");
+            summaryTargetUrl.textContent = "Not specified";
+            refreshLaunchButtonState();
+            return;
         }
-        refreshButtonState();
+
+        const res = validateURL(raw);
+        if (res.valid) {
+            urlValidIcon.style.display = "flex";
+            valFormatIndicator.className = "validation-indicator valid";
+            valFormatIndicator.innerHTML = '<span>✓</span><span>Valid URL format</span>';
+            valSchemeIndicator.className = "validation-indicator valid";
+            valSchemeIndicator.innerHTML = '<span>✓</span><span>' + (res.normalized.startsWith("https") ? "HTTPS scheme (TLS)" : "HTTP scheme") + '</span>';
+            targetHelperText.textContent = "Target verified for safety checks.";
+            targetHelperText.classList.remove("error");
+            summaryTargetUrl.textContent = res.normalized;
+        } else if (res.isEmail) {
+            urlValidIcon.style.display = "none";
+            valFormatIndicator.className = "validation-indicator invalid";
+            valFormatIndicator.innerHTML = '<span>✕</span><span>Email address entered</span>';
+            valSchemeIndicator.className = "validation-indicator invalid";
+            valSchemeIndicator.innerHTML = '<span>✕</span><span>Requires web URL</span>';
+            targetHelperText.textContent = "You entered an email address. Please enter a target web URL (e.g. https://example.com).";
+            targetHelperText.classList.add("error");
+            summaryTargetUrl.textContent = raw;
+        } else {
+            urlValidIcon.style.display = "none";
+            valFormatIndicator.className = "validation-indicator invalid";
+            valFormatIndicator.innerHTML = '<span>✕</span><span>Invalid URL structure</span>';
+            valSchemeIndicator.className = res.scheme ? "validation-indicator valid" : "validation-indicator invalid";
+            valSchemeIndicator.innerHTML = res.scheme ? '<span>✓</span><span>HTTP/HTTPS Scheme</span>' : '<span>✕</span><span>Requires http:// or https://</span>';
+            targetHelperText.textContent = "Please enter a valid web address, e.g. https://example.com";
+            targetHelperText.classList.add("error");
+            summaryTargetUrl.textContent = raw;
+        }
+
+        refreshLaunchButtonState();
     }
 
-    function showUrlError(message) {
-        if (urlWrap) urlWrap.classList.add("invalid");
-        if (urlHelp) {
-            urlHelp.classList.add("error");
-            urlHelp.textContent = message;
-        }
-    }
-
-    function clearUrlError() {
-        if (urlWrap) urlWrap.classList.remove("invalid");
-        if (urlHelp) {
-            urlHelp.classList.remove("error");
-            urlHelp.textContent = "Specify the fully qualified domain or endpoint to audit.";
-        }
-    }
-
-    if (urlInput) {
-        urlInput.addEventListener("input", () => {
-            clearUrlError();
-            refreshUrlField();
-        });
-
-        urlInput.addEventListener("keydown", e => {
-            if (e.key === "Enter" && scanButton && !scanButton.disabled) {
-                startScan();
+    if (targetUrlInput) {
+        targetUrlInput.addEventListener("input", onUrlInputChanged);
+        targetUrlInput.addEventListener("blur", () => {
+            const raw = targetUrlInput.value.trim();
+            if (raw && !/^https?:\/\//i.test(raw)) {
+                targetUrlInput.value = "https://" + raw;
+                onUrlInputChanged();
             }
         });
     }
 
-    if (clearUrlBtn && urlInput) {
+    if (clearUrlBtn) {
         clearUrlBtn.addEventListener("click", () => {
-            urlInput.value = "";
-            clearUrlError();
-            refreshUrlField();
-            urlInput.focus();
+            targetUrlInput.value = "";
+            onUrlInputChanged();
+            targetUrlInput.focus();
         });
     }
 
-    /* =====================================================
-       PROFILE & DEPTH SELECTION
-       ===================================================== */
+    // =========================================================================
+    // PROFILE SELECTION (Standard vs Deep, Super Disabled)
+    // =========================================================================
 
-    function syncProfileCards() {
-        const selected = document.querySelector('input[name="depth"]:checked')?.value || "standard";
-        if (cardStandard) cardStandard.classList.toggle("active", selected === "standard");
-        if (cardDeep) cardDeep.classList.toggle("active", selected === "deep");
-    }
+    window.selectProfile = function(profileKey) {
+        if (profileKey === "super") {
+            showToast("Super Scan is currently under active development and not yet available.", "info");
+            return;
+        }
 
-    depthRadios.forEach(radio => {
-        radio.addEventListener("change", syncProfileCards);
-    });
+        selectedProfile = profileKey;
+        cardStandard.classList.toggle("selected", profileKey === "standard");
+        cardDeep.classList.toggle("selected", profileKey === "deep");
 
-    if (cardStandard) {
-        cardStandard.addEventListener("click", () => {
-            const r = cardStandard.querySelector('input[type="radio"]');
-            if (r) { r.checked = true; syncProfileCards(); }
-        });
-    }
+        const limits = profileLimits[profileKey];
+        if (limits) {
+            summaryProfileName.textContent = limits.name;
+            summaryMaxPages.textContent = limits.pages;
+            summaryMaxDepth.textContent = limits.depth;
+        }
+    };
 
-    if (cardDeep) {
-        cardDeep.addEventListener("click", () => {
-            const r = cardDeep.querySelector('input[type="radio"]');
-            if (r) { r.checked = true; syncProfileCards(); }
-        });
-    }
-
-    if (toggleAllBtn) {
-        toggleAllBtn.addEventListener("click", () => {
-            const allOn = moduleInputs.every(i => i.checked);
-            moduleInputs.forEach(i => { i.checked = !allOn; });
-            toggleAllBtn.textContent = allOn ? "Select all" : "Clear all";
-            refreshButtonState();
-        });
-    }
-
-    moduleInputs.forEach(i => i.addEventListener("change", refreshButtonState));
-    if (authorized) {
-        authorized.addEventListener("change", refreshButtonState);
-    }
-
-    function refreshButtonState() {
-        if (!scanButton || !urlInput || !authorized) return;
-        const hasUrl = urlInput.value.trim().length > 0;
-        const hasModule = moduleInputs.length === 0 || moduleInputs.some(i => i.checked);
-        scanButton.disabled = !(hasUrl && hasModule && authorized.checked);
-    }
-
-    async function applyScanDefaults() {
+    async function loadUserSettings() {
+        const token = localStorage.getItem("token");
+        if (!token) return;
         try {
-            const token = localStorage.getItem("token");
-            if (!token) return;
-            const res = await fetch("http://127.0.0.1:8000/api/user/settings", {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetch(`${API_BASE}/user/settings`, {
+                headers: { "Authorization": `Bearer ${token}` }
             });
             if (res.ok) {
-                const apiSet = await res.json();
-                const depthRadio = document.querySelector(`input[name="depth"][value="${apiSet.default_scan_depth}"]`);
-                if (depthRadio) {
-                    depthRadio.checked = true;
-                    syncProfileCards();
+                const settings = await res.json();
+                if (settings && settings.default_scan_depth) {
+                    const depth = settings.default_scan_depth.toLowerCase();
+                    if (depth === "deep") {
+                        selectProfile("deep");
+                    } else if (depth === "standard") {
+                        selectProfile("standard");
+                    }
                 }
-                
-                let prefs = null;
-                try { prefs = JSON.parse(localStorage.getItem("ethioSettings")); } catch {}
-                if (prefs) {
-                    const map = { sqli: "defSqli", xss: "defXss", headers: "defHeaders", https: "defSsl" };
-                    moduleInputs.forEach(input => {
-                        const key = map[input.dataset.module];
-                        if (key && typeof prefs[key] === "boolean") input.checked = prefs[key];
-                    });
-                }
-                refreshButtonState();
             }
-        } catch (e) {
-            console.error("Failed to load scan defaults", e);
+        } catch (_) {}
+    }
+    loadUserSettings();
+
+    // =========================================================================
+    // SECURITY CHECKS SELECTION
+    // =========================================================================
+
+    function updateCheckCardsUI() {
+        let selectedCount = 0;
+        checkCards.forEach(card => {
+            const mod = card.getAttribute("data-module");
+            const isChecked = Boolean(modulesState[mod]);
+            card.classList.toggle("checked", isChecked);
+            const box = card.querySelector(".check-checkbox-custom");
+            if (box) {
+                box.textContent = isChecked ? "✓" : "";
+            }
+            if (isChecked) selectedCount++;
+        });
+
+        if (checksCountBadge) {
+            checksCountBadge.textContent = `${selectedCount} selected`;
+        }
+        if (summaryChecksCount) {
+            summaryChecksCount.textContent = `${selectedCount} of 12`;
+        }
+
+        refreshLaunchButtonState();
+    }
+
+    window.toggleCheckCard = function(modKey) {
+        if (modKey in modulesState) {
+            modulesState[modKey] = !modulesState[modKey];
+            updateCheckCardsUI();
+        }
+    };
+
+    window.selectAllChecks = function(enableAll) {
+        for (const k in modulesState) {
+            modulesState[k] = enableAll;
+        }
+        updateCheckCardsUI();
+    };
+
+    // Optional Auth Context Collapsible
+    window.toggleAuthContextBox = function() {
+        const box = document.getElementById("authContextContent");
+        const icon = document.getElementById("authToggleIcon");
+        if (box) {
+            const isOpen = box.classList.toggle("open");
+            if (icon) icon.textContent = isOpen ? "▲" : "▼";
+        }
+    };
+
+    // =========================================================================
+    // BUTTON STATE & STEP NAVIGATION
+    // =========================================================================
+
+    function refreshLaunchButtonState() {
+        if (!launchBtn || !authCheckbox || !targetUrlInput) return;
+        const res = validateURL(targetUrlInput.value);
+        const hasChecks = Object.values(modulesState).some(Boolean);
+        const isAuthorized = authCheckbox.checked;
+
+        const canLaunch = res.valid && hasChecks && isAuthorized;
+        launchBtn.disabled = !canLaunch || isSubmitting;
+
+        const step1 = document.getElementById("stepIndicator1");
+        const step2 = document.getElementById("stepIndicator2");
+        const stepLine1 = document.getElementById("stepLine1");
+        const stepLine2 = document.getElementById("stepLine2");
+
+        if (res.valid) {
+            step1.classList.add("completed");
+            stepLine1.classList.add("active");
+        } else {
+            step1.classList.remove("completed");
+            stepLine1.classList.remove("active");
+        }
+
+        if (hasChecks) {
+            step2.classList.add("completed");
+            stepLine2.classList.add("active");
+        } else {
+            step2.classList.remove("completed");
+            stepLine2.classList.remove("active");
         }
     }
 
-    /* =====================================================
-       START SCAN (Real API)
-       ===================================================== */
+    if (authCheckbox) {
+        authCheckbox.addEventListener("change", refreshLaunchButtonState);
+    }
 
-    async function startScan() {
-        const target = normalizeURL(urlInput.value);
-
-        if (!isValidURL(target)) {
-            showUrlError("Enter a full website address, for example https://example.com");
-            urlInput.focus();
+    window.navigateToStep = function(stepNum) {
+        // If a scan is currently running, ignore step click or return to config
+        if (currentActiveScanId && activeScanSection && activeScanSection.style.display !== "none") {
             return;
         }
 
-        if (!authorized.checked) {
-            showToast("Confirm you are authorized to test this target first.", "error");
+        const secTarget = document.getElementById("sectionTarget");
+        const secChecks = document.getElementById("sectionChecks");
+
+        document.querySelectorAll(".step-item").forEach(s => s.classList.remove("active"));
+        const activeItem = document.getElementById(`stepIndicator${stepNum}`);
+        if (activeItem) activeItem.classList.add("active");
+
+        if (stepNum === 1 && secTarget) {
+            secTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+            targetUrlInput.focus();
+        } else if (stepNum === 2 && secChecks) {
+            secChecks.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (stepNum === 3) {
+            openReviewModal();
+        }
+    };
+
+    // =========================================================================
+    // REVIEW MODAL (Step 3)
+    // =========================================================================
+
+    window.openReviewModal = function() {
+        const valRes = validateURL(targetUrlInput.value);
+        if (!valRes.valid) {
+            showToast("Please provide a valid target URL first.", "error");
+            targetUrlInput.focus();
             return;
         }
 
-        const checkedDepthEl = document.querySelector('input[name="depth"]:checked');
-        const depth = checkedDepthEl ? checkedDepthEl.value : "standard";
+        const selectedKeys = Object.keys(modulesState).filter(k => modulesState[k]);
+        if (selectedKeys.length === 0) {
+            showToast("Select at least one security check module before review.", "error");
+            return;
+        }
 
-        // Build exact module selection
-        const selectedModules = {};
-        moduleInputs.forEach(i => {
-            selectedModules[i.dataset.module] = Boolean(i.checked);
+        if (!authCheckbox.checked) {
+            showToast("Confirm authorization by checking the Legal Authorization box.", "error");
+            return;
+        }
+
+        // Populate Modal Fields
+        modalTargetUrl.textContent = valRes.normalized;
+        const limits = profileLimits[selectedProfile];
+        modalProfileName.textContent = limits.name;
+        modalProfileLimits.textContent = `Max Pages: ${limits.pages} · Max Crawl Depth: ${limits.depth}`;
+        modalChecksNum.textContent = selectedKeys.length;
+
+        modalSelectedTags.innerHTML = selectedKeys.map(k => `
+            <span class="review-tag">${moduleLabels[k] || k}</span>
+        `).join("");
+
+        const authSelected = modulesState.auth || modulesState.access_control;
+        const h1Key = document.getElementById("authHeader1Key")?.value.trim();
+        const h1Val = document.getElementById("authHeader1Val")?.value.trim();
+        const hasAuthContext = Boolean(h1Key && h1Val);
+
+        if (authSelected && !hasAuthContext) {
+            modalAuthWarning.style.display = "block";
+        } else {
+            modalAuthWarning.style.display = "none";
+        }
+
+        if (reviewModal) {
+            reviewModal.style.display = "flex";
+            reviewModal.classList.add("open");
+        }
+    };
+
+    window.closeReviewModal = function() {
+        if (reviewModal) {
+            reviewModal.classList.remove("open");
+            reviewModal.style.display = "none";
+        }
+    };
+
+    if (reviewModal) {
+        reviewModal.addEventListener("click", (e) => {
+            if (e.target === reviewModal) {
+                closeReviewModal();
+            }
         });
+    }
 
-        const originalText = scanButton.innerHTML;
-        scanButton.disabled = true;
-        scanButton.innerHTML = "<span>⏳</span> Launching real scan…";
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" || e.key === "Esc") {
+            closeReviewModal();
+        }
+    });
+
+    window.onLaunchClicked = function() {
+        openReviewModal();
+    };
+
+    // =========================================================================
+    // SCAN EXECUTION & REAL-TIME TELEMETRY ENGINE
+    // =========================================================================
+
+    window.executeScanLaunch = async function() {
+        if (isSubmitting) return;
+
+        const rawTarget = (targetUrlInput ? targetUrlInput.value : "").trim();
+        if (!rawTarget) {
+            showToast("Target URL cannot be blank. Please enter a valid web URL.", "error");
+            closeReviewModal();
+            return;
+        }
+
+        const valRes = validateURL(rawTarget);
+        if (!valRes.valid) {
+            showToast("Invalid target URL format.", "error");
+            closeReviewModal();
+            return;
+        }
+
+        let authToken = localStorage.getItem("token");
+        if (!authToken) {
+            showToast("Session expired. Please log in again.", "error");
+            window.location.href = "login.html";
+            return;
+        }
+
+        // First verify backend connectivity to avoid generic "Failed to fetch"
+        const backendReady = await checkBackendHealth(false);
+        if (!backendReady) {
+            showToast("Cannot connect to backend scanner at http://127.0.0.1:8000. Please start the server.", "error");
+            closeReviewModal();
+            return;
+        }
+
+        const headers = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
+        };
+
+        const selectedModulesPayload = {};
+        for (const k in modulesState) {
+            selectedModulesPayload[k] = Boolean(modulesState[k]);
+        }
+
+        // Build optional auth contexts strictly in memory
+        let authContext1 = null;
+        let authContext2 = null;
+
+        const h1KeyEl = document.getElementById("authHeader1Key");
+        const h1ValEl = document.getElementById("authHeader1Val");
+        const h2KeyEl = document.getElementById("authHeader2Key");
+        const h2ValEl = document.getElementById("authHeader2Val");
+
+        const h1Key = h1KeyEl?.value.trim();
+        const h1Val = h1ValEl?.value.trim();
+        if (h1Key && h1Val) {
+            authContext1 = { headers: { [h1Key]: h1Val } };
+        }
+
+        const h2Key = h2KeyEl?.value.trim();
+        const h2Val = h2ValEl?.value.trim();
+        if (h2Key && h2Val) {
+            authContext2 = { headers: { [h2Key]: h2Val } };
+        }
+
+        // Ephemeral hygiene: Clear DOM input secret values immediately
+        if (h1ValEl) h1ValEl.value = "";
+        if (h2ValEl) h2ValEl.value = "";
+
+        isSubmitting = true;
+        modalLaunchBtn.disabled = true;
+        modalLaunchBtn.innerHTML = `<span>⏳ Initiating Scan…</span>`;
+        launchBtn.disabled = true;
+        launchBtn.innerHTML = `<span>⏳ Initiating Scan…</span>`;
 
         try {
-            const token = localStorage.getItem("token");
-            if (!token) {
-                showToast("You must be logged in to start a scan.", "error");
-                scanButton.disabled = false;
-                scanButton.innerHTML = originalText;
-                return;
+            // Step 1: Target Registration
+            let targetRes;
+            try {
+                targetRes = await fetch(`${API_BASE}/targets`, {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify({ url: valRes.normalized })
+                });
+            } catch (netErr) {
+                throw new Error("Failed to communicate with scanner service at http://127.0.0.1:8000. Check server status.");
             }
 
-            const headers = {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            };
-
-            // 1. Create Target
-            const targetRes = await fetch("http://127.0.0.1:8000/api/targets", {
-                method: "POST",
-                headers,
-                body: JSON.stringify({ url: target })
-            });
             if (!targetRes.ok) {
-                let errDetail = "Failed to create target";
-                try { const eData = await targetRes.json(); if (eData.detail) errDetail = eData.detail; } catch(_) {}
+                if (targetRes.status === 401) {
+                    showToast("Authentication session expired. Redirecting to login…", "error");
+                    setTimeout(() => window.location.href = "login.html", 1500);
+                    return;
+                }
+                let errDetail = "Target registration failed.";
+                try {
+                    const eData = await targetRes.json();
+                    if (eData.detail) errDetail = eData.detail;
+                } catch (_) {}
                 throw new Error(errDetail);
             }
-            const targetData = await targetRes.json();
 
-            // 2. Create Scan with exact module selection
-            const scanRes = await fetch("http://127.0.0.1:8000/api/scans", {
-                method: "POST",
-                headers,
-                body: JSON.stringify({
-                    target_id: targetData.id,
-                    depth: depth,
-                    modules: selectedModules,
-                    authorized: true,
-                    auth_context_1: null,
-                    auth_context_2: null
-                })
-            });
+            const targetData = await targetRes.json();
+            const targetId = targetData.id;
+
+            // Step 2: Create Scan with explicit module dispatch
+            let scanRes;
+            try {
+                scanRes = await fetch(`${API_BASE}/scans`, {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify({
+                        target_id: targetId,
+                        depth: selectedProfile,
+                        modules: selectedModulesPayload,
+                        authorized: true,
+                        auth_context_1: authContext1,
+                        auth_context_2: authContext2
+                    })
+                });
+            } catch (netErr) {
+                throw new Error("Connection failed while creating scan record.");
+            }
+
             if (!scanRes.ok) {
-                let errDetail = "Failed to create scan";
-                try { const eData = await scanRes.json(); if (eData.detail) errDetail = eData.detail; } catch(_) {}
+                if (scanRes.status === 401) {
+                    showToast("Authentication session expired. Please log in again.", "error");
+                    setTimeout(() => window.location.href = "login.html", 1500);
+                    return;
+                }
+                let errDetail = "Scan configuration failed.";
+                try {
+                    const eData = await scanRes.json();
+                    if (eData.detail) errDetail = eData.detail;
+                } catch (_) {}
                 throw new Error(errDetail);
             }
+
             const scanData = await scanRes.json();
             const scanId = scanData.scan_id || scanData.id;
 
-            // 3. Start Scan
-            const startRes = await fetch(`http://127.0.0.1:8000/api/scans/${scanId}/start`, {
-                method: "POST",
-                headers
-            });
+            // Step 3: Start Scan Task
+            let startRes;
+            try {
+                startRes = await fetch(`${API_BASE}/scans/${scanId}/start`, {
+                    method: "POST",
+                    headers
+                });
+            } catch (netErr) {
+                throw new Error("Connection failed while starting scan engine.");
+            }
+
             if (!startRes.ok) {
-                let errDetail = "Failed to start scan";
-                try { const eData = await startRes.json(); if (eData.detail) errDetail = eData.detail; } catch(_) {}
+                let errDetail = "Failed to launch scan engine.";
+                try {
+                    const eData = await startRes.json();
+                    if (eData.detail) errDetail = eData.detail;
+                } catch (_) {}
                 throw new Error(errDetail);
             }
 
-            // Redirect to live progress screen
-            window.location.href = `livescan.html?id=${encodeURIComponent(scanId)}&target=${encodeURIComponent(target)}`;
-            
+            // Close modal & redirect to canonical Live Scan page
+            closeReviewModal();
+            showToast("Security scan launched! Opening Live Telemetry…", "info");
+
+            setTimeout(() => {
+                window.location.href = `livescan.html?id=${encodeURIComponent(scanId)}&target=${encodeURIComponent(valRes.normalized)}`;
+            }, 300);
+
         } catch (error) {
-            console.error("Scan start error:", error);
-            showToast(error.message || "Error starting scan. Please try again.", "error");
-            scanButton.disabled = false;
-            scanButton.innerHTML = originalText;
+            console.error("[EthioSec Launch Error]:", error);
+            showToast(error.message || "An error occurred while launching scan.", "error");
+        } finally {
+            isSubmitting = false;
+            modalLaunchBtn.disabled = false;
+            modalLaunchBtn.innerHTML = `<span>Launch Security Scan</span>`;
+            launchBtn.disabled = false;
+            launchBtn.innerHTML = `<span>Review & Launch →</span>`;
+            refreshLaunchButtonState();
+        }
+    };
+
+    // =========================================================================
+    // ACTIVE TELEMETRY CONTROLLER
+    // =========================================================================
+
+    function startLiveScanMonitor(scanId, targetUrl, profileKey, requestedModules) {
+        currentActiveScanId = scanId;
+        scanStartEpoch = Date.now();
+
+        // Switch page layout to active scanning telemetry view
+        if (scanConfigGrid) scanConfigGrid.style.display = "none";
+        if (activeScanSection) activeScanSection.style.display = "flex";
+
+        // Update Stepper
+        const step1 = document.getElementById("stepIndicator1");
+        const step2 = document.getElementById("stepIndicator2");
+        const step3 = document.getElementById("stepIndicator3");
+        const stepLine1 = document.getElementById("stepLine1");
+        const stepLine2 = document.getElementById("stepLine2");
+
+        if (step1) step1.className = "step-item completed";
+        if (step2) step2.className = "step-item completed";
+        if (step3) step3.className = "step-item active";
+        if (stepLine1) stepLine1.className = "step-divider-line active";
+        if (stepLine2) stepLine2.className = "step-divider-line active";
+
+        // Populate header fields
+        if (liveScanId) liveScanId.textContent = scanId;
+        if (liveTargetUrlText) liveTargetUrlText.textContent = targetUrl;
+        if (liveTargetUrl) liveTargetUrl.href = targetUrl;
+
+        const pLimits = profileLimits[profileKey] || profileLimits.standard;
+        if (liveProfileBadge) {
+            liveProfileBadge.textContent = `${pLimits.name} (Max ${pLimits.pages} pages · Depth ${pLimits.depth})`;
+        }
+
+        if (liveStartTime) {
+            liveStartTime.textContent = new Date().toLocaleTimeString();
+        }
+
+        if (liveStatusPill && liveStatusText) {
+            liveStatusPill.className = "live-status-pill running";
+            liveStatusText.textContent = "RUNNING";
+        }
+        if (liveRingStatusLabel) liveRingStatusLabel.textContent = "RUNNING";
+
+        if (liveCancelBtn) liveCancelBtn.style.display = "inline-flex";
+        if (liveViewResultsBtn) {
+            liveViewResultsBtn.hidden = true;
+            liveViewResultsBtn.href = `results.html?id=${encodeURIComponent(scanId)}`;
+        }
+
+        // Render initial modules list
+        renderModulesList(requestedModules, {}, "Queued");
+
+        // Start elapsed timer
+        if (timerIntervalId) clearInterval(timerIntervalId);
+        timerIntervalId = setInterval(() => {
+            if (liveElapsed && scanStartEpoch) {
+                const secs = Math.floor((Date.now() - scanStartEpoch) / 1000);
+                liveElapsed.textContent = formatElapsedTime(secs);
+            }
+        }, 1000);
+
+        // Start polling
+        if (pollIntervalId) clearInterval(pollIntervalId);
+        pollActiveScan(scanId, requestedModules);
+        pollIntervalId = setInterval(() => pollActiveScan(scanId, requestedModules), 1500);
+
+        // Scroll to telemetry view
+        activeScanSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function formatElapsedTime(seconds) {
+        if (seconds < 60) return `${seconds}s`;
+        const mins = Math.floor(seconds / 60);
+        const remSecs = seconds % 60;
+        return `${mins}m ${remSecs}s`;
+    }
+
+    function renderModulesList(requestedModules, completedChecks, currentStage) {
+        if (!liveModulesStatusGrid) return;
+
+        const req = requestedModules || modulesState;
+        const comp = completedChecks || {};
+        const stageLower = (currentStage || "").toLowerCase();
+
+        let totalSelected = 0;
+        let totalCompleted = 0;
+
+        let html = "";
+        for (const modKey in moduleLabels) {
+            const isSelected = Boolean(req[modKey]);
+            const isDone = Boolean(comp[modKey]);
+            
+            if (isSelected) totalSelected++;
+            if (isSelected && isDone) totalCompleted++;
+
+            let statusClass = "queued";
+            let statusBadge = "QUEUED";
+
+            if (!isSelected) {
+                statusClass = "skipped";
+                statusBadge = "SKIPPED";
+            } else if (isDone) {
+                statusClass = "completed";
+                statusBadge = "✓ COMPLETED";
+            } else if (
+                stageLower.includes(modKey) || 
+                (modKey === "headers" && stageLower.includes("header")) ||
+                (modKey === "cookies" && stageLower.includes("cookie")) ||
+                (modKey === "cors" && stageLower.includes("cors")) ||
+                (modKey === "https" && stageLower.includes("https")) ||
+                (modKey === "sqli" && stageLower.includes("sql")) ||
+                (modKey === "xss" && stageLower.includes("xss")) ||
+                (modKey === "auth" && stageLower.includes("auth")) ||
+                (modKey === "access_control" && (stageLower.includes("access") || stageLower.includes("idor"))) ||
+                (modKey === "exposed_files" && stageLower.includes("exposed")) ||
+                (modKey === "http_methods" && stageLower.includes("methods")) ||
+                (modKey === "info_disclosure" && stageLower.includes("info"))
+            ) {
+                statusClass = "running";
+                statusBadge = "ANALYZING…";
+            }
+
+            html += `
+                <div class="live-module-status-item ${statusClass}">
+                    <div class="live-mod-name">
+                        <span>${moduleIcons[modKey] || "🔍"}</span>
+                        <span>${moduleLabels[modKey]}</span>
+                    </div>
+                    <span class="live-mod-badge ${statusClass}">${statusBadge}</span>
+                </div>
+            `;
+        }
+
+        liveModulesStatusGrid.innerHTML = html;
+
+        if (liveChecksCountSummary) {
+            liveChecksCountSummary.textContent = `${totalCompleted} of ${totalSelected} Completed`;
         }
     }
 
-    if (scanButton) {
-        scanButton.addEventListener("click", startScan);
-    }
-
-    /* =====================================================
-       RECENT SCANS (Real API)
-       ===================================================== */
-
-    function scoreClass(score) {
-        if (score == null) return "mid";
-        return score >= 80 ? "good" : score >= 60 ? "mid" : "bad";
-    }
-
-    async function loadRecent() {
-        let scans = [];
+    async function pollActiveScan(scanId, requestedModules) {
         try {
-            const token = localStorage.getItem("token");
-            if (token) {
-                const res = await fetch("http://127.0.0.1:8000/api/scans?limit=6", {
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    scans = data.scans || [];
+            const authToken = localStorage.getItem("token");
+            if (!authToken) return;
+
+            const res = await fetch(`${API_BASE}/scans/${scanId}/status`, {
+                headers: {
+                    "Authorization": `Bearer ${authToken}`,
+                    "Accept": "application/json"
+                }
+            });
+
+            if (!res.ok) {
+                if (res.status === 401) {
+                    console.warn("[EthioSec Telemetry] Token expired during polling.");
+                }
+                return;
+            }
+
+            const data = await res.json();
+
+            // Progress percentage
+            const p = Math.max(0, Math.min(100, Number(data.progress || 0)));
+            if (liveProgressPercent) liveProgressPercent.textContent = `${p}%`;
+            if (liveRingFill) {
+                const offset = RING_CIRCUMFERENCE - (p / 100) * RING_CIRCUMFERENCE;
+                liveRingFill.style.strokeDashoffset = offset;
+            }
+
+            // Headline & stage descriptions
+            if (liveStageHeadline && data.stage) {
+                liveStageHeadline.textContent = data.stage;
+            }
+            if (liveStageDesc) {
+                if (p < 20) {
+                    liveStageDesc.textContent = "Target verified. Crawling site structure and cataloging attack surface.";
+                } else if (p < 60) {
+                    liveStageDesc.textContent = "Evaluating passive security policies, cookie flags, and transport headers.";
+                } else if (p < 99) {
+                    liveStageDesc.textContent = "Executing injection vectors, boundary checks, and active security probes.";
+                } else {
+                    liveStageDesc.textContent = "Consolidating observations, rating severity scores, and building report.";
                 }
             }
-        } catch (e) {
-            console.error("Failed to load recent scans", e);
-        }
 
-        if (totalScansEl) totalScansEl.textContent = scans.length;
-        if (lastScanEl) {
-            const done = scans.filter(s => s.status === "completed" || s.finished_at);
-            lastScanEl.textContent = done.length ? timeAgo(done[0].finished_at || done[0].created_at) : "—";
-        }
+            // Status Badge
+            const statusUpper = (data.status || "RUNNING").toUpperCase();
+            if (liveStatusText) liveStatusText.textContent = statusUpper;
+            if (liveRingStatusLabel) liveRingStatusLabel.textContent = statusUpper;
+            if (liveStatusPill) {
+                liveStatusPill.className = `live-status-pill ${data.status.toLowerCase()}`;
+            }
 
-        renderHistory(scans);
-        renderChips(scans);
+            // Update real module items
+            const activeMods = data.modules || requestedModules || modulesState;
+            const completedMods = data.completed_checks || {};
+            renderModulesList(activeMods, completedMods, data.stage);
+
+            // Update real incremental findings counters
+            if (data.findings_count) {
+                const fc = data.findings_count;
+                if (liveCountHigh) liveCountHigh.textContent = (fc.critical || 0) + (fc.high || 0);
+                if (liveCountMedium) liveCountMedium.textContent = fc.medium || 0;
+                if (liveCountLow) liveCountLow.textContent = fc.low || 0;
+                if (liveCountPassed) liveCountPassed.textContent = fc.not_detected || 0;
+                if (liveCountTotal) liveCountTotal.textContent = fc.total || 0;
+            }
+
+            // Scan Completion or Failure
+            if (data.status === "completed" || data.status === "failed" || data.status === "cancelled") {
+                clearInterval(pollIntervalId);
+                clearInterval(timerIntervalId);
+                pollIntervalId = null;
+                timerIntervalId = null;
+
+                if (liveCancelBtn) liveCancelBtn.style.display = "none";
+                if (liveViewResultsBtn) {
+                    liveViewResultsBtn.hidden = false;
+                    liveViewResultsBtn.href = `results.html?id=${encodeURIComponent(scanId)}`;
+                }
+
+                if (data.status === "completed") {
+                    if (liveProgressPercent) liveProgressPercent.textContent = "100%";
+                    if (liveRingFill) liveRingFill.style.strokeDashoffset = 0;
+                    if (liveStageHeadline) liveStageHeadline.textContent = "Security Assessment Completed Successfully";
+                    if (liveStageDesc) liveStageDesc.textContent = "All selected checks have finalized. Real findings are safely persisted.";
+                    showToast("Security scan completed! Results ready.", "info");
+                } else if (data.status === "failed") {
+                    if (liveStageHeadline) liveStageHeadline.textContent = "Assessment Halted or Warning Reported";
+                    if (liveStageDesc) liveStageDesc.textContent = "Scanner encountered a target constraint or security halt.";
+                    showToast("Scan finished with warnings or error state.", "error");
+                } else if (data.status === "cancelled") {
+                    if (liveStageHeadline) liveStageHeadline.textContent = "Scan Assessment Cancelled by User";
+                    if (liveStageDesc) liveStageDesc.textContent = "All active check workers have been terminated.";
+                    showToast("Security scan cancelled.", "info");
+                }
+            }
+
+        } catch (pollErr) {
+            console.warn("[EthioSec] Status polling transient error:", pollErr);
+        }
     }
 
-    function renderHistory(scans) {
-        if (!historyList) return;
-        if (!scans.length) {
-            historyList.innerHTML = '<p class="empty-state">No scans yet. Launch your first security scan above.</p>';
-            return;
+    window.cancelActiveScan = async function() {
+        if (!currentActiveScanId) return;
+
+        const confirmCancel = confirm("Are you sure you want to cancel this running security assessment?");
+        if (!confirmCancel) return;
+
+        const authToken = localStorage.getItem("token");
+        if (liveCancelBtn) {
+            liveCancelBtn.disabled = true;
+            liveCancelBtn.textContent = "Cancelling…";
         }
 
-        historyList.innerHTML = scans.slice(0, 6).map(s => {
-            const score = s.security_score !== null ? s.security_score : "—";
-            return `
-            <div class="history-item" data-id="${escapeHTML(s.id)}" data-status="${escapeHTML(s.status || 'completed')}">
-              <div class="history-main">
-                <div class="history-url">${escapeHTML(s.target || s.url)}</div>
-                <div class="history-time">${timeAgo(s.finished_at || s.created_at)} · ${escapeHTML(s.depth || "standard")}</div>
-              </div>
-              <span class="history-score ${scoreClass(s.security_score)}">${score}</span>
-            </div>`;
-        }).join("");
-
-        historyList.querySelectorAll(".history-item").forEach(item => {
-            item.style.cursor = "pointer";
-            item.addEventListener("click", () => {
-                const id = item.dataset.id;
-                const status = item.dataset.status;
-                window.location.href = status === "completed"
-                    ? `results.html?id=${encodeURIComponent(id)}`
-                    : `livescan.html?id=${encodeURIComponent(id)}`;
-            });
-        });
-    }
-
-    function renderChips(scans) {
-        if (!recentTargets) return;
-        const unique = [...new Set(scans.map(s => s.target || s.url))].filter(Boolean).slice(0, 4);
-
-        if (!unique.length) {
-            recentTargets.innerHTML = "";
-            return;
-        }
-
-        recentTargets.innerHTML = unique
-            .map(u => `<button class="chip" type="button" data-url="${escapeHTML(u)}">${escapeHTML(u.replace(/^https?:\/\//, ""))}</button>`)
-            .join("");
-
-        recentTargets.querySelectorAll(".chip").forEach(chip => {
-            chip.addEventListener("click", () => {
-                if (urlInput) {
-                    urlInput.value = chip.dataset.url;
-                    refreshUrlField();
-                    urlInput.focus();
+        try {
+            await fetch(`${API_BASE}/scans/${currentActiveScanId}/cancel`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${authToken}`
                 }
             });
+            showToast("Scan cancelled.", "info");
+        } catch (err) {
+            console.error("Failed to cancel scan on server:", err);
+        }
+
+        if (pollIntervalId) clearInterval(pollIntervalId);
+        if (timerIntervalId) clearInterval(timerIntervalId);
+
+        if (liveStatusPill) liveStatusPill.className = "live-status-pill cancelled";
+        if (liveStatusText) liveStatusText.textContent = "CANCELLED";
+        if (liveRingStatusLabel) liveRingStatusLabel.textContent = "CANCELLED";
+        if (liveCancelBtn) liveCancelBtn.style.display = "none";
+        if (liveStageHeadline) liveStageHeadline.textContent = "Scan Assessment Cancelled by User";
+    };
+
+    window.returnToScanConfig = function() {
+        if (pollIntervalId) clearInterval(pollIntervalId);
+        if (timerIntervalId) clearInterval(timerIntervalId);
+        pollIntervalId = null;
+        timerIntervalId = null;
+        currentActiveScanId = null;
+
+        // Clear query param
+        try {
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, "", cleanUrl);
+        } catch (_) {}
+
+        if (activeScanSection) activeScanSection.style.display = "none";
+        if (scanConfigGrid) scanConfigGrid.style.display = "grid";
+
+        // Reset Stepper
+        const step1 = document.getElementById("stepIndicator1");
+        const step2 = document.getElementById("stepIndicator2");
+        const step3 = document.getElementById("stepIndicator3");
+        if (step1) step1.className = "step-item active";
+        if (step2) step2.className = "step-item";
+        if (step3) step3.className = "step-item";
+
+        refreshLaunchButtonState();
+    };
+
+    window.copyLiveScanId = function() {
+        if (!currentActiveScanId) return;
+        navigator.clipboard.writeText(currentActiveScanId).then(() => {
+            showToast("Scan ID copied to clipboard!", "info");
+        }).catch(() => {
+            showToast(currentActiveScanId, "info");
         });
-    }
+    };
 
-    /* =====================================================
-       INIT
-       ===================================================== */
+    // =========================================================================
+    // INITIALIZATION & URL QUERY PARAMS
+    // =========================================================================
 
-    applyScanDefaults();
+    // Check query params on load (e.g. ?scan_id=... to resume monitor or ?target=... to pre-fill)
+    const urlParams = new URLSearchParams(window.location.search);
+    const existingScanId = urlParams.get("scan_id") || urlParams.get("id");
+    const incomingUrl = urlParams.get("url") || urlParams.get("target") || urlParams.get("site");
 
-    const incoming = getParam("url") || getParam("target") || getParam("site");
-    if (incoming && urlInput) {
-        urlInput.value = normalizeURL(incoming);
-        if (urlHelp) {
-            urlHelp.textContent = "Target carried over — check the authorization box to launch.";
+    // CHANGE 1: Target field must start blank whenever a user opens a fresh New Scan page.
+    // Do NOT populate with user email, account details, previous targets, or email query strings.
+    // Only accept an incoming URL if it is a valid non-email web URL (explicit workflow)
+    if (targetUrlInput) {
+        if (incomingUrl && !incomingUrl.includes("@") && !incomingUrl.toLowerCase().startsWith("mailto:") && /^https?:\/\//i.test(incomingUrl.trim())) {
+            targetUrlInput.value = incomingUrl.trim();
+        } else {
+            targetUrlInput.value = "";
         }
     }
 
-    refreshUrlField();
-    loadRecent();
+    // Initialize UI
+    updateCheckCardsUI();
+    onUrlInputChanged();
+
+    // Browser Autofill Guard: Ensure target field remains blank if browser attempts to autofill credentials/email
+    setTimeout(() => {
+        if (targetUrlInput && targetUrlInput.value) {
+            if (targetUrlInput.value.includes("@") || targetUrlInput.value.toLowerCase().startsWith("mailto:")) {
+                targetUrlInput.value = "";
+                onUrlInputChanged();
+            }
+        }
+    }, 50);
+    setTimeout(() => {
+        if (targetUrlInput && targetUrlInput.value) {
+            if (targetUrlInput.value.includes("@") || targetUrlInput.value.toLowerCase().startsWith("mailto:")) {
+                targetUrlInput.value = "";
+                onUrlInputChanged();
+            }
+        }
+    }, 250);
+
+    // Check backend health silently on page load
+    checkBackendHealth(false);
+
+    // If an existing scan ID is provided in query params, immediately resume monitoring
+    if (existingScanId) {
+        startLiveScanMonitor(existingScanId, (incomingUrl && !incomingUrl.includes("@") ? incomingUrl : "Target Web Application"), selectedProfile, modulesState);
+    }
 });

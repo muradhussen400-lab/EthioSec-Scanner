@@ -3,6 +3,7 @@ import logging
 import asyncio
 import os
 import time
+import datetime
 import zlib
 from urllib.parse import urljoin
 from .safety import is_safe_url, UnsafeTargetError
@@ -51,6 +52,7 @@ class SafeHTTPClient:
             async with self.semaphore:
                 await self._rate_limit()
                 try:
+                    start_time = time.perf_counter()
                     # Stream response to enforce size limit and handle content properly
                     async with self.client.stream(method, current_url, **kwargs) as response:
                         content = b""
@@ -78,6 +80,8 @@ class SafeHTTPClient:
                             if k.lower() not in (b"content-encoding", b"transfer-encoding")
                         ]
                         
+                        duration = time.perf_counter() - start_time
+
                         # Reconstruct response with cleaned headers and decompressed content
                         res = httpx.Response(
                             status_code=response.status_code,
@@ -86,6 +90,8 @@ class SafeHTTPClient:
                             request=response.request,
                             extensions=response.extensions
                         )
+                        res.elapsed = datetime.timedelta(seconds=duration)
+                        setattr(res, "duration", duration)
                         
                 except httpx.RequestError as e:
                     logger.warning(f"HTTP request error for {current_url}: {e.__class__.__name__} - {str(e)}")
@@ -99,6 +105,18 @@ class SafeHTTPClient:
                 next_url = urljoin(current_url, location)
                 current_url = next_url
                 redirects += 1
+
+                # RFC 7231 / RFC 9110: 301, 302, 303 redirects on POST transition method to GET and drop payload
+                if res.status_code in (301, 302, 303) and method.upper() == "POST":
+                    method = "GET"
+                    kwargs.pop("data", None)
+                    kwargs.pop("json", None)
+                    kwargs.pop("content", None)
+                    if "headers" in kwargs and isinstance(kwargs["headers"], dict):
+                        kwargs["headers"] = {
+                            k: v for k, v in kwargs["headers"].items() 
+                            if k.lower() not in ("content-type", "content-length")
+                        }
                 continue
                 
             return res

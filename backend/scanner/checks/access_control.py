@@ -1,11 +1,13 @@
 import re
 import json
 import asyncio
-from typing import Dict, Any, List, Optional, Set, Tuple
+from typing import Dict, Any, List, Optional, Set, Tuple, TYPE_CHECKING
 from urllib.parse import urlparse, urljoin, parse_qsl, urlencode, urlunparse
 import uuid
 
-from scanner.engine import SecurityScanner
+if TYPE_CHECKING:
+    from scanner.engine import SecurityScanner
+
 from scanner.http_client import SafeHTTPClient
 from scanner.test_case import TestCaseResult
 from scanner.differential import BaselineEngine
@@ -19,7 +21,7 @@ class EndpointCandidate:
         self.location = location
 
 class AccessControlScanner:
-    def __init__(self, scanner: SecurityScanner, client: SafeHTTPClient, mode: str):
+    def __init__(self, scanner: "SecurityScanner", client: SafeHTTPClient, mode: str):
         self.scanner = scanner
         self.client = client
         self.mode = mode
@@ -337,7 +339,7 @@ class AccessControlScanner:
         )
 
 async def check_access_control(
-    scanner: SecurityScanner, 
+    scanner: "SecurityScanner", 
     endpoints: list, 
     client: SafeHTTPClient, 
     auth_context_1: dict = None, 

@@ -1,475 +1,764 @@
-if (!localStorage.getItem('token')) {
-    window.location.href = 'login.html';
-}
+/**
+ * ETHIOSECSCAN — ENTERPRISE SETTINGS CONTROLLER (settingsjava.js)
+ * Real backend profile, security, and preferences synchronization.
+ * Supports: Profile, Security, Scan Defaults, Preferences, and Notifications.
+ */
 
-const STORE_KEY = "ethioSettings";
+(function () {
+    "use strict";
 
-const DEFAULTS = {
-    theme: "dark",
-    accent: "#cc2f0c",
-    animations: true,
-    compact: false,
-    language: "English",
-    timezone: "EAT",
-    twoFactor: true,
-    loginAlerts: true,
-    defSqli: true,
-    defXss: true,
-    defHeaders: true,
-    defSsl: true,
-    defDepth: "standard",
-    notifCritical: true,
-    notifHigh: true,
-    notifSecurity: true,
-    notifComplete: true,
-    notifDigest: true,
-    notifQuiet: false
-};
+    const API_BASE = "http://127.0.0.1:8000/api";
+    const token = localStorage.getItem("token");
 
-let settings = { ...DEFAULTS };
-let dirty = false;
+    if (!token) {
+        window.location.href = "login.html";
+        return;
+    }
 
-function $(id) { return document.getElementById(id); }
+    // Helper: DOM query
+    function $(id) {
+        return document.getElementById(id);
+    }
 
-function safeParse(value) {
-    try { return JSON.parse(value); } catch { return null; }
-}
+    // Toast notification
+    function showToast(title, message, isError = false) {
+        const toast = $("toast");
+        const titleEl = $("toastTitle");
+        const msgEl = $("toastMsg");
+        const iconEl = toast ? toast.querySelector(".toast-icon") : null;
 
-function showToast(title, message, type = "success") {
-    const toast = $("toast");
-    if (!toast) return;
+        if (!toast) return;
 
-    const icon = toast.querySelector(".toast-icon");
-    const titleEl = $("toastTitle") || toast.querySelector("strong");
-    const msgEl = $("toastMsg") || toast.querySelector("small");
+        if (titleEl) titleEl.textContent = title;
+        if (msgEl) msgEl.textContent = message;
 
-    if (titleEl) titleEl.textContent = title;
-    if (msgEl) msgEl.textContent = message;
+        if (iconEl) {
+            if (isError) {
+                iconEl.textContent = "✕";
+                iconEl.style.color = "var(--danger, #EF4444)";
+                iconEl.style.background = "var(--danger-subtle, rgba(239, 68, 68, 0.12))";
+                iconEl.style.borderColor = "rgba(239, 68, 68, 0.3)";
+            } else {
+                iconEl.textContent = "✓";
+                iconEl.style.color = "var(--accent-green, #10B981)";
+                iconEl.style.background = "var(--accent-green-subtle, rgba(16, 185, 129, 0.12))";
+                iconEl.style.borderColor = "rgba(16, 185, 129, 0.3)";
+            }
+        }
 
-    if (icon) {
-        if (type === "error") {
-            icon.textContent = "!";
-            icon.style.color = "var(--danger, #ff6b6b)";
-            icon.style.background = "rgba(255, 107, 107, 0.12)";
-        } else {
-            icon.textContent = "✓";
-            icon.style.color = "var(--accent, #1bb369)";
-            icon.style.background = "rgba(27, 179, 105, 0.12)";
+        toast.classList.add("show");
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => {
+            toast.classList.remove("show");
+        }, 3600);
+    }
+
+    // Helper: Compute clean initials
+    function computeInitials(name) {
+        if (!name) return "U";
+        const parts = name.trim().split(/\s+/).filter(Boolean);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+
+    // Helper: Format ISO date string
+    function formatDate(isoStr) {
+        if (!isoStr) return "Recent";
+        try {
+            const d = new Date(isoStr);
+            return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+        } catch (_) {
+            return isoStr;
         }
     }
 
-    toast.classList.add("show");
-    clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(() => toast.classList.remove("show"), 2800);
-}
+    // Eye Icons for Password Fields (SVG only, no emoji)
+    const EYE_OPEN_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+    const EYE_SLASHED_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
 
-async function loadProfile() {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    // Toggle password field visibility with clean SVG icons
+    window.togglePassVisibility = function (inputId, btnEl) {
+        const input = $(inputId);
+        if (!input) return;
 
-    try {
-        const res = await fetch("http://127.0.0.1:8000/api/user/profile", {
-            headers: { "Authorization": `Bearer ${token}` }
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+
+        if (btnEl) {
+            btnEl.innerHTML = isPassword ? EYE_SLASHED_SVG : EYE_OPEN_SVG;
+            btnEl.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
+        }
+    };
+
+    // =========================================================================
+    // 1. TAB CONTROLLER (5 Supported Sections)
+    // =========================================================================
+    function setupTabs() {
+        const tabs = document.querySelectorAll(".tab-btn");
+        const sections = document.querySelectorAll(".settings-section");
+
+        function activateTab(sectionId) {
+            let found = false;
+            tabs.forEach(tab => {
+                const match = tab.dataset.section === sectionId;
+                tab.classList.toggle("active", match);
+                tab.setAttribute("aria-selected", match ? "true" : "false");
+                if (match) found = true;
+            });
+
+            sections.forEach(sec => {
+                sec.classList.toggle("active", sec.id === sectionId);
+            });
+
+            if (found && window.history.replaceState) {
+                window.history.replaceState(null, "", "#" + sectionId);
+            }
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener("click", () => {
+                activateTab(tab.dataset.section);
+            });
+
+            // Keyboard accessibility
+            tab.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    activateTab(tab.dataset.section);
+                }
+            });
         });
-        if (res.ok) {
-            const user = await res.json();
-            fillProfile(user);
+
+        // Activate tab from URL hash on load
+        const initialHash = window.location.hash.replace("#", "").trim();
+        if (initialHash && $(initialHash)) {
+            activateTab(initialHash);
+        }
+
+        // Listen for dynamic hash changes (e.g. from top-right user menu Profile link)
+        window.addEventListener("hashchange", () => {
+            const hash = window.location.hash.replace("#", "").trim();
+            if (hash && $(hash)) {
+                activateTab(hash);
+            }
+        });
+    }
+
+    // =========================================================================
+    // 2. REAL PROFILE MANAGEMENT (GET & PUT /api/user/profile)
+    // =========================================================================
+    async function loadProfile() {
+        try {
+            const res = await fetch(`${API_BASE}/user/profile`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/json"
+                }
+            });
+
+            if (res.status === 401 || res.status === 403) {
+                localStorage.removeItem("token");
+                window.location.href = "login.html";
+                return;
+            }
+
+            if (res.ok) {
+                const user = await res.json();
+                populateProfileUI(user);
+                return;
+            }
+        } catch (err) {
+            console.warn("[EthioSec Settings] Could not load profile:", err);
+        }
+
+        // Fallback to cached identity if offline
+        const cachedName = localStorage.getItem("userName") || "Security Analyst";
+        const cachedEmail = localStorage.getItem("userEmail") || "";
+        populateProfileUI({
+            full_name: cachedName,
+            email: cachedEmail,
+            role: "Security Administrator",
+            is_verified: true
+        });
+    }
+
+    function populateProfileUI(user) {
+        const displayName = (user.full_name || "").trim() || (user.email ? user.email.split("@")[0] : "User");
+        const initials = computeInitials(displayName);
+
+        // Previews
+        if ($("previewName")) $("previewName").textContent = displayName;
+        if ($("previewEmail")) $("previewEmail").textContent = user.email || "";
+        if ($("previewRole")) $("previewRole").textContent = user.role ? `${user.role} • Administrator` : "Security Analyst • Administrator";
+        if ($("avatarLetter")) $("avatarLetter").textContent = initials;
+        if ($("avatarLetterSide")) $("avatarLetterSide").textContent = initials;
+        if ($("quickInfoRole")) $("quickInfoRole").textContent = user.role || "Administrator";
+
+        // Form Fields
+        const formattedUserId = user.id ? (String(user.id).startsWith("usr_") ? user.id : `usr_${String(user.id).slice(0, 12)}`) : "—";
+        const formattedMemberSince = user.created_at ? formatDate(user.created_at) : "—";
+
+        if ($("fullName")) $("fullName").value = user.full_name || displayName;
+        if ($("website")) $("website").value = user.website || "";
+        if ($("email")) $("email").value = user.email || "";
+        if ($("userId")) $("userId").value = formattedUserId;
+        if ($("memberSince")) $("memberSince").value = formattedMemberSince;
+        
+        if ($("role")) {
+            const rVal = user.role || "Security Analyst";
+            for (let opt of $("role").options) {
+                if (opt.value.toLowerCase() === rVal.toLowerCase()) {
+                    opt.selected = true;
+                    break;
+                }
+            }
+        }
+
+        // Account Overview (Right Card)
+        if ($("overviewFullName")) $("overviewFullName").textContent = displayName;
+        if ($("overviewEmail")) $("overviewEmail").textContent = user.email || "—";
+        if ($("overviewRole")) $("overviewRole").textContent = user.role || "Security Analyst";
+        if ($("overviewUserId")) $("overviewUserId").textContent = formattedUserId;
+        if ($("overviewMemberSince")) $("overviewMemberSince").textContent = formattedMemberSince;
+
+        // Verified status badge
+        const badge = $("verifiedStatusBadge");
+        if (badge) {
+            badge.textContent = user.is_verified ? "✓ Verified" : "○ Pending Verification";
+            badge.className = user.is_verified ? "badge-pill verified" : "badge-pill sync-pending";
+        }
+
+        // Quick Info & Session Timestamps
+        const loginTimestamp = user.last_login ? formatDate(user.last_login) : (user.created_at ? formatDate(user.created_at) : "Active session");
+        if ($("quickInfoLastLogin")) $("quickInfoLastLogin").textContent = loginTimestamp;
+        if ($("sessionLoginTime")) $("sessionLoginTime").textContent = loginTimestamp;
+        if ($("sessionLocation")) $("sessionLocation").textContent = "Localhost (127.0.0.1)";
+        if ($("sessionDevice")) $("sessionDevice").textContent = `${navigator.platform || 'Desktop'} · Authenticated`;
+
+        // Synchronize application header & storage
+        if (window.EthioAuth && window.EthioAuth.applyUserIdentity) {
+            window.EthioAuth.applyUserIdentity(user);
+        }
+    }
+
+    window.cancelProfileEdit = function () {
+        loadProfile();
+        showToast("Changes Discarded", "Profile form reset to last saved values.");
+    };
+
+    window.saveProfile = async function (event) {
+        event.preventDefault();
+
+        const btn = $("btnSaveProfile");
+        const feedback = $("profileFeedback");
+        const fullName = ($("fullName") ? $("fullName").value : "").trim();
+        const website = ($("website") ? $("website").value : "").trim();
+
+        if (btn) btn.classList.add("loading");
+        if (btn) btn.disabled = true;
+        if (feedback) feedback.textContent = "";
+
+        try {
+            const res = await fetch(`${API_BASE}/user/profile`, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    full_name: fullName || null,
+                    website: website || null
+                })
+            });
+
+            if (res.ok) {
+                const updated = await res.json();
+                populateProfileUI(updated);
+                showToast("Profile Updated", "Your profile changes were saved successfully.");
+                if (feedback) {
+                    feedback.textContent = "✓ Saved";
+                    feedback.className = "action-feedback success";
+                    setTimeout(() => { if (feedback) feedback.textContent = ""; }, 3000);
+                }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                const msg = errData.detail || "Failed to update profile.";
+                showToast("Update Failed", msg, true);
+                if (feedback) {
+                    feedback.textContent = `✕ ${msg}`;
+                    feedback.className = "action-feedback error";
+                }
+            }
+        } catch (err) {
+            showToast("Network Error", "Could not reach the server to save profile.", true);
+            if (feedback) {
+                feedback.textContent = "✕ Network error";
+                feedback.className = "action-feedback error";
+            }
+        } finally {
+            if (btn) btn.classList.remove("loading");
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    // =========================================================================
+    // 3. REAL PASSWORD MANAGEMENT & STRENGTH METER (POST /api/auth/change-password)
+    // =========================================================================
+    function setupPasswordMeter() {
+        const newPassInput = $("newPassword");
+        if (!newPassInput) return;
+
+        newPassInput.addEventListener("input", () => {
+            const val = newPassInput.value;
+            const bar = $("strengthBar");
+            const text = $("strengthText");
+
+            const hasLength = val.length >= 8;
+            const hasCase = /[a-z]/.test(val) && /[A-Z]/.test(val);
+            const hasNum = /\d/.test(val);
+            const hasSymbol = /[^A-Za-z0-9]/.test(val);
+
+            // Update rule items
+            const rLen = $("ruleLength");
+            const rCase = $("ruleCase");
+            const rNum = $("ruleNumber");
+            const rSym = $("ruleSymbol");
+
+            if (rLen) rLen.classList.toggle("met", hasLength);
+            if (rCase) rCase.classList.toggle("met", hasCase);
+            if (rNum) rNum.classList.toggle("met", hasNum);
+            if (rSym) rSym.classList.toggle("met", hasSymbol);
+
+            // Score calculation (0 to 4)
+            let score = 0;
+            if (hasLength) score++;
+            if (hasCase) score++;
+            if (hasNum) score++;
+            if (hasSymbol) score++;
+
+            if (!bar || !text) return;
+
+            if (val.length === 0) {
+                bar.style.width = "0%";
+                text.textContent = "Enter password";
+                text.style.color = "var(--text-secondary)";
+            } else if (score <= 1) {
+                bar.style.width = "25%";
+                bar.style.backgroundColor = "var(--danger, #EF4444)";
+                text.textContent = "Weak";
+                text.style.color = "var(--danger, #EF4444)";
+            } else if (score === 2) {
+                bar.style.width = "50%";
+                bar.style.backgroundColor = "var(--warning, #F59E0B)";
+                text.textContent = "Fair";
+                text.style.color = "var(--warning, #F59E0B)";
+            } else if (score === 3) {
+                bar.style.width = "75%";
+                bar.style.backgroundColor = "var(--warning, #F59E0B)";
+                text.textContent = "Good";
+                text.style.color = "var(--warning, #F59E0B)";
+            } else {
+                bar.style.width = "100%";
+                bar.style.backgroundColor = "var(--accent-green, #10B981)";
+                text.textContent = "Strong";
+                text.style.color = "var(--accent-green, #10B981)";
+            }
+        });
+    }
+
+    window.changePassword = async function (event) {
+        event.preventDefault();
+
+        const btn = $("btnChangePassword");
+        const feedback = $("passwordFeedback");
+        const currentPassword = ($("currentPassword") ? $("currentPassword").value : "");
+        const newPassword = ($("newPassword") ? $("newPassword").value : "");
+        const confirmPassword = ($("confirmPassword") ? $("confirmPassword").value : "");
+
+        if (!currentPassword) {
+            showToast("Missing Field", "Please enter your current password.", true);
             return;
         }
-    } catch (e) {
-        console.error("Failed to load profile from backend", e);
-    }
 
-    const email = localStorage.getItem("userEmail") || "admin@ethiosec.local";
-    fillProfile({ full_name: "Security Administrator", email: email, role: "Security Administrator" });
-}
+        if (newPassword.length < 8) {
+            showToast("Password Too Short", "New password must be at least 8 characters long.", true);
+            return;
+        }
 
-function fillProfile(user) {
-    const name = user.full_name || "Security Administrator";
+        if (newPassword !== confirmPassword) {
+            showToast("Password Mismatch", "New password and confirm password do not match.", true);
+            return;
+        }
 
-    if ($("fullName")) $("fullName").value = name;
-    if ($("email")) $("email").value = user.email || "";
-    if ($("username")) $("username").value = (user.email || "").split("@")[0];
-    if ($("role") && user.role) $("role").value = user.role;
+        if (btn) btn.classList.add("loading");
+        if (btn) btn.disabled = true;
+        if (feedback) feedback.textContent = "";
 
-    refreshProfilePreview();
-}
-
-function refreshProfilePreview() {
-    const fullNameInput = $("fullName");
-    const emailInput = $("email");
-
-    const name = (fullNameInput ? fullNameInput.value.trim() : "") || "Security Administrator";
-    const email = (emailInput ? emailInput.value.trim() : "") || "admin@ethiosec.local";
-    const initials = name.split(/\s+/).filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2);
-
-    if ($("previewName")) $("previewName").textContent = name;
-    if ($("previewEmail")) $("previewEmail").textContent = email;
-    if ($("avatarLetter")) $("avatarLetter").textContent = initials || "S";
-
-    const sidebarName = $("userName");
-    const sidebarEmail = $("userEmail");
-    const sidebarInitial = $("userInitial");
-    if (sidebarName) sidebarName.textContent = name;
-    if (sidebarEmail) sidebarEmail.textContent = email;
-    if (sidebarInitial) sidebarInitial.textContent = initials || "S";
-}
-
-function setupTabs() {
-    const tabs = document.querySelectorAll(".tab-btn");
-    const sections = document.querySelectorAll(".settings-section");
-
-    function activate(id) {
-        const tab = document.querySelector(`.tab-btn[data-section="${id}"]`);
-        const section = $(id);
-        if (!tab || !section) return;
-
-        tabs.forEach(t => t.classList.remove("active"));
-        sections.forEach(s => s.classList.remove("active"));
-
-        tab.classList.add("active");
-        section.classList.add("active");
-        history.replaceState(null, "", "#" + id);
-    }
-
-    tabs.forEach(tab => tab.addEventListener("click", () => activate(tab.dataset.section)));
-
-    const hash = location.hash.replace("#", "");
-    if (hash) activate(hash);
-}
-
-function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme);
-
-    if ($("themeIcon")) $("themeIcon").textContent = theme === "light" ? "☀️" : "🌙";
-    if ($("themeToggle")) {
-        $("themeToggle").setAttribute("aria-label", theme === "light" ? "Switch to dark mode" : "Switch to light mode");
-    }
-
-    document.querySelectorAll(".theme-option").forEach(btn => {
-        btn.classList.toggle("active", btn.dataset.themeChoice === theme);
-    });
-}
-
-function applyAccent(hex) {
-    document.documentElement.style.setProperty("--primary", hex);
-    document.documentElement.style.setProperty("--primary-light", lighten(hex, 28));
-    document.documentElement.style.setProperty("--primary-dark", lighten(hex, -28));
-
-    document.querySelectorAll(".swatch").forEach(sw => {
-        sw.classList.toggle("active", sw.dataset.accent === hex);
-    });
-}
-
-function lighten(hex, amount) {
-    const cleanHex = hex.replace("#", "");
-    const num = parseInt(cleanHex, 16);
-    const clamp = v => Math.max(0, Math.min(255, v));
-
-    const r = clamp((num >> 16) + amount);
-    const g = clamp(((num >> 8) & 0xff) + amount);
-    const b = clamp((num & 0xff) + amount);
-
-    return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
-}
-
-function applyPreferences() {
-    applyTheme(settings.theme);
-    applyAccent(settings.accent);
-    document.documentElement.setAttribute("data-animations", String(settings.animations));
-    document.documentElement.setAttribute("data-compact", String(settings.compact));
-}
-
-const CONTROL_MAP = {
-    twoFactor: "twoFactor",
-    loginAlerts: "loginAlerts",
-    defSqli: "defSqli",
-    defXss: "defXss",
-    defHeaders: "defHeaders",
-    defSsl: "defSsl",
-    animations: "animations",
-    compactMode: "compact",
-    notifCritical: "notifCritical",
-    notifHigh: "notifHigh",
-    notifSecurity: "notifSecurity",
-    notifComplete: "notifComplete",
-    notifDigest: "notifDigest",
-    notifQuiet: "notifQuiet"
-};
-
-async function loadSettings() {
-    let localSet = safeParse(localStorage.getItem(STORE_KEY)) || {};
-    settings = { ...DEFAULTS, ...localSet };
-
-    const token = localStorage.getItem('token');
-    if (token) {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/user/settings', {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetch(`${API_BASE}/auth/change-password`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword
+                })
             });
+
             if (res.ok) {
-                const apiSet = await res.json();
-                settings.defDepth = apiSet.default_scan_depth || settings.defDepth;
-                settings.notifComplete = apiSet.notif_scan_completed !== null ? apiSet.notif_scan_completed : settings.notifComplete;
-                settings.notifSecurity = apiSet.notif_security_findings !== null ? apiSet.notif_security_findings : settings.notifSecurity;
+                // Clear inputs
+                if ($("currentPassword")) $("currentPassword").value = "";
+                if ($("newPassword")) {
+                    $("newPassword").value = "";
+                    $("newPassword").dispatchEvent(new Event("input"));
+                }
+                if ($("confirmPassword")) $("confirmPassword").value = "";
+
+                showToast("Password Updated", "Your authentication password was updated successfully.");
+                if (feedback) {
+                    feedback.textContent = "✓ Password updated";
+                    feedback.className = "action-feedback success";
+                    setTimeout(() => { if (feedback) feedback.textContent = ""; }, 3000);
+                }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                const msg = errData.detail || "Failed to update password.";
+                showToast("Password Update Failed", msg, true);
+                if (feedback) {
+                    feedback.textContent = `✕ ${msg}`;
+                    feedback.className = "action-feedback error";
+                }
             }
-        } catch (e) {
-            console.error("API Settings Load Error", e);
+        } catch (err) {
+            showToast("Network Error", "Could not reach server to change password.", true);
+            if (feedback) {
+                feedback.textContent = "✕ Network error";
+                feedback.className = "action-feedback error";
+            }
+        } finally {
+            if (btn) btn.classList.remove("loading");
+            if (btn) btn.disabled = false;
         }
-    }
-    reflectSettings();
-}
-
-function reflectSettings() {
-    Object.entries(CONTROL_MAP).forEach(([elementId, key]) => {
-        const el = $(elementId);
-        if (el) el.checked = Boolean(settings[key]);
-    });
-
-    if ($("defDepth")) $("defDepth").value = settings.defDepth || "standard";
-    if ($("language")) $("language").value = settings.language || "English";
-    if ($("timezone")) $("timezone").value = settings.timezone || "EAT";
-
-    applyPreferences();
-}
-
-function collectSettings() {
-    return {
-        theme: document.documentElement.getAttribute("data-theme") || "dark",
-        accent: document.querySelector(".swatch.active")?.dataset.accent || DEFAULTS.accent,
-        animations: $("animations") ? $("animations").checked : true,
-        compact: $("compactMode") ? $("compactMode").checked : false,
-        language: $("language") ? $("language").value : "English",
-        timezone: $("timezone") ? $("timezone").value : "EAT",
-        twoFactor: $("twoFactor") ? $("twoFactor").checked : true,
-        loginAlerts: $("loginAlerts") ? $("loginAlerts").checked : true,
-        defSqli: $("defSqli") ? $("defSqli").checked : true,
-        defXss: $("defXss") ? $("defXss").checked : true,
-        defHeaders: $("defHeaders") ? $("defHeaders").checked : true,
-        defSsl: $("defSsl") ? $("defSsl").checked : true,
-        defDepth: $("defDepth") ? $("defDepth").value : "standard",
-        notifCritical: $("notifCritical") ? $("notifCritical").checked : true,
-        notifHigh: $("notifHigh") ? $("notifHigh").checked : true,
-        notifSecurity: $("notifSecurity") ? $("notifSecurity").checked : true,
-        notifComplete: $("notifComplete") ? $("notifComplete").checked : true,
-        notifDigest: $("notifDigest") ? $("notifDigest").checked : true,
-        notifQuiet: $("notifQuiet") ? $("notifQuiet").checked : false
-    };
-}
-
-function markDirty() {
-    if (dirty) return;
-    dirty = true;
-    if ($("saveStatus")) {
-        $("saveStatus").innerHTML =
-            '<span class="save-status-dot" style="background: var(--warning, #ffa500)"></span> Unsaved changes';
-    }
-}
-
-function markSaved() {
-    dirty = false;
-    if ($("saveStatus")) {
-        $("saveStatus").innerHTML = '<span class="save-status-dot"></span> All changes saved';
-    }
-}
-
-async function saveSettings() {
-    const btn = $("saveChanges");
-    const name = $("fullName") ? $("fullName").value.trim() : "";
-    const email = $("email") ? $("email").value.trim() : "";
-
-    if (!name) {
-        showToast("Name is required", "Enter your full name", "error");
-        return $("fullName")?.focus();
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showToast("Check email address", "Please provide a valid email format", "error");
-        return $("email")?.focus();
-    }
-
-    const original = btn ? btn.innerHTML : "Save changes";
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = "⏳ Saving…";
-    }
-
-    try {
-        const token = localStorage.getItem('token');
-        if (token) {
-            // Update Profile on backend
-            await fetch('http://127.0.0.1:8000/api/user/profile', {
-                method: 'PUT',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    full_name: name
-                })
-            });
-
-            // Update Settings on backend
-            settings = collectSettings();
-            localStorage.setItem(STORE_KEY, JSON.stringify(settings));
-
-            await fetch('http://127.0.0.1:8000/api/user/settings', {
-                method: 'PUT',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    default_scan_depth: settings.defDepth,
-                    notif_scan_completed: settings.notifComplete,
-                    notif_security_findings: settings.notifSecurity
-                })
-            });
-        }
-
-        markSaved();
-        refreshProfilePreview();
-        showToast("Settings saved", "Your preferences have been saved to your account.");
-
-    } catch (err) {
-        showToast("Could not save", err.message || "Unknown error", "error");
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = original;
-        }
-    }
-}
-
-function updateStrength(password) {
-    const bar = $("strengthBar");
-    const text = $("strengthText");
-    if (!bar || !text) return;
-
-    const rules = {
-        length: password.length >= 8,
-        case: /[a-z]/.test(password) && /[A-Z]/.test(password),
-        number: /[0-9]/.test(password),
-        symbol: /[^A-Za-z0-9]/.test(password)
     };
 
-    document.querySelectorAll("#strengthRules li").forEach(li => {
-        li.classList.toggle("met", Boolean(rules[li.dataset.rule]));
-    });
-
-    const score = Object.values(rules).filter(Boolean).length;
-
-    if (!password) {
-        bar.style.width = "0%";
-        text.textContent = "Not checked";
-        text.style.color = "var(--text-muted, #b0a9a6)";
-        return;
-    }
-
-    const levels = [
-        { width: "25%", label: "Weak", color: "var(--danger, #ff6b6b)" },
-        { width: "50%", label: "Fair", color: "var(--warning, #ffa500)" },
-        { width: "75%", label: "Good", color: "var(--primary-light, #ff4b20)" },
-        { width: "100%", label: "Strong", color: "var(--accent, #1bb369)" }
+    // =========================================================================
+    // 4. SCAN DEFAULTS (UserSettings.default_scan_depth & Scanner Modules)
+    // =========================================================================
+    const MODULE_IDS = [
+        "mod_sqli",
+        "mod_xss",
+        "mod_access_control",
+        "mod_headers",
+        "mod_https",
+        "mod_exposed_files",
+        "mod_info_disclosure",
+        "mod_cookies"
     ];
 
-    const level = levels[Math.max(0, score - 1)];
-    bar.style.width = level.width;
-    bar.style.background = level.color;
-    text.textContent = level.label;
-    text.style.color = level.color;
-}
+    async function loadScanDefaults() {
+        // Load depth from backend
+        try {
+            const res = await fetch(`${API_BASE}/user/settings`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/json"
+                }
+            });
 
-function checkPasswordMatch() {
-    const field = $("confirmPassword");
-    const newField = $("newPassword");
-    if (!field || !newField) return;
+            if (res.ok) {
+                const settings = await res.json();
+                if ($("defaultScanDepth") && settings.default_scan_depth) {
+                    $("defaultScanDepth").value = settings.default_scan_depth.toLowerCase();
+                }
+            }
+        } catch (err) {
+            console.warn("[EthioSec Settings] Could not load scan depth:", err);
+        }
 
-    if (!field.value) {
-        field.style.borderColor = "";
-        return;
+        // Load modules from local preferences
+        try {
+            const savedModules = JSON.parse(localStorage.getItem("ethiosec_scan_modules") || "{}");
+            MODULE_IDS.forEach(id => {
+                const el = $(id);
+                if (el) {
+                    el.checked = savedModules[id] !== undefined ? savedModules[id] : true;
+                }
+            });
+        } catch (_) {
+            MODULE_IDS.forEach(id => {
+                const el = $(id);
+                if (el) el.checked = true;
+            });
+        }
     }
-    field.style.borderColor = field.value === newField.value ? "var(--accent, #1bb369)" : "var(--danger, #ff6b6b)";
-}
 
-function setupControls() {
-    ["fullName", "email"].forEach(id => {
-        if ($(id)) $(id).addEventListener("input", () => { refreshProfilePreview(); markDirty(); });
-    });
+    window.markScanDefaultsPending = function () {
+        const badge = $("scanDepthSyncBadge");
+        if (badge) {
+            badge.textContent = "○ Unsaved changes";
+            badge.className = "badge-pill sync-pending";
+        }
+    };
 
-    if ($("username")) $("username").addEventListener("input", markDirty);
+    window.onScanDepthChanged = function () {
+        window.markScanDefaultsPending();
+    };
 
-    document.querySelectorAll('.switch input[type="checkbox"]').forEach(input => {
-        input.addEventListener("change", markDirty);
-    });
+    window.saveScanDefaults = async function () {
+        const btn = $("btnSaveScanDefaults");
+        const feedback = $("scanDefaultsFeedback");
+        const depth = $("defaultScanDepth") ? $("defaultScanDepth").value : "standard";
 
-    document.querySelectorAll("select").forEach(select => select.addEventListener("change", markDirty));
-
-    if ($("animations")) {
-        $("animations").addEventListener("change", e => {
-            document.documentElement.setAttribute("data-animations", String(e.target.checked));
+        // Collect module toggle states
+        const modulesState = {};
+        MODULE_IDS.forEach(id => {
+            const el = $(id);
+            if (el) modulesState[id] = el.checked;
         });
-    }
 
-    if ($("compactMode")) {
-        $("compactMode").addEventListener("change", e => {
-            document.documentElement.setAttribute("data-compact", String(e.target.checked));
+        if (btn) btn.classList.add("loading");
+        if (btn) btn.disabled = true;
+        if (feedback) feedback.textContent = "";
+
+        try {
+            // Save depth to backend user settings
+            const res = await fetch(`${API_BASE}/user/settings`, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    default_scan_depth: depth
+                })
+            });
+
+            // Save modules to local storage
+            localStorage.setItem("ethiosec_scan_modules", JSON.stringify(modulesState));
+
+            if (res.ok) {
+                showToast("Scan Defaults Saved", "Default scan depth and module configurations were updated.");
+                const badge = $("scanDepthSyncBadge");
+                if (badge) {
+                    badge.textContent = "● Persisted";
+                    badge.className = "badge-pill verified";
+                }
+                if (feedback) {
+                    feedback.textContent = "✓ Scan defaults saved";
+                    feedback.className = "action-feedback success";
+                    setTimeout(() => { if (feedback) feedback.textContent = ""; }, 3000);
+                }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                const msg = errData.detail || "Failed to update scan defaults.";
+                showToast("Save Failed", msg, true);
+                if (feedback) {
+                    feedback.textContent = `✕ ${msg}`;
+                    feedback.className = "action-feedback error";
+                }
+            }
+        } catch (err) {
+            showToast("Network Error", "Could not reach server to save scan defaults.", true);
+            if (feedback) {
+                feedback.textContent = "✕ Network error";
+                feedback.className = "action-feedback error";
+            }
+        } finally {
+            if (btn) btn.classList.remove("loading");
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    // Reset Defaults Confirmation Modal Handling
+    window.openResetModal = function () {
+        const modal = $("resetModal");
+        if (modal) modal.classList.add("show");
+    };
+
+    window.closeResetModal = function () {
+        const modal = $("resetModal");
+        if (modal) modal.classList.remove("show");
+    };
+
+    window.confirmResetDefaults = async function () {
+        window.closeResetModal();
+
+        // Reset inputs
+        if ($("defaultScanDepth")) $("defaultScanDepth").value = "standard";
+        MODULE_IDS.forEach(id => {
+            const el = $(id);
+            if (el) el.checked = true;
         });
+
+        // Trigger save with defaults
+        await window.saveScanDefaults();
+        showToast("Defaults Restored", "Audit profile reset to Standard and all 8 modules re-enabled.");
+    };
+
+    // =========================================================================
+    // 5. PREFERENCES (Theme, UI Animations, Compact Density)
+    // =========================================================================
+    function loadUiPreferences() {
+        const animations = localStorage.getItem("ethiosec_animations") !== "false";
+        const compact = localStorage.getItem("ethiosec_compact") === "true";
+
+        if ($("prefAnimations")) $("prefAnimations").checked = animations;
+        if ($("prefCompact")) $("prefCompact").checked = compact;
     }
 
-    if ($("themeToggle")) {
-        $("themeToggle").addEventListener("click", () => {
-            const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
-            applyTheme(next);
-            markDirty();
-        });
+    window.saveUiPreferences = function (event) {
+        event.preventDefault();
+
+        const btn = $("btnSavePreferences");
+        const feedback = $("prefFeedback");
+
+        const animations = $("prefAnimations") ? $("prefAnimations").checked : true;
+        const compact = $("prefCompact") ? $("prefCompact").checked : false;
+
+        localStorage.setItem("ethiosec_animations", animations.toString());
+        localStorage.setItem("ethiosec_compact", compact.toString());
+
+        // Apply immediately
+        document.body.classList.toggle("compact-density", compact);
+
+        if (feedback) {
+            feedback.textContent = "✓ Preferences saved";
+            feedback.className = "action-feedback success";
+            setTimeout(() => { if (feedback) feedback.textContent = ""; }, 3000);
+        }
+        showToast("Preferences Updated", "Interface density and animation preferences saved.");
+    };
+
+    // =========================================================================
+    // 6. REAL NOTIFICATIONS (UserSettings)
+    // =========================================================================
+    async function loadNotifications() {
+        try {
+            const res = await fetch(`${API_BASE}/user/settings`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/json"
+                }
+            });
+
+            if (res.ok) {
+                const settings = await res.json();
+                if ($("notifScanCompleted")) $("notifScanCompleted").checked = settings.notif_scan_completed !== false;
+                if ($("notifScanFailed")) $("notifScanFailed").checked = settings.notif_scan_failed !== false;
+                if ($("notifSecurityFindings")) $("notifSecurityFindings").checked = settings.notif_security_findings !== false;
+
+                const badge = $("notifSyncBadge");
+                if (badge) {
+                    badge.textContent = "● All changes saved";
+                    badge.className = "badge-pill sync-saved";
+                }
+            }
+        } catch (err) {
+            console.warn("[EthioSec Settings] Could not load notification settings:", err);
+        }
     }
 
-    document.querySelectorAll(".theme-option").forEach(btn => {
-        btn.addEventListener("click", () => { applyTheme(btn.dataset.themeChoice); markDirty(); });
-    });
+    window.markNotifPending = function () {
+        const badge = $("notifSyncBadge");
+        if (badge) {
+            badge.textContent = "○ Unsaved changes";
+            badge.className = "badge-pill sync-pending";
+        }
+    };
 
-    document.querySelectorAll(".swatch").forEach(sw => {
-        sw.addEventListener("click", () => { applyAccent(sw.dataset.accent); markDirty(); });
-    });
+    window.saveNotifications = async function (event) {
+        event.preventDefault();
 
-    if ($("newPassword")) {
-        $("newPassword").addEventListener("input", e => {
-            updateStrength(e.target.value);
-            checkPasswordMatch();
-            markDirty();
-        });
-    }
+        const btn = $("btnSaveNotifications");
+        const feedback = $("notifFeedback");
 
-    if ($("confirmPassword")) $("confirmPassword").addEventListener("input", checkPasswordMatch);
+        const notifCompleted = $("notifScanCompleted") ? $("notifScanCompleted").checked : true;
+        const notifFailed = $("notifScanFailed") ? $("notifScanFailed").checked : true;
+        const notifFindings = $("notifSecurityFindings") ? $("notifSecurityFindings").checked : true;
 
-    if ($("resetDefaults")) {
-        $("resetDefaults").addEventListener("click", () => {
-            if (!confirm("Reset all preferences to their defaults?")) return;
+        if (btn) btn.classList.add("loading");
+        if (btn) btn.disabled = true;
+        if (feedback) feedback.textContent = "";
 
-            settings = { ...DEFAULTS };
-            localStorage.setItem(STORE_KEY, JSON.stringify(settings));
-            reflectSettings();
-            markSaved();
-            showToast("Settings reset", "Default configurations restored.");
-        });
-    }
+        try {
+            const res = await fetch(`${API_BASE}/user/settings`, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    notif_scan_completed: notifCompleted,
+                    notif_scan_failed: notifFailed,
+                    notif_security_findings: notifFindings
+                })
+            });
 
-    if ($("saveChanges")) $("saveChanges").addEventListener("click", saveSettings);
+            if (res.ok) {
+                showToast("Preferences Saved", "Your notification alert preferences were synchronized.");
+                const badge = $("notifSyncBadge");
+                if (badge) {
+                    badge.textContent = "● All changes saved";
+                    badge.className = "badge-pill sync-saved";
+                }
+                if (feedback) {
+                    feedback.textContent = "✓ Notifications saved";
+                    feedback.className = "action-feedback success";
+                    setTimeout(() => { if (feedback) feedback.textContent = ""; }, 3000);
+                }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                const msg = errData.detail || "Failed to update notification settings.";
+                showToast("Update Failed", msg, true);
+                if (feedback) {
+                    feedback.textContent = `✕ ${msg}`;
+                    feedback.className = "action-feedback error";
+                }
+            }
+        } catch (err) {
+            showToast("Network Error", "Could not reach server to save notifications.", true);
+            if (feedback) {
+                feedback.textContent = "✕ Network error";
+                feedback.className = "action-feedback error";
+            }
+        } finally {
+            if (btn) btn.classList.remove("loading");
+            if (btn) btn.disabled = false;
+        }
+    };
 
-    document.addEventListener("keydown", e => {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-            e.preventDefault();
-            saveSettings();
+    // =========================================================================
+    // INITIALIZATION
+    // =========================================================================
+    document.addEventListener("DOMContentLoaded", () => {
+        setupTabs();
+        setupPasswordMeter();
+        loadProfile();
+        loadScanDefaults();
+        loadUiPreferences();
+        loadNotifications();
+
+        // Browser session description
+        const agentDesc = $("sessionAgentDesc");
+        if (agentDesc) {
+            agentDesc.textContent = `${navigator.userAgent.split(" ").slice(0, 3).join(" ")} · Active Bearer JWT`;
+        }
+
+        // Close modal when clicking outside dialog
+        const resetModal = $("resetModal");
+        if (resetModal) {
+            resetModal.addEventListener("click", (e) => {
+                if (e.target === resetModal) {
+                    window.closeResetModal();
+                }
+            });
         }
     });
-}
 
-document.addEventListener("DOMContentLoaded", () => {
-    setupTabs();
-    loadSettings();
-    loadProfile();
-    setupControls();
-    updateStrength("");
-    markSaved();
-});
+})();

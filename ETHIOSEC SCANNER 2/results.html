@@ -1,280 +1,560 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Results — EthioSecScan</title>
+    <meta name="description" content="Detailed security scan results, vulnerability severity breakdown, and technical remediation guidance on EthioSecScan.">
+    
+    <!-- Design System Typography & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Verified Stylesheet -->
+    <link rel="stylesheet" href="resultsstyle.css">
+    <link rel="stylesheet" href="shared_nav_header.css">
+    <!-- Shared Auth & Identity -->
+    <script src="shared_auth.js"></script>
+</head>
+<body>
+
+    <!-- Mobile Navigation Toggle & Backdrop -->
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Navigation Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="layout">
+
+        <!-- ============ APPROVED SIDEBAR ============ -->
+        <aside class="sidebar" id="sidebar">
+            <a href="dashboardfinal.html" class="sidebar-logo">
+                <div class="logo-shield-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="logo-text-group">
+                    <span class="logo-title">EthioSecScan</span>
+                    <span class="logo-subtitle">Scan • Detect • Secure</span>
+                </div>
+            </a>
+
+            <!-- Navigation Links -->
+            <nav class="sidebar-nav">
+                <a href="dashboardfinal.html" class="side-link" id="navDashboard">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="9"></rect>
+                            <rect x="14" y="3" width="7" height="5"></rect>
+                            <rect x="14" y="12" width="7" height="9"></rect>
+                            <rect x="3" y="16" width="7" height="5"></rect>
+                        </svg>
+                    </span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="scanfinal.html" class="side-link" id="navNewScan">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>New Scan</span>
+                </a>
+                <a href="scan_history.html" class="side-link" id="navHistory">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </span>
+                    <span>History</span>
+                </a>
+                <a href="results.html" class="side-link active" id="navResults">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </span>
+                    <span>Results</span>
+                </a>
+                <a href="reports.html" class="side-link" id="navReports">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                    </span>
+                    <span>Reports</span>
+                </a>
+                <a href="assistant.html" class="side-link">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                            <circle cx="12" cy="5" r="2"></circle>
+                            <path d="M12 7v4"></path>
+                            <line x1="8" y1="16" x2="8" y2="16"></line>
+                            <line x1="16" y1="16" x2="16" y2="16"></line>
+                        </svg>
+                    </span>
+                    <span>AI Assistant</span>
+                </a>
+
+                <div class="nav-divider"></div>
+
+                <a href="settings.html" class="side-link">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </span>
+                    <span>Settings</span>
+                </a>
+                <a href="#" class="side-link" id="sidebarLogoutLink" onclick="logout(event)">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <!-- Bottom System Status Box -->
+            <div class="service-status-box" id="serviceStatusBox" title="All services operational">
+                <div class="service-status-dot online" id="serviceStatusDot"></div>
+                <div class="service-status-text">
+                    <span class="service-name">System Healthy</span>
+                    <span class="service-state" id="serviceStateText">All services running</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ============ MAIN CONTENT AREA ============ -->
+        <main class="main-content">
+
+            <!-- Page Header -->
+            <header class="page-header">
+                <div class="header-left">
+                    <h1 class="page-title">Security Assessment Report</h1>
+                    <div class="target-breadcrumbs">
+                        <span>Target:</span>
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="target-url-badge" id="targetBreadcrumb">Loading…</a>
+                        <span class="chip-tag" id="scanIdBadge" style="font-family:'Inter',monospace; font-size:11px;">—</span>
+                        <span class="chip-tag" id="scanProfileBadge">Standard Scan</span>
+                    </div>
+                </div>
+
+                <div class="header-right-group">
+                    <div class="header-report-actions">
+                        <a href="scan_history.html" class="btn-secondary" title="View all completed scans">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                            <span>History</span>
+                        </a>
+                        <button type="button" class="btn-secondary" id="btnExportJson" title="Export raw findings as JSON">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            <span>Export JSON</span>
+                        </button>
+                        <a href="scanfinal.html" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; background:#E83B25; color:#fff; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <span>New Scan</span>
+                        </a>
+                    </div>
+
+                    <div class="header-actions">
+                        <!-- Notification Bell with Dropdown Panel -->
+                        <div class="notif-dropdown-wrapper" id="notifDropdownWrapper">
+                            <button class="header-icon-btn" id="notifBtn" type="button" aria-label="Notifications" title="Notifications">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                </svg>
+                                <span class="notif-badge" id="notifBadge"></span>
+                            </button>
+
+                            <div class="notif-dropdown-panel" id="notifPanel">
+                                <div class="notif-panel-header">
+                                    <span class="notif-panel-title">Notifications</span>
+                                    <button class="notif-clear-btn" id="markAllReadBtn" type="button">Mark all read</button>
+                                </div>
+                                <div class="notif-list" id="notifList">
+                                    <div class="notif-item unread">
+                                        <div class="notif-icon-circle warn">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                        </div>
+                                        <div class="notif-content">
+                                            <div class="notif-title">High Vulnerability Alert</div>
+                                            <div class="notif-desc">Target security scan found critical risk items on audited host.</div>
+                                            <div class="notif-time">10m ago</div>
+                                        </div>
+                                    </div>
+                                    <div class="notif-item">
+                                        <div class="notif-icon-circle success">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                        </div>
+                                        <div class="notif-content">
+                                            <div class="notif-title">Scan Completed</div>
+                                            <div class="notif-desc">Audit for target has completed successfully.</div>
+                                            <div class="notif-time">1h ago</div>
+                                        </div>
+                                    </div>
+                                    <div class="notif-item">
+                                        <div class="notif-icon-circle info">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                        </div>
+                                        <div class="notif-content">
+                                            <div class="notif-title">Scanner Engine Ready</div>
+                                            <div class="notif-desc">FastAPI backend online and database synchronized.</div>
+                                            <div class="notif-time">2h ago</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- User Profile Dropdown Pill -->
+                        <div class="user-pill-dropdown-container">
+                            <div class="user-pill-btn" id="userPillBtn" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" title="User Profile">
+                                <div class="user-avatar-small" id="headerAvatar">--</div>
+                                <div class="user-pill-info">
+                                    <span class="user-pill-name" id="headerUserName">—</span>
+                                    <span class="user-pill-role" id="headerUserRole">Administrator</span>
+                                </div>
+                                <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                            
+                            <!-- Dropdown Menu -->
+                            <div class="user-menu-popover" id="userMenuPopover">
+                                <div class="user-menu-header">
+                                    <span class="popover-name" id="menuUserName">—</span>
+                                    <span class="popover-email" id="menuUserEmail">—</span>
+                                    <span class="popover-role" id="menuUserRole">Administrator</span>
+                                </div>
+                                <div class="user-menu-divider"></div>
+                                <a href="settings.html#profile" class="user-menu-item" id="menuProfileLink">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    <span>Profile</span>
+                                </a>
+                                <a href="settings.html" class="user-menu-item">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                    <span>Settings</span>
+                                </a>
+                                <a href="#" class="user-menu-item text-danger" onclick="logout(event)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                        <polyline points="16 17 21 12 16 7"></polyline>
+                                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                                    </svg>
+                                    <span>Logout</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- In-Progress Banner (Shown if scan is still executing) -->
+            <div class="progress-banner-card" id="inProgressBanner" style="display:none;">
+                <div class="progress-banner-left">
+                    <div class="spinner" style="width:24px; height:24px; margin-bottom:0; border-width:2.5px;"></div>
+                    <div>
+                        <h4 style="font-size:14px; font-weight:700; color:#FFFFFF;">Security Audit In Progress</h4>
+                        <p style="font-size:12px; color:var(--text-secondary); margin-top:2px;">The scanner engine is currently assessing this target. Real-time telemetry is available.</p>
+                    </div>
+                </div>
+                <a href="#" id="linkLiveMonitor" class="btn-primary" style="background:#2563EB;">
+                    <span>Open Live Monitor →</span>
+                </a>
+            </div>
+
+            <!-- Scan Overview Panel -->
+            <section class="overview-card" id="overviewCard">
+                <!-- Circular Score Ring -->
+                <div class="score-ring-wrap">
+                    <svg viewBox="0 0 140 140">
+                        <circle cx="70" cy="70" r="58" class="ring-bg-circle"></circle>
+                        <circle cx="70" cy="70" r="58" class="ring-progress-circle" id="ringProgress" stroke-dasharray="364.4" stroke-dashoffset="364.4"></circle>
+                    </svg>
+                    <div class="ring-center-text">
+                        <span class="ring-score-val" id="scoreValue">—</span>
+                        <span class="ring-score-sub">Security</span>
+                    </div>
+                </div>
+
+                <!-- Overview Details -->
+                <div class="overview-content">
+                    <div class="overview-top-row">
+                        <h2 class="verdict-title" id="verdictTitle">Evaluating Results…</h2>
+                        <span class="status-pill completed" id="metaStatusPill">
+                            <span class="status-dot"></span>
+                            <span id="metaStatusText">Completed</span>
+                        </span>
+                    </div>
+
+                    <p class="overview-desc" id="verdictDesc">
+                        Audit findings evaluated directly from executed backend security modules.
+                    </p>
+
+                    <!-- Real Metadata -->
+                    <div class="scan-meta-grid">
+                        <div class="meta-item">
+                            <span>Scan ID:</span>
+                            <strong id="metaScanId">—</strong>
+                        </div>
+                        <div class="meta-item">
+                            <span>Profile:</span>
+                            <strong id="metaProfile">—</strong>
+                        </div>
+                        <div class="meta-item">
+                            <span>Scanned:</span>
+                            <strong id="metaScannedAt">—</strong>
+                        </div>
+                        <div class="meta-item" id="metaDurationItem" style="display:none;">
+                            <span>Duration:</span>
+                            <strong id="metaDuration">—</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Findings Summary Metric Cards (6 Distinct Primary Categories) -->
+            <section class="summary-pills-row" id="summaryPillsRow" aria-label="Findings Counts">
+                <button type="button" class="summary-pill-btn critical" data-severity="critical" title="Confirmed Critical Severity Vulnerabilities">
+                    <span class="pill-count-num" id="countCritical">0</span>
+                    <span class="pill-count-label">Critical</span>
+                </button>
+                <button type="button" class="summary-pill-btn high" data-severity="high" title="Confirmed High Severity Vulnerabilities">
+                    <span class="pill-count-num" id="countHigh">0</span>
+                    <span class="pill-count-label">High</span>
+                </button>
+                <button type="button" class="summary-pill-btn medium" data-severity="medium" title="Confirmed Medium Severity Vulnerabilities">
+                    <span class="pill-count-num" id="countMedium">0</span>
+                    <span class="pill-count-label">Medium</span>
+                </button>
+                <button type="button" class="summary-pill-btn low" data-severity="low" title="Confirmed Low Severity Vulnerabilities">
+                    <span class="pill-count-num" id="countLow">0</span>
+                    <span class="pill-count-label">Low</span>
+                </button>
+                <button type="button" class="summary-pill-btn passed" data-severity="not_detected" title="Executed security checks where no vulnerabilities were detected">
+                    <span class="pill-count-num" id="countPassed">0</span>
+                    <span class="pill-count-label">Not Detected</span>
+                </button>
+                <button type="button" class="summary-pill-btn error" data-severity="scanner_error" title="Scanner engine probe warnings or network timeouts">
+                    <span class="pill-count-num" id="countError">0</span>
+                    <span class="pill-count-label">Scanner Error</span>
+                </button>
+            </section>
+
+            <!-- Assessment Coverage & Scope Limitations Section (Separated from Confirmed Vulns) -->
+            <section class="coverage-section" id="coverageSection" style="display:none;" aria-label="Assessment Coverage & Limitations">
+                <div class="coverage-header">
+                    <div class="coverage-title-group">
+                        <h3 class="coverage-main-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            <span>Assessment Coverage & Scope Limitations</span>
+                        </h3>
+                        <p class="coverage-subtitle">Security checks that were incomplete, inconclusive, or skipped during execution. Unverified modules do NOT guarantee the absence of security vulnerabilities.</p>
+                    </div>
+                    <span class="coverage-count-pill" id="coverageCountPill">0 Limitations</span>
+                </div>
+                <div class="coverage-grid" id="coverageList"></div>
+            </section>
+
+            <!-- Findings Filter Toolbar -->
+            <section class="findings-toolbar" aria-label="Findings Filters">
+                <div class="toolbar-grid">
+                    <div class="search-box-wrap">
+                        <span class="search-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </span>
+                        <input type="search" id="findingSearchInput" class="search-input" placeholder="Search by title, parameter, URL, or evidence…" autocomplete="off">
+                        <button type="button" class="search-clear-btn" id="btnFindingSearchClear" aria-label="Clear search">✕</button>
+                    </div>
+
+                    <div class="filters-group">
+                        <select id="filterSeverity" class="filter-select" aria-label="Filter by Severity">
+                            <option value="all">All Severities</option>
+                            <option value="confirmed">Confirmed Issues Only</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                            <option value="not_detected">Not Detected</option>
+                            <option value="scanner_error">Scanner Error</option>
+                        </select>
+
+                        <select id="filterModule" class="filter-select" aria-label="Filter by Module">
+                            <option value="all">All Modules</option>
+                        </select>
+
+                        <select id="filterStatus" class="filter-select" aria-label="Filter by Verification Status">
+                            <option value="all">All Statuses</option>
+                            <option value="CONFIRMED">CONFIRMED</option>
+                            <option value="INCONCLUSIVE">INCONCLUSIVE</option>
+                            <option value="NOT_DETECTED">NOT_DETECTED</option>
+                            <option value="SCANNER_ERROR">SCANNER_ERROR</option>
+                        </select>
+
+                        <button type="button" id="btnResetFilters" class="btn-reset" title="Reset all findings filters">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Findings List Container -->
+            <section class="findings-container">
+                <div class="findings-header-bar">
+                    <h3 class="findings-title">Audit Findings</h3>
+                    <span class="findings-count-badge" id="findingsCountBadge">Loading findings…</span>
+                </div>
+
+                <div class="findings-list" id="findingsList">
+                    <div class="state-container">
+                        <div class="spinner"></div>
+                        <h3 class="state-title">Loading Findings</h3>
+                        <p class="state-desc">Retrieving vulnerability records and verification logs from the backend engine…</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ============ TECHNICAL DETAILS MODAL ============ -->
+    <div class="modal-overlay" id="detailModalOverlay" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+        <div class="detail-modal-card">
+            <button type="button" class="modal-close-btn" id="modalCloseBtn" aria-label="Close details">✕</button>
+
+            <div class="detail-head">
+                <div class="detail-badges-row">
+                    <span class="sev-badge high" id="dSeverityBadge">—</span>
+                    <span class="status-badge-outline" id="dStatusBadge">—</span>
+                    <span class="chip-tag" id="dConfidence">Confidence: HIGH</span>
+                    <span class="chip-tag" id="dModuleTag">MODULE: —</span>
+                </div>
+                <h2 class="detail-title" id="dTitle">Vulnerability Finding</h2>
+                <div class="detail-endpoint" id="dEndpoint">—</div>
+            </div>
+
+            <div class="detail-body">
+                <!-- Description -->
+                <div class="detail-block">
+                    <span class="block-title">What Was Detected</span>
+                    <p class="block-text" id="dDescription">—</p>
+                </div>
+
+                <!-- Parameter / Method Row (when present) -->
+                <div class="detail-block" id="dParamBlock" style="display:none;">
+                    <span class="block-title">Target Parameter & HTTP Method</span>
+                    <p class="block-text" id="dParameterMethod">—</p>
+                </div>
+
+                <!-- Technical Evidence Snippet -->
+                <div class="detail-block" id="dEvidenceBlock">
+                    <span class="block-title">Technical Evidence & Response Snippet</span>
+                    <pre class="code-evidence-box" id="dEvidence">—</pre>
+                </div>
+
+                <!-- Real-World Impact -->
+                <div class="detail-block" id="dImpactBlock" style="display:none;">
+                    <span class="block-title">Real-World Security Impact</span>
+                    <p class="block-text" id="dImpact">—</p>
+                </div>
+
+                <!-- AI Explanation (When available) -->
+                <div class="detail-block ai-summary-box" id="dAiBlock" style="display:none;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <span class="ai-badge-label">AI</span>
+                        <span class="block-title" style="margin-bottom:0; color:var(--sev-passed);">AI Security Explanation</span>
+                    </div>
+                    <p class="block-text" id="dAiText" style="color:#D1FAE5;">—</p>
+                </div>
+
+                <!-- Remediation Guidance -->
+                <div class="detail-block" id="dRemediationBlock">
+                    <span class="block-title">Remediation Guidance</span>
+                    <ol class="remediation-list" id="dRemediationList"></ol>
+                </div>
+
+                <!-- Standards & References Tags -->
+                <div class="detail-block" id="dTagsBlock">
+                    <span class="block-title">Security Standards</span>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+                        <span class="chip-tag" id="dOwaspTag" style="display:none;">OWASP: —</span>
+                        <span class="chip-tag" id="dCweTag" style="display:none;">CWE: —</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-actions-row">
+                <button type="button" class="btn-ai-explain" id="btnModalAiExplain">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    <span>Explain with AI</span>
+                </button>
+                <button type="button" class="btn-secondary" id="btnModalClose">Back to Results</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Mobile Navigation Toggle Script -->
     <script>
-        if (localStorage.getItem("isLoggedIn") !== "true") {
+        const toggle = document.getElementById("sidebarToggle");
+        const overlay = document.getElementById("sidebarOverlay");
+        const sidebar = document.getElementById("sidebar");
+        if (toggle && sidebar) {
+            toggle.addEventListener("click", () => {
+                sidebar.classList.toggle("open");
+                overlay?.classList.toggle("show");
+            });
+            overlay?.addEventListener("click", () => {
+                sidebar.classList.remove("open");
+                overlay.classList.remove("show");
+            });
+        }
+
+        function logout(e) {
+            if (e) e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
             window.location.href = "login.html";
         }
     </script>
 
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scan Results - EthioSecScan</title>
-  <link rel="stylesheet" href="shell.css">
-  <link rel="stylesheet" href="resultsstyle.css">
-</head>
-<body>
-
-  <div class="dashboard-bg">
-    <div class="glow-one"></div>
-    <div class="glow-two"></div>
-  </div>
-
-  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-  <div class="layout">
-    <!-- ============ SIDEBAR ============ -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <div class="logo-icon">🛡️</div>
-        <span class="logo-text">EthioSecScan</span>
-      </div>
-                        <nav class="sidebar-nav">
-        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
-        <a href="scanfinal.html" class="side-link"><span class="side-icon">⚡</span> New Scan</a>
-        <a href="scan_history.html" class="side-link"><span class="side-icon">🕒</span> History</a>
-        <a href="results.html" class="side-link active"><span class="side-icon">📈</span> Results</a>
-        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
-        <a href="assistant.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
-        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
-        <a href="settings.html" class="side-link"><span class="side-icon">⚙️</span> Settings</a>
-        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
-      </nav>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      <div class="scanner-status">
-        <div class="status-dot"></div>
-        <span>Scanner Engine Idle</span>
-      </div>
-    </aside>
-
-    <main class="page-container">
-      <div class="page-header">
-        <div class="header-content">
-          <h1>Scan Results</h1>
-          <p id="resultTarget">Loading…</p>
-        </div>
-        <div class="header-actions">
-          <a href="scanfinal.html" class="ghost-btn">Scan another URL</a>
-          <a href="reports.html" class="primary-btn" id="openReport">Full report →</a>
-        </div>
-      </div>
-
-      <!-- ---------- Score summary ---------- -->
-      <section class="panel score-panel">
-        <div class="score-ring">
-          <svg viewBox="0 0 140 140">
-            <defs>
-              <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#cc2f0c" />
-                <stop offset="100%" stop-color="#1bb369" />
-              </linearGradient>
-            </defs>
-            <circle cx="70" cy="70" r="60" class="ring-bg" />
-            <circle cx="70" cy="70" r="60" class="ring-progress" id="ringProgress" />
-          </svg>
-          <div class="ring-center">
-            <span id="scoreValue">0</span>
-            <small>/100</small>
-          </div>
-        </div>
-
-        <div class="score-side">
-          <h2 id="verdict">Scoring…</h2>
-          <p id="verdictNote">Findings evaluated from local scanner results.</p>
-
-          <div class="count-grid">
-            <button class="count high" data-filter="high" type="button"><b id="cHigh">0</b><span>High</span></button>
-            <button class="count medium" data-filter="medium" type="button"><b id="cMedium">0</b><span>Medium</span></button>
-            <button class="count low" data-filter="low" type="button"><b id="cLow">0</b><span>Low</span></button>
-            <button class="count passed" data-filter="not_detected" type="button"><b id="cPassed">0</b><span>Not Detected</span></button>
-            <button class="count error" data-filter="scanner_error" type="button"><b id="cError">0</b><span>Scanner Error</span></button>
-          </div>
-
-          <div class="scan-meta">
-            <span>Scan ID: <strong id="scanIdLabel">—</strong></span>
-            <span>Depth: <strong id="depthLabel">—</strong></span>
-            <span>Finished: <strong id="finishedLabel">—</strong></span>
-          </div>
-        </div>
-      </section>
-
-      <!-- ---------- Findings ---------- -->
-      <section class="panel findings-panel">
-        <div class="card-header">
-          <h2>Findings</h2>
-          <div class="filters">
-            <select id="severityFilter">
-              <option value="all">All results</option>
-              <option value="confirmed">Confirmed issues only</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-              <option value="not_detected">Not Detected</option>
-              <option value="scanner_error">Scanner Error</option>
-            </select>
-            <select id="moduleFilter">
-              <option value="all">All modules</option>
-            </select>
-            <input type="search" id="findingSearch" placeholder="Search findings…">
-          </div>
-        </div>
-
-        <div class="finding-list" id="findingList">
-          <p class="loading-state">Loading findings…</p>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- ---------- VULNERABILITY DETAILS MODAL ---------- -->
-  <div class="modal-overlay" id="detailModal" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dTitle">
-      <button class="modal-close" id="modalClose" aria-label="Close" type="button">✕</button>
-
-      <div class="modal-head">
-        <span class="sev-badge" id="dSeverity">—</span>
-        <span class="confidence" id="dConfidence">—</span>
-        <h2 id="dTitle">Finding</h2>
-        <p class="modal-url" id="dUrl">—</p>
-      </div>
-
-      <div class="modal-body">
-        <div class="detail-block">
-          <h3>What was found</h3>
-          <p id="dDescription">—</p>
-        </div>
-
-        <div class="detail-block">
-          <h3>Evidence</h3>
-          <pre id="dEvidence">—</pre>
-        </div>
-
-        <div class="detail-block">
-          <h3>Real-world impact</h3>
-          <p id="dImpact">—</p>
-        </div>
-
-        <div class="detail-block ai-block">
-          <h3><span class="ai-tag">AI</span> Explanation</h3>
-          <p id="dAi">—</p>
-        </div>
-
-        <div class="detail-block">
-          <h3>How to fix it</h3>
-          <ol id="dRemediation"></ol>
-        </div>
-
-        <div class="detail-tags">
-          <span class="tag" id="dOwasp">OWASP —</span>
-          <span class="tag" id="dCwe">CWE —</span>
-          <span class="tag" id="dParam" hidden>Parameter —</span>
-        </div>
-      </div>
-
-      <div class="modal-actions">
-        <a class="ghost-btn" id="askAi" href="#">Ask AI about this →</a>
-        <button class="primary-btn" id="modalDone" type="button">Back to results</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="toast" id="toast"></div>
-
-  <!-- =========================================================
-       PURE FRONTEND BRIDGE
-       ========================================================= -->
-  <script>
-    window.EthioShell = window.EthioShell || {
-      init: () => true,
-      escapeHTML: (str) => {
-        if (!str) return "";
-        return String(str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      },
-      timeAgo: (dateString) => {
-        if (!dateString) return "Recently";
-        return "Just now";
-      },
-      severityClass: (sev) => "sev-" + (sev || "info").toLowerCase(),
-      toast: (msg) => {
-        const t = document.getElementById("toast");
-        if (t) {
-          t.textContent = msg;
-          t.classList.add("show");
-          setTimeout(() => t.classList.remove("show"), 3000);
-        }
-      }
-    };
-
-    window.EthioAuth = window.EthioAuth || {
-      isAuthenticated: () => true,
-      getQueryParam: (param) => new URLSearchParams(window.location.search).get(param) 
-    };
-
-
-
-    // Sidebar mobile toggle handler
-    const toggle = document.getElementById("sidebarToggle");
-    const overlay = document.getElementById("sidebarOverlay");
-    const sidebar = document.getElementById("sidebar");
-    if (toggle && sidebar) {
-      toggle.addEventListener("click", () => {
-        sidebar.classList.toggle("open");
-        overlay?.classList.toggle("show");
-      });
-      overlay?.addEventListener("click", () => {
-        sidebar.classList.remove("open");
-        overlay.classList.remove("show");
-      });
-    }
-
-    // Modal ESC handler
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        const modal = document.getElementById("detailModal");
-        if (modal && !modal.hidden) {
-          modal.hidden = true;
-        }
-      }
-    });
-  </script>
-
-  <!-- Load UI controller -->
-  <script src="resultsjava.js"></script>
+    <!-- Unified Identity & Session Authentication -->
+    <script src="shared_auth.js"></script>
+    <!-- Scan Results Controller -->
+    <script src="resultsjava.js"></script>
+    <script src="notifications.js"></script>
 </body>
 </html>
-

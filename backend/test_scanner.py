@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 import sqlite3
 from database import SessionLocal, Base, engine
 from scanner.engine import SecurityScanner
@@ -7,8 +8,34 @@ from scanner.safety import UnsafeTargetError
 import pytest
 from models import Scan, User, ScanTarget
 
+import subprocess
+import time
+import httpx
+
 # Allow local targets for this test
 os.environ["ALLOW_LOCAL_TARGETS"] = "true"
+
+@pytest.fixture(scope="module", autouse=True)
+def run_vulnerable_app():
+    proc = None
+    try:
+        httpx.get("http://127.0.0.1:3000/", timeout=1.0)
+    except Exception:
+        proc = subprocess.Popen([sys.executable, "vulnerable_app.py"])
+        for _ in range(30):
+            try:
+                r = httpx.get("http://127.0.0.1:3000/", timeout=1.0)
+                if r.status_code == 200:
+                    break
+            except Exception:
+                time.sleep(0.2)
+    yield
+    if proc:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
 
 @pytest.mark.asyncio
 async def test():

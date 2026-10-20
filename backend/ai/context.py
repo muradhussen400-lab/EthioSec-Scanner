@@ -71,19 +71,22 @@ def build_scan_summary_context(scan: Any, findings: List[Any]) -> str:
     """
     Builds a safe context to summarize a completed scan and its aggregate statistics.
     Never exposes auth_context tokens or internal credentials.
+    Uses verified 5-category aggregation: HIGH, MEDIUM, LOW, NOT DETECTED, SCANNER ERROR.
     """
-    counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+    from .executive_summary import aggregate_finding_counts, map_finding_to_category
+
+    counts = aggregate_finding_counts(findings)
     categories: Dict[str, int] = {}
     finding_lines = []
 
     for f in findings:
-        sev = (f.severity or "low").lower()
-        counts[sev] = counts.get(sev, 0) + 1
+        cat = map_finding_to_category(f)
         categories[f.type] = categories.get(f.type, 0) + 1
         
         # Safe 1-line finding summary
         safe_url = f.url or "N/A"
-        finding_lines.append(f"- [{f.severity.upper()}] {f.title} ({f.type}) at {safe_url}")
+        f_status = getattr(f, "status", None) or cat
+        finding_lines.append(f"- [{cat}] {f.title} ({f.type}) [Status: {f_status}] at {safe_url}")
 
     findings_block = "\n".join(finding_lines[:50]) # Cap at top 50 findings
     if len(findings) > 50:
@@ -98,14 +101,24 @@ SCAN DETAILS:
 - Target URL: {scan.target_url}
 - Status: {scan.status}
 - Security Score: {scan.security_score if scan.security_score is not None else 'N/A'}/100
-- Total Findings: {len(findings)}
+- Total Checks Evaluated: {len(findings)}
+- Total Confirmed Vulnerabilities: {counts['total']}
+
+VERIFIED FIVE-CATEGORY POSTURE (SOURCE OF TRUTH):
+- High: {counts['high']}
+- Medium: {counts['medium']}
+- Low: {counts['low']}
+- Not Detected: {counts['not_detected']}
+- Scanner Error: {counts['scanner_error']}
 
 SEVERITY DISTRIBUTION:
 - Critical: {counts.get('critical', 0)}
-- High: {counts.get('high', 0)}
-- Medium: {counts.get('medium', 0)}
-- Low: {counts.get('low', 0)}
+- High: {counts['high']}
+- Medium: {counts['medium']}
+- Low: {counts['low']}
 - Info: {counts.get('info', 0)}
+- Not Detected: {counts['not_detected']}
+- Scanner Error: {counts['scanner_error']}
 
 DETECTED VULNERABILITY TYPES:
 {chr(10).join([f'- {k}: {v}' for k, v in categories.items()]) if categories else 'None'}

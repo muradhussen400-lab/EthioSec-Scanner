@@ -1,12 +1,20 @@
-if (!localStorage.getItem('token')) {
-    window.location.href = 'login.html';
-}
-/* =====================================================
-   SCAN HISTORY (scan_historyjava.js) - Real Backend Sync
-   ===================================================== */
+/* ==========================================================================
+   ETHIOSECSCAN — SCAN HISTORY CONTROLLER (scan_historyjava.js)
+   Strict Real Backend API Integration (/api/scans, DELETE /api/scans/{id})
+   ========================================================================== */
 
 document.addEventListener("DOMContentLoaded", () => {
+    const API_BASE = "http://127.0.0.1:8000/api";
+    function getAuthToken() {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            window.location.href = "login.html";
+            return "";
+        }
+        return token;
+    }
 
+    // UI Utilities
     const UI = {
         escapeHTML: (str) => {
             if (!str) return "";
@@ -18,81 +26,108 @@ document.addEventListener("DOMContentLoaded", () => {
                 .replace(/'/g, "&#039;");
         },
         timeAgo: (dateString) => {
-            if (!dateString) return "Recently";
-            const diff = Date.now() - new Date(dateString).getTime();
-            const mins = Math.floor(diff / 60000);
-            if (mins < 1) return "Just now";
-            if (mins < 60) return `${mins}m ago`;
-            const hours = Math.floor(mins / 60);
-            if (hours < 24) return `${hours}h ago`;
-            const days = Math.floor(hours / 24);
-            return `${days}d ago`;
+            if (!dateString) return "—";
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return "—";
+                const diff = Date.now() - date.getTime();
+                const mins = Math.floor(diff / 60000);
+                if (mins < 1) return "Just now";
+                if (mins < 60) return `${mins}m ago`;
+                const hours = Math.floor(mins / 60);
+                if (hours < 24) return `${hours}h ago`;
+                const days = Math.floor(hours / 24);
+                if (days < 30) return `${days}d ago`;
+                return date.toLocaleDateString();
+            } catch {
+                return "—";
+            }
+        },
+        formatDate: (dateString) => {
+            if (!dateString) return "—";
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return "—";
+                return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                });
+            } catch {
+                return "—";
+            }
+        },
+        calculateDuration: (startStr, finishStr) => {
+            if (!startStr || !finishStr) return null;
+            try {
+                const start = new Date(startStr).getTime();
+                const finish = new Date(finishStr).getTime();
+                if (isNaN(start) || isNaN(finish) || finish < start) return null;
+                const totalSeconds = Math.max(0, Math.round((finish - start) / 1000));
+                if (totalSeconds < 60) {
+                    return `${totalSeconds}s`;
+                }
+                const mins = Math.floor(totalSeconds / 60);
+                const secs = totalSeconds % 60;
+                return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+            } catch {
+                return null;
+            }
         },
         toast: (msg, type = "info") => {
             const toastEl = document.getElementById("toast");
             if (toastEl) {
                 toastEl.textContent = msg;
-                toastEl.className = "toast show " + type;
-                setTimeout(() => toastEl.classList.remove("show"), 3200);
+                toastEl.className = `toast show ${type === "error" ? "error" : ""}`;
+                setTimeout(() => toastEl.classList.remove("show"), 3500);
             }
         }
     };
 
-    const tableBody = document.getElementById("tableBody");
-    const resultCount = document.getElementById("resultCount");
-    const pageInfo = document.getElementById("pageInfo");
-    const deleteAllBtn = document.getElementById("deleteAllBtn");
+    // DOM Elements
+    const historyTableBody = document.getElementById("historyTableBody");
+    const tableCountLabel = document.getElementById("tableCountLabel");
+    const historySearchInput = document.getElementById("historySearchInput");
+    const btnSearchClear = document.getElementById("btnSearchClear");
+    const filterStatus = document.getElementById("filterStatus");
+    const filterProfile = document.getElementById("filterProfile");
+    const filterSort = document.getElementById("filterSort");
+    const btnResetFilters = document.getElementById("btnResetFilters");
 
-    const statusFilter = document.getElementById("statusFilter");
-    const dateFrom = document.getElementById("dateFrom");
-    const dateTo = document.getElementById("dateTo");
-    const searchInput = document.getElementById("searchInput");
+    const statTotal = document.getElementById("statTotal");
+    const statClean = document.getElementById("statClean");
+    const statWarning = document.getElementById("statWarning");
+    const statHigh = document.getElementById("statHigh");
 
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
+    const paginationBar = document.getElementById("paginationBar");
+    const paginationRangeText = document.getElementById("paginationRangeText");
+    const btnPrevPage = document.getElementById("btnPrevPage");
+    const btnNextPage = document.getElementById("btnNextPage");
+    const pageNumbersContainer = document.getElementById("pageNumbersContainer");
 
-    const itemsPerPage = 8;
+    // Modal Elements
+    const deleteModalBackdrop = document.getElementById("deleteModalBackdrop");
+    const deleteTargetPreview = document.getElementById("deleteTargetPreview");
+    const btnCancelDelete = document.getElementById("btnCancelDelete");
+    const btnConfirmDelete = document.getElementById("btnConfirmDelete");
 
-    let scans = [];
-    let filtered = [];
+    // State Variables
+    let allScans = [];
+    let filteredScans = [];
     let currentPage = 1;
+    const itemsPerPage = 10;
+    let scanToDelete = null;
 
-    /* =====================================================
-       SEVERITY BUCKET
-       ===================================================== */
-    function bucketOf(scan) {
-        if (scan.status !== "completed") return "running";
-        const c = scan.counts || {};
-        if (c.critical || c.high) return "danger";
-        if (c.medium || c.low) return "warning";
-        return "safe";
-    }
+    // Load Scan History from Backend
+    async function loadScans() {
+        renderLoading();
 
-    const BUCKET_LABEL = {
-        safe: "Clean",
-        warning: "Warning",
-        danger: "Critical",
-        running: "Running"
-    };
-
-    /* =====================================================
-       LOAD DATA (Strict Backend Only)
-       ===================================================== */
-    async function load() {
-        if (tableBody) {
-            tableBody.innerHTML = `<tr><td colspan="6"><p class="loading-state">Loading scans from backend database…</p></td></tr>`;
-        }
-
-        const token = localStorage.getItem("token");
-        if (!token) {
-            if (tableBody) {
-                tableBody.innerHTML = `<tr><td colspan="6"><p class="empty-state" style="color:#cc2f0c">Authentication required. <a href="login.html" style="color:#ff4b20">Log in here →</a></p></td></tr>`;
-            }
-            return;
-        }
-
+        const token = getAuthToken();
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/scans`, {
+            const res = await fetch(`${API_BASE}/scans?limit=200`, {
+                method: "GET",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
@@ -100,11 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (res.status === 401 || res.status === 403) {
-                localStorage.removeItem("token");
-                localStorage.removeItem("isLoggedIn");
-                if (tableBody) {
-                    tableBody.innerHTML = `<tr><td colspan="6"><p class="empty-state" style="color:#cc2f0c">Your session has expired. <a href="login.html" style="color:#ff4b20">Log in again →</a></p></td></tr>`;
-                }
+                renderError("Session expired or unauthorized. Please re-authenticate.", true);
                 return;
             }
 
@@ -113,250 +144,523 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const data = await res.json();
-            
-            scans = (data.scans || []).map(s => ({
-                id: s.id,
-                target: s.target,
-                status: s.status,
-                depth: s.depth || "standard",
-                security_score: s.security_score,
-                created_at: typeof s.created_at === "number" ? new Date(s.created_at).toISOString() : s.created_at,
-                finished_at: typeof s.finished_at === "number" ? new Date(s.finished_at).toISOString() : s.finished_at,
-                counts: s.counts || { total: 0, critical: 0, high: 0, medium: 0, low: 0, passed: 0 }
-            }));
+            allScans = (data.scans || []).map(s => {
+                const counts = s.counts || {};
+                return {
+                    id: String(s.id),
+                    target: String(s.target || "Unknown Target"),
+                    status: (s.status || "queued").toLowerCase(),
+                    depth: (s.depth || "standard").toLowerCase(),
+                    created_at: s.created_at || null,
+                    finished_at: s.finished_at || null,
+                    security_score: s.security_score !== undefined && s.security_score !== null ? Number(s.security_score) : null,
+                    counts: {
+                        critical: Number(counts.critical || 0),
+                        high: Number(counts.high || 0),
+                        medium: Number(counts.medium || 0),
+                        low: Number(counts.low || 0),
+                        not_detected: Number(counts.not_detected || 0),
+                        scanner_error: Number(counts.scanner_error || 0),
+                        inconclusive: Number(counts.inconclusive || 0),
+                        total: Number(counts.total || 0)
+                    }
+                };
+            });
 
-            paintStats();
-            filterScans();
+            updateMetrics();
+            applyFilters();
 
         } catch (err) {
-            console.error("Load error:", err);
-            scans = [];
-            if (tableBody) {
-                tableBody.innerHTML = `<tr><td colspan="6"><p class="empty-state" style="color:#cc2f0c">Unable to connect to backend server. Ensure the FastAPI service is running on port 8000.</p></td></tr>`;
-            }
-            paintStats();
+            console.error("Failed to load scan records:", err);
+            renderError("Unable to connect to the backend server. Ensure the FastAPI service is running on port 8000.");
         }
     }
 
-    function paintStats() {
-        const done = scans.filter(s => s.status === "completed");
+    // Update Overview Metric Cards
+    function updateMetrics() {
+        const total = allScans.length;
+        const completed = allScans.filter(s => s.status === "completed");
 
-        const setSafeText = (id, val) => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = val;
-        };
+        let cleanCount = 0;
+        let warningCount = 0;
+        let highCount = 0;
 
-        setSafeText("statTotal", scans.length);
-        setSafeText("statSafe", done.filter(s => bucketOf(s) === "safe").length);
-        setSafeText("statWarning", done.filter(s => bucketOf(s) === "warning").length);
-        setSafeText("statDanger", done.filter(s => bucketOf(s) === "danger").length);
+        completed.forEach(s => {
+            const c = s.counts;
+            const hasHigh = (c.critical + c.high) > 0;
+            const hasMediumLow = (c.medium + c.low) > 0;
+
+            if (hasHigh) {
+                highCount++;
+            } else if (hasMediumLow) {
+                warningCount++;
+            } else {
+                cleanCount++;
+            }
+        });
+
+        if (statTotal) statTotal.textContent = total;
+        if (statClean) statClean.textContent = cleanCount;
+        if (statWarning) statWarning.textContent = warningCount;
+        if (statHigh) statHigh.textContent = highCount;
     }
 
-    /* =====================================================
-       FILTER
-       ===================================================== */
-    function filterScans() {
-        const status = statusFilter ? statusFilter.value : "all";
-        const from = dateFrom ? dateFrom.value : "";
-        const to = dateTo ? dateTo.value : "";
-        const term = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    // Filter, Search, and Sort Scans
+    function applyFilters() {
+        const query = (historySearchInput?.value || "").trim().toLowerCase();
+        const selectedStatus = filterStatus?.value || "all";
+        const selectedProfile = filterProfile?.value || "all";
+        const selectedSort = filterSort?.value || "newest";
 
-        filtered = scans.filter(scan => {
-            if (status !== "all" && bucketOf(scan) !== status) return false;
+        if (btnSearchClear) {
+            btnSearchClear.style.display = query ? "block" : "none";
+        }
 
-            const day = (scan.finished_at || scan.created_at || "").slice(0, 10);
-            if (from && day < from) return false;
-            if (to && day > to) return false;
+        filteredScans = allScans.filter(scan => {
+            // Status match
+            if (selectedStatus !== "all" && scan.status !== selectedStatus) {
+                return false;
+            }
 
-            if (term && !(scan.target || "").toLowerCase().includes(term)) return false;
+            // Profile match
+            if (selectedProfile !== "all" && scan.depth !== selectedProfile) {
+                return false;
+            }
+
+            // Query match (Target URL or Scan ID)
+            if (query) {
+                const targetMatches = scan.target.toLowerCase().includes(query);
+                const idMatches = scan.id.toLowerCase().includes(query);
+                if (!targetMatches && !idMatches) {
+                    return false;
+                }
+            }
 
             return true;
         });
 
+        // Sorting
+        filteredScans.sort((a, b) => {
+            if (selectedSort === "oldest") {
+                return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+            }
+            if (selectedSort === "score_desc") {
+                return (b.security_score ?? -1) - (a.security_score ?? -1);
+            }
+            if (selectedSort === "score_asc") {
+                return (a.security_score ?? 999) - (b.security_score ?? 999);
+            }
+            // Default: newest
+            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
+
         currentPage = 1;
-        if (resultCount) {
-            resultCount.textContent = `${filtered.length} scan${filtered.length === 1 ? "" : "s"}`;
-        }
         renderTable();
     }
 
-    function validateDates() {
-        if (!dateFrom || !dateTo) return;
-        const bad = dateFrom.value && dateTo.value && dateFrom.value > dateTo.value;
-        dateTo.setCustomValidity(bad ? "End date cannot be before start date." : "");
-        if (bad) UI.toast("End date cannot be before start date.", "error");
-        filterScans();
-    }
-
-    /* =====================================================
-       RENDER TABLE
-       ===================================================== */
+    // Render Table Rows
     function renderTable() {
-        if (!tableBody) return;
+        if (!historyTableBody) return;
 
-        if (!filtered.length) {
-            if (scans.length === 0) {
-                tableBody.innerHTML = `
-                    <tr><td colspan="6">
-                        <p class="empty-state">No scans yet. Start your first security scan to build your scan history.<br>
-                        <br><a href="scanfinal.html" class="primary-btn" style="display:inline-block;">⚡ Launch First Scan</a></p>
-                    </td></tr>`;
+        const totalItems = filteredScans.length;
+
+        if (totalItems === 0) {
+            if (allScans.length === 0) {
+                historyTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7">
+                            <div class="state-container">
+                                <div class="state-icon-wrap">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                </div>
+                                <h3 class="state-title">No Scan Records Found</h3>
+                                <p class="state-desc">You have not executed any security scans yet. Launch your first target assessment to generate findings.</p>
+                                <a href="scanfinal.html" class="btn-primary">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    <span>Launch First Scan</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>`;
             } else {
-                tableBody.innerHTML = `
-                    <tr><td colspan="6">
-                        <p class="empty-state">No scans match these filters.
-                           <br><a href="scanfinal.html" style="color:#ff4b20">Launch a new scan →</a></p>
-                    </td></tr>`;
+                historyTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7">
+                            <div class="state-container">
+                                <div class="state-icon-wrap">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                </div>
+                                <h3 class="state-title">No Matching Scans</h3>
+                                <p class="state-desc">No assessment records matched your search query and filters. Try clearing your search parameters.</p>
+                                <button type="button" class="btn-secondary" onclick="document.getElementById('btnResetFilters').click()">
+                                    <span>Reset All Filters</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>`;
             }
-            updatePagination();
+
+            if (tableCountLabel) tableCountLabel.textContent = "0 scans";
+            if (paginationBar) paginationBar.style.display = "none";
             return;
         }
 
-        const start = (currentPage - 1) * itemsPerPage;
-        const rows = filtered.slice(start, start + itemsPerPage);
+        if (paginationBar) paginationBar.style.display = "flex";
+        if (tableCountLabel) {
+            tableCountLabel.textContent = `${totalItems} scan${totalItems === 1 ? "" : "s"}`;
+        }
 
-        tableBody.innerHTML = rows.map(scan => {
-            const bucket = bucketOf(scan);
-            const done = scan.status === "completed";
-            const when = scan.finished_at || scan.created_at;
-            const c = scan.counts || {};
-            const issues = (c.total ?? ((c.critical || 0) + (c.high || 0) + (c.medium || 0) + (c.low || 0))) || 0;
+        // Slice for pagination
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+        const pageItems = filteredScans.slice(startIndex, endIndex);
 
-            const severitySummary = done ? `
-                <div style="font-size:0.8rem; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                    <span style="color:${issues > 0 ? '#ff5b5b' : '#1bb369'}; font-weight:600;">${issues} issue${issues === 1 ? '' : 's'}</span>
-                    ${c.critical ? `<span style="background:rgba(255,91,91,0.15); color:#ff5b5b; padding:1px 5px; border-radius:4px; font-size:0.75rem;">${c.critical} crit</span>` : ''}
-                    ${c.high ? `<span style="background:rgba(255,138,61,0.15); color:#ff8a3d; padding:1px 5px; border-radius:4px; font-size:0.75rem;">${c.high} high</span>` : ''}
-                    ${c.passed ? `<span style="color:#1bb369; font-size:0.75rem;">${c.passed} passed</span>` : ''}
-                </div>` : '<span>Testing in progress…</span>';
+        historyTableBody.innerHTML = pageItems.map(scan => {
+            const counts = scan.counts;
+            const hasHigh = (counts.critical + counts.high) > 0;
+            const hasMedium = counts.medium > 0;
+            const hasLow = counts.low > 0;
+            const isCompleted = scan.status === "completed";
+            const isRunning = scan.status === "running";
+
+            // Status Badge
+            const statusBadgeHTML = `
+                <span class="status-pill ${scan.status}">
+                    <span class="status-dot"></span>
+                    <span>${scan.status}</span>
+                </span>
+            `;
+
+            // Score Pill
+            let scoreHTML = `<span style="color:var(--text-muted); font-size:12px;">—</span>`;
+            if (scan.security_score !== null && isCompleted) {
+                const s = scan.security_score;
+                const scoreColor = s >= 80 ? "var(--sev-passed)" : s >= 60 ? "var(--sev-medium)" : "var(--brand-red)";
+                scoreHTML = `<strong style="color:${scoreColor}; font-family:'Plus Jakarta Sans',sans-serif; font-size:14px;">${s}</strong><small style="color:var(--text-muted); font-size:11px;">/100</small>`;
+            }
+
+            // Findings Pills
+            let findingsHTML = "";
+            if (!isCompleted && scan.status !== "failed") {
+                findingsHTML = `<span style="font-size:11.5px; color:var(--text-muted);">In progress…</span>`;
+            } else if (hasHigh || hasMedium || hasLow) {
+                const pills = [];
+                if (hasHigh) pills.push(`<span class="count-pill high">${counts.critical + counts.high} High</span>`);
+                if (hasMedium) pills.push(`<span class="count-pill medium">${counts.medium} Med</span>`);
+                if (hasLow) pills.push(`<span class="count-pill low">${counts.low} Low</span>`);
+                findingsHTML = `<div class="findings-summary-group">${pills.join("")}</div>`;
+            } else if (counts.inconclusive > 0) {
+                findingsHTML = `<div class="findings-summary-group"><span class="count-pill inconclusive">${counts.inconclusive} Inconclusive</span></div>`;
+            } else {
+                findingsHTML = `<div class="findings-summary-group"><span class="count-pill clean">✓ Clean</span></div>`;
+            }
+
+            // Duration
+            const duration = UI.calculateDuration(scan.created_at, scan.finished_at);
+            const dateHTML = `
+                <div class="date-cell">
+                    <span class="date-main">${UI.formatDate(scan.created_at)}</span>
+                    <span class="date-relative">${UI.timeAgo(scan.created_at)}${duration ? ` · ${duration}` : ""}</span>
+                </div>
+            `;
+
+            // Action Buttons
+            let actionHTML = "";
+            if (isRunning) {
+                actionHTML = `
+                    <div class="actions-cell">
+                        <a href="livescan.html?id=${encodeURIComponent(scan.id)}" class="action-btn live-monitor" title="View live progress">
+                            <span class="status-dot" style="background:#60A5FA;"></span>
+                            <span>Monitor</span>
+                        </a>
+                        <button type="button" class="action-btn delete-btn" data-delete-id="${UI.escapeHTML(scan.id)}" data-target="${UI.escapeHTML(scan.target)}" title="Delete record">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionHTML = `
+                    <div class="actions-cell">
+                        <a href="results.html?id=${encodeURIComponent(scan.id)}" class="action-btn view-results" title="View audit findings">
+                            <span>Results →</span>
+                        </a>
+                        <button type="button" class="action-btn delete-btn" data-delete-id="${UI.escapeHTML(scan.id)}" data-target="${UI.escapeHTML(scan.target)}" title="Delete record">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                `;
+            }
 
             return `
-                <tr>
+                <tr data-scan-id="${UI.escapeHTML(scan.id)}">
                     <td>
-                        <span class="url-link" style="font-weight:600;">${UI.escapeHTML(scan.target)}</span>
-                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">${UI.escapeHTML(scan.depth)}</div>
-                    </td>
-                    <td><span class="status-badge status-${bucket}">${BUCKET_LABEL[bucket]}</span></td>
-                    <td class="score-cell">${done && scan.security_score !== null ? scan.security_score : "—"}</td>
-                    <td><span class="timestamp">${when ? new Date(when).toLocaleDateString() : "—"}<br><small style="color:var(--text-muted)">${UI.timeAgo(when)}</small></span></td>
-                    <td>${severitySummary}</td>
-                    <td>
-                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                            <a class="view-btn" href="${done ? `results.html?id=${encodeURIComponent(scan.id)}` : `livescan.html?id=${encodeURIComponent(scan.id)}`}">${done ? "Results →" : "Live ◔"}</a>
-                            ${done ? `<a class="ghost-btn" href="reports.html?id=r${encodeURIComponent(scan.id)}" style="padding:4px 8px; font-size:0.75rem;">Report</a>` : ''}
-                            <button class="delete-btn" data-id="${UI.escapeHTML(scan.id)}" style="background:transparent; border:none; color:var(--danger,#ff6b6b); cursor:pointer; font-size:1.1rem; padding:4px;" title="Delete Scan">🗑</button>
+                        <div class="target-cell">
+                            <a href="results.html?id=${encodeURIComponent(scan.id)}" class="target-url-link" title="${UI.escapeHTML(scan.target)}">
+                                ${UI.escapeHTML(scan.target)}
+                            </a>
+                            <div class="target-id-row">
+                                <span class="scan-id-chip" title="Click to copy Scan ID" onclick="navigator.clipboard.writeText('${UI.escapeHTML(scan.id)}'); window.EthioToast?.('Scan ID copied');">
+                                    #${UI.escapeHTML(scan.id.slice(0, 8))}
+                                </span>
+                            </div>
                         </div>
                     </td>
-                </tr>`;
+                    <td>
+                        <span class="profile-pill ${scan.depth}">
+                            ${scan.depth}
+                        </span>
+                    </td>
+                    <td>${statusBadgeHTML}</td>
+                    <td>${scoreHTML}</td>
+                    <td>${findingsHTML}</td>
+                    <td>${dateHTML}</td>
+                    <td>${actionHTML}</td>
+                </tr>
+            `;
         }).join("");
 
-        updatePagination();
+        // Attach Delete Listeners
+        historyTableBody.querySelectorAll(".delete-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const id = btn.getAttribute("data-delete-id");
+                const target = btn.getAttribute("data-target");
+                openDeleteModal(id, target);
+            });
+        });
+
+        // Update Pagination Controls
+        updatePagination(startIndex, endIndex, totalItems);
     }
 
-    function updatePagination() {
-        if (!pageInfo || !prevBtn || !nextBtn) return;
-        const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
-        if (currentPage > totalPages) currentPage = totalPages;
+    // Pagination Updates
+    function updatePagination(startIndex, endIndex, totalItems) {
+        if (paginationRangeText) {
+            paginationRangeText.textContent = `Showing ${startIndex + 1}–${endIndex} of ${totalItems} scans`;
+        }
 
-        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-        prevBtn.disabled = currentPage === 1;
-        nextBtn.disabled = currentPage === totalPages || !filtered.length;
-    }
+        const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
-    function goTo(page) {
-        currentPage = page;
-        renderTable();
-        const container = document.querySelector(".table-container");
-        if (container) {
-            container.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (btnPrevPage) {
+            btnPrevPage.disabled = currentPage <= 1;
+        }
+        if (btnNextPage) {
+            btnNextPage.disabled = currentPage >= totalPages;
+        }
+
+        if (pageNumbersContainer) {
+            pageNumbersContainer.innerHTML = "";
+            for (let i = 1; i <= totalPages; i++) {
+                if (totalPages > 6 && Math.abs(currentPage - i) > 2 && i !== 1 && i !== totalPages) {
+                    if (i === 2 || i === totalPages - 1) {
+                        const dots = document.createElement("span");
+                        dots.style.cssText = "color:var(--text-muted); padding:4px 6px; font-size:12px;";
+                        dots.textContent = "…";
+                        pageNumbersContainer.appendChild(dots);
+                    }
+                    continue;
+                }
+
+                const pageBtn = document.createElement("button");
+                pageBtn.type = "button";
+                pageBtn.className = i === currentPage ? "page-number-active" : "page-btn";
+                pageBtn.textContent = i;
+                pageBtn.addEventListener("click", () => {
+                    currentPage = i;
+                    renderTable();
+                    window.scrollTo({ top: 300, behavior: "smooth" });
+                });
+                pageNumbersContainer.appendChild(pageBtn);
+            }
         }
     }
 
-    /* =====================================================
-       ACTIONS (Delete single & Delete all)
-       ===================================================== */
-    if (statusFilter) statusFilter.addEventListener("change", filterScans);
-    if (searchInput) searchInput.addEventListener("input", filterScans);
-    if (dateFrom) dateFrom.addEventListener("change", validateDates);
-    if (dateTo) dateTo.addEventListener("change", validateDates);
-
-    if (nextBtn) {
-        nextBtn.addEventListener("click", () => {
-            const totalPages = Math.ceil(filtered.length / itemsPerPage);
-            if (currentPage < totalPages) goTo(currentPage + 1);
-        });
+    // Modal Control
+    function openDeleteModal(scanId, targetUrl) {
+        scanToDelete = scanId;
+        if (deleteTargetPreview) {
+            deleteTargetPreview.textContent = `${targetUrl} (ID: ${scanId})`;
+        }
+        if (deleteModalBackdrop) {
+            deleteModalBackdrop.classList.add("open");
+        }
     }
 
-    if (prevBtn) {
-        prevBtn.addEventListener("click", () => {
-            if (currentPage > 1) goTo(currentPage - 1);
-        });
+    function closeDeleteModal() {
+        scanToDelete = null;
+        if (deleteModalBackdrop) {
+            deleteModalBackdrop.classList.remove("open");
+        }
     }
 
-    // Delete Single Scan
-    if (tableBody) {
-        tableBody.addEventListener("click", async (e) => {
-            const btn = e.target.closest(".delete-btn");
-            if (!btn) return;
-            
-            const scanId = btn.dataset.id;
-            if (!scanId) return;
-            
-            if (confirm("Delete this scan from your history? This will permanently remove its findings and reports.")) {
-                try {
-                    const token = localStorage.getItem("token");
-                    const res = await fetch(`http://127.0.0.1:8000/api/scans/${scanId}`, {
-                        method: "DELETE",
-                        headers: token ? { "Authorization": `Bearer ${token}` } : {}
-                    });
-                    
-                    if (res.ok) {
-                        UI.toast("Scan deleted successfully.");
-                        scans = scans.filter(s => s.id !== scanId);
-                        filterScans();
-                        paintStats();
-                    } else {
-                        UI.toast("Failed to delete scan.", "error");
-                    }
-                } catch (err) {
-                    console.error("Delete error:", err);
-                    UI.toast("Network error deleting scan.", "error");
+    // Confirm Delete Scan Record
+    async function executeDeleteScan() {
+        if (!scanToDelete) return;
+        const scanId = scanToDelete;
+        const token = getAuthToken();
+
+        btnConfirmDelete.disabled = true;
+        btnConfirmDelete.textContent = "Deleting…";
+
+        try {
+            const res = await fetch(`${API_BASE}/scans/${encodeURIComponent(scanId)}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${token}`
                 }
-            }
-        });
-    }
+            });
 
-    // Delete All Scans
-    if (deleteAllBtn) {
-        deleteAllBtn.addEventListener("click", async () => {
-            if (scans.length === 0) {
-                UI.toast("History is already empty.");
-                return;
-            }
-
-            if (confirm("Are you sure you want to delete ALL scans from your account? This action cannot be undone.")) {
+            if (!res.ok) {
+                let errDetail = "Failed to delete scan record.";
                 try {
-                    const token = localStorage.getItem("token");
-                    const res = await fetch(`http://127.0.0.1:8000/api/scans`, {
-                        method: "DELETE",
-                        headers: token ? { "Authorization": `Bearer ${token}` } : {}
-                    });
+                    const data = await res.json();
+                    if (data.detail) errDetail = data.detail;
+                } catch (_) {}
+                throw new Error(errDetail);
+            }
 
-                    if (res.ok) {
-                        UI.toast("All scan history has been cleared.");
-                        scans = [];
-                        filterScans();
-                        paintStats();
-                    } else {
-                        UI.toast("Failed to clear scan history.", "error");
-                    }
-                } catch (err) {
-                    console.error("Delete all error:", err);
-                    UI.toast("Network error clearing history.", "error");
-                }
+            // Successfully deleted
+            UI.toast("Scan record deleted successfully", "info");
+            allScans = allScans.filter(s => s.id !== scanId);
+            updateMetrics();
+            applyFilters();
+            closeDeleteModal();
+
+        } catch (err) {
+            console.error("Delete error:", err);
+            UI.toast(err.message || "Could not delete scan record", "error");
+        } finally {
+            btnConfirmDelete.disabled = false;
+            btnConfirmDelete.textContent = "Delete Scan";
+        }
+    }
+
+    // Loading State
+    function renderLoading() {
+        if (!historyTableBody) return;
+        historyTableBody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="state-container">
+                        <div class="spinner"></div>
+                        <h3 class="state-title">Loading Scan Records</h3>
+                        <p class="state-desc">Retrieving your security assessment history from the backend database…</p>
+                    </div>
+                </td>
+            </tr>`;
+        if (tableCountLabel) tableCountLabel.textContent = "Loading…";
+    }
+
+    // Error State
+    function renderError(message, isAuthError = false) {
+        if (!historyTableBody) return;
+        historyTableBody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="state-container">
+                        <div class="state-icon-wrap" style="color:var(--brand-red); border-color:rgba(232,59,37,0.3); background:rgba(232,59,37,0.06);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                        </div>
+                        <h3 class="state-title">${isAuthError ? "Authentication Required" : "Failed to Load Records"}</h3>
+                        <p class="state-desc">${UI.escapeHTML(message)}</p>
+                        ${isAuthError ? `
+                            <a href="login.html" class="btn-primary">
+                                <span>Log In Again →</span>
+                            </a>
+                        ` : `
+                            <button type="button" class="btn-secondary" onclick="window.location.reload()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                                <span>Retry Connection</span>
+                            </button>
+                        `}
+                    </div>
+                </td>
+            </tr>`;
+        if (tableCountLabel) tableCountLabel.textContent = "Error";
+    }
+
+    // Event Bindings
+    if (historySearchInput) {
+        historySearchInput.addEventListener("input", () => applyFilters());
+    }
+    if (btnSearchClear) {
+        btnSearchClear.addEventListener("click", () => {
+            historySearchInput.value = "";
+            applyFilters();
+            historySearchInput.focus();
+        });
+    }
+    if (filterStatus) {
+        filterStatus.addEventListener("change", () => applyFilters());
+    }
+    if (filterProfile) {
+        filterProfile.addEventListener("change", () => applyFilters());
+    }
+    if (filterSort) {
+        filterSort.addEventListener("change", () => applyFilters());
+    }
+    if (btnResetFilters) {
+        btnResetFilters.addEventListener("click", () => {
+            if (historySearchInput) historySearchInput.value = "";
+            if (filterStatus) filterStatus.value = "all";
+            if (filterProfile) filterProfile.value = "all";
+            if (filterSort) filterSort.value = "newest";
+            applyFilters();
+        });
+    }
+
+    // Pagination Listeners
+    if (btnPrevPage) {
+        btnPrevPage.addEventListener("click", () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+                window.scrollTo({ top: 300, behavior: "smooth" });
+            }
+        });
+    }
+    if (btnNextPage) {
+        btnNextPage.addEventListener("click", () => {
+            const totalPages = Math.ceil(filteredScans.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+                window.scrollTo({ top: 300, behavior: "smooth" });
             }
         });
     }
 
-    load();
+    // Modal Listeners
+    if (btnCancelDelete) {
+        btnCancelDelete.addEventListener("click", closeDeleteModal);
+    }
+    if (btnConfirmDelete) {
+        btnConfirmDelete.addEventListener("click", executeDeleteScan);
+    }
+    if (deleteModalBackdrop) {
+        deleteModalBackdrop.addEventListener("click", (e) => {
+            if (e.target === deleteModalBackdrop) closeDeleteModal();
+        });
+    }
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && deleteModalBackdrop?.classList.contains("open")) {
+            closeDeleteModal();
+        }
+    });
+
+    window.EthioToast = UI.toast;
+
+    // Initial Load
+    loadScans();
 });

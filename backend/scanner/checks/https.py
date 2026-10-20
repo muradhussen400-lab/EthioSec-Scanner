@@ -32,7 +32,7 @@ async def check_https(scanner: SecurityScanner, url: str, response: httpx.Respon
         test_case.status = "SCANNER_ERROR"
         test_case.evidence = f"Error during HTTPS check: {str(e)}"
         
-    if test_case.status in ["HIGH", "LOW", "SCANNER_ERROR"]:
+    if test_case.status in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "SCANNER_ERROR"]:
         scanner._add_finding(
             f_type="https",
             severity="high" if test_case.status != "SCANNER_ERROR" else "info",

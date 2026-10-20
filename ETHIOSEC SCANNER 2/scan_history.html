@@ -1,193 +1,468 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan History — EthioSecScan</title>
+    <meta name="description" content="View and manage previous web security scans, findings summaries, and vulnerability audit logs on EthioSecScan.">
+    
+    <!-- Design System Typography & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Verified Stylesheet -->
+    <link rel="stylesheet" href="scan_historystyle.css">
+    <link rel="stylesheet" href="shared_nav_header.css">
+    <!-- Shared Auth & Identity -->
+    <script src="shared_auth.js"></script>
+</head>
+<body>
+
+    <!-- Mobile Navigation Toggle & Backdrop -->
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Navigation Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="layout">
+
+        <!-- ============ APPROVED SIDEBAR ============ -->
+        <aside class="sidebar" id="sidebar">
+            <a href="dashboardfinal.html" class="sidebar-logo">
+                <div class="logo-shield-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="logo-text-group">
+                    <span class="logo-title">EthioSecScan</span>
+                    <span class="logo-subtitle">Scan • Detect • Secure</span>
+                </div>
+            </a>
+
+            <!-- Navigation Links -->
+            <nav class="sidebar-nav">
+                <a href="dashboardfinal.html" class="side-link">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="9"></rect>
+                            <rect x="14" y="3" width="7" height="5"></rect>
+                            <rect x="14" y="12" width="7" height="9"></rect>
+                            <rect x="3" y="16" width="7" height="5"></rect>
+                        </svg>
+                    </span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="scanfinal.html" class="side-link" id="navNewScan">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>New Scan</span>
+                </a>
+                <a href="scan_history.html" class="side-link active" id="navHistory">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </span>
+                    <span>History</span>
+                </a>
+                <a href="results.html" class="side-link">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </span>
+                    <span>Results</span>
+                </a>
+                <a href="reports.html" class="side-link">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                    </span>
+                    <span>Reports</span>
+                </a>
+                <a href="assistant.html" class="side-link">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                            <circle cx="12" cy="5" r="2"></circle>
+                            <path d="M12 7v4"></path>
+                            <line x1="8" y1="16" x2="8" y2="16"></line>
+                            <line x1="16" y1="16" x2="16" y2="16"></line>
+                        </svg>
+                    </span>
+                    <span>AI Assistant</span>
+                </a>
+
+                <div class="nav-divider"></div>
+
+                <a href="settings.html" class="side-link">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </span>
+                    <span>Settings</span>
+                </a>
+                <a href="#" class="side-link" id="sidebarLogoutLink" onclick="logout(event)">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <!-- Bottom System Status Box -->
+            <div class="service-status-box" id="serviceStatusBox" title="All services operational">
+                <div class="service-status-dot online" id="serviceStatusDot"></div>
+                <div class="service-status-text">
+                    <span class="service-name">System Healthy</span>
+                    <span class="service-state" id="serviceStateText">All services running</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ============ MAIN CONTENT AREA ============ -->
+        <main class="main-content">
+
+            <!-- Page Header -->
+            <header class="page-header">
+                <div class="header-left">
+                    <h1 class="page-title">Scan History</h1>
+                    <p class="page-subtitle">Review previous web security assessments, monitor active scans, and inspect findings</p>
+                </div>
+
+                <div class="header-actions">
+                    <!-- Notification Bell with Dropdown Panel -->
+                    <div class="notif-dropdown-wrapper" id="notifDropdownWrapper">
+                        <button class="header-icon-btn" id="notifBtn" type="button" aria-label="Notifications" title="Notifications">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span class="notif-badge" id="notifBadge"></span>
+                        </button>
+
+                        <div class="notif-dropdown-panel" id="notifPanel">
+                            <div class="notif-panel-header">
+                                <span class="notif-panel-title">Notifications</span>
+                                <button class="notif-clear-btn" id="markAllReadBtn" type="button">Mark all read</button>
+                            </div>
+                            <div class="notif-list" id="notifList">
+                                <div class="notif-item unread">
+                                    <div class="notif-icon-circle warn">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">High Vulnerability Alert</div>
+                                        <div class="notif-desc">Target security scan found critical risk items on audited host.</div>
+                                        <div class="notif-time">10m ago</div>
+                                    </div>
+                                </div>
+                                <div class="notif-item">
+                                    <div class="notif-icon-circle success">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">Scan Completed</div>
+                                        <div class="notif-desc">Audit for target has completed successfully.</div>
+                                        <div class="notif-time">1h ago</div>
+                                    </div>
+                                </div>
+                                <div class="notif-item">
+                                    <div class="notif-icon-circle info">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">Scanner Engine Ready</div>
+                                        <div class="notif-desc">FastAPI backend online and database synchronized.</div>
+                                        <div class="notif-time">2h ago</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="scanfinal.html" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; background:#E83B25; color:#fff; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>New Scan</span>
+                    </a>
+
+                    <!-- User Profile Dropdown Pill -->
+                    <div class="user-pill-dropdown-container">
+                        <div class="user-pill-btn" id="userPillBtn" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" title="User Profile">
+                            <div class="user-avatar-small" id="headerAvatar">--</div>
+                            <div class="user-pill-info">
+                                <span class="user-pill-name" id="headerUserName">—</span>
+                                <span class="user-pill-role" id="headerUserRole">Administrator</span>
+                            </div>
+                            <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        
+                        <!-- Dropdown Menu -->
+                        <div class="user-menu-popover" id="userMenuPopover">
+                            <div class="user-menu-header">
+                                <span class="popover-name" id="menuUserName">—</span>
+                                <span class="popover-email" id="menuUserEmail">—</span>
+                                <span class="popover-role" id="menuUserRole">Administrator</span>
+                            </div>
+                            <div class="user-menu-divider"></div>
+                            <a href="settings.html#profile" class="user-menu-item" id="menuProfileLink">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <span>Profile</span>
+                            </a>
+                            <a href="settings.html" class="user-menu-item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                                <span>Settings</span>
+                            </a>
+                            <div class="user-menu-divider"></div>
+                            <a href="#" class="user-menu-item text-danger" onclick="logout(event)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                <span>Logout</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Metric Overview Cards -->
+            <section class="metrics-row" aria-label="Scan Statistics">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-title">Total Audits</span>
+                        <div class="metric-icon-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                        </div>
+                    </div>
+                    <div class="metric-val" id="statTotal">—</div>
+                    <div class="metric-sub">Scans executed on record</div>
+                </div>
+
+                <div class="metric-card accent-green">
+                    <div class="metric-header">
+                        <span class="metric-title">Clean Targets</span>
+                        <div class="metric-icon-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                    </div>
+                    <div class="metric-val" id="statClean">—</div>
+                    <div class="metric-sub">Zero high vulnerabilities</div>
+                </div>
+
+                <div class="metric-card accent-amber">
+                    <div class="metric-header">
+                        <span class="metric-title">Warnings</span>
+                        <div class="metric-icon-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        </div>
+                    </div>
+                    <div class="metric-val" id="statWarning">—</div>
+                    <div class="metric-sub">Medium or low findings</div>
+                </div>
+
+                <div class="metric-card accent-red">
+                    <div class="metric-header">
+                        <span class="metric-title">High Concerns</span>
+                        <div class="metric-icon-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        </div>
+                    </div>
+                    <div class="metric-val" id="statHigh">—</div>
+                    <div class="metric-sub">Critical / High vulnerabilities</div>
+                </div>
+            </section>
+
+            <!-- Filter & Search Toolbar -->
+            <section class="toolbar-card" aria-label="History Filters">
+                <div class="toolbar-grid">
+                    <div class="search-box-wrap">
+                        <span class="search-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </span>
+                        <input type="search" id="historySearchInput" class="search-input" placeholder="Search target URL or scan ID…" autocomplete="off">
+                        <button type="button" class="search-clear-btn" id="btnSearchClear" aria-label="Clear search">✕</button>
+                    </div>
+
+                    <div class="filters-group">
+                        <select id="filterStatus" class="filter-select" aria-label="Filter by Scan Status">
+                            <option value="all">All Statuses</option>
+                            <option value="completed">Completed</option>
+                            <option value="running">Running</option>
+                            <option value="queued">Queued</option>
+                            <option value="failed">Failed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+
+                        <select id="filterProfile" class="filter-select" aria-label="Filter by Scan Profile">
+                            <option value="all">All Profiles</option>
+                            <option value="standard">Standard Scan</option>
+                            <option value="deep">Deep Scan</option>
+                        </select>
+
+                        <select id="filterSort" class="filter-select" aria-label="Sort Order">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="score_desc">Highest Security Score</option>
+                            <option value="score_asc">Lowest Security Score</option>
+                        </select>
+
+                        <button type="button" id="btnResetFilters" class="btn-reset" title="Reset all search filters">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Table Panel -->
+            <section class="table-panel">
+                <div class="table-header-bar">
+                    <h2 class="table-title">Scan Records</h2>
+                    <span class="table-count-label" id="tableCountLabel">Loading scan records…</span>
+                </div>
+
+                <div class="table-responsive-wrapper">
+                    <table class="history-table" id="scansTable">
+                        <thead>
+                            <tr>
+                                <th>Target & Scan ID</th>
+                                <th>Profile</th>
+                                <th>Status</th>
+                                <th>Security Score</th>
+                                <th>Findings Summary</th>
+                                <th>Date & Duration</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr>
+                                <td colspan="7">
+                                    <div class="state-container">
+                                        <div class="spinner"></div>
+                                        <h3 class="state-title">Loading Scan Records</h3>
+                                        <p class="state-desc">Retrieving your security assessment history from the backend database…</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Client-Side Pagination Bar -->
+                <div class="pagination-bar" id="paginationBar">
+                    <span id="paginationRangeText">Showing 0 of 0 scans</span>
+                    <div class="pagination-controls">
+                        <button type="button" class="page-btn" id="btnPrevPage" disabled>← Previous</button>
+                        <div id="pageNumbersContainer" style="display:flex; gap:4px;"></div>
+                        <button type="button" class="page-btn" id="btnNextPage" disabled>Next →</button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ============ DELETE SCAN CONFIRMATION MODAL ============ -->
+    <div class="modal-backdrop" id="deleteModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalDeleteTitle">
+        <div class="modal-card">
+            <div class="modal-head">
+                <div class="modal-icon-danger">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="modal-title" id="modalDeleteTitle">Delete Scan Record</h3>
+                    <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">This action cannot be undone.</p>
+                </div>
+            </div>
+
+            <p class="modal-body-text">
+                Are you sure you want to permanently delete this security assessment record? All associated finding logs and evidence will be removed from your account.
+            </p>
+
+            <div class="modal-target-box" id="deleteTargetPreview">
+                https://example.com (Scan ID: —)
+            </div>
+
+            <div class="modal-actions-row">
+                <button type="button" class="btn-cancel" id="btnCancelDelete">Cancel</button>
+                <button type="button" class="btn-danger" id="btnConfirmDelete">Delete Scan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Mobile Navigation Toggle Script -->
     <script>
-        if (localStorage.getItem("isLoggedIn") !== "true") {
+        const toggle = document.getElementById("sidebarToggle");
+        const overlay = document.getElementById("sidebarOverlay");
+        const sidebar = document.getElementById("sidebar");
+        if (toggle && sidebar) {
+            toggle.addEventListener("click", () => {
+                sidebar.classList.toggle("open");
+                overlay?.classList.toggle("show");
+            });
+            overlay?.addEventListener("click", () => {
+                sidebar.classList.remove("open");
+                overlay.classList.remove("show");
+            });
+        }
+
+        function logout(e) {
+            if (e) e.preventDefault();
+            localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("token");
             window.location.href = "login.html";
         }
     </script>
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan History - EthioSecScan</title>
-    <link rel="stylesheet" href="shell.css">
-    <link rel="stylesheet" href="scan_historystyle.css">
-</head>
-<body>
-
-<div class="dashboard-bg">
-    <div class="glow-one"></div>
-    <div class="glow-two"></div>
-</div>
-
-<button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<div class="layout">
-
-    <!-- ============ SIDEBAR ============ -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <div class="logo-icon">🛡️</div>
-            <span class="logo-text">EthioSecScan</span>
-        </div>
-                          <nav class="sidebar-nav">
-        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
-        <a href="scanfinal.html" class="side-link"><span class="side-icon">⚡</span> New Scan</a>
-        <a href="scan_history.html" class="side-link active"><span class="side-icon">🕒</span> History</a>
-        <a href="results.html" class="side-link"><span class="side-icon">📈</span> Results</a>
-        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
-        <a href="assistant.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
-        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
-        <a href="settings.html" class="side-link"><span class="side-icon">⚙️</span> Settings</a>
-        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
-      </nav>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-        <div class="scanner-status">
-            <div class="status-dot"></div>
-            <span>Database Synced</span>
-        </div>
-    </aside>
-
-    <main class="page-container">
-
-        <div class="page-header">
-            <div class="header-content">
-                <h1>Scan History</h1>
-                <p>Review and re-open your previous security scans</p>
-            </div>
-            <a href="scanfinal.html" class="primary-btn">🔍 New scan</a>
-        </div>
-
-        <!-- Totals derived from scan database -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Total Scans</div>
-                <div class="stat-value" id="statTotal">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Clean</div>
-                <div class="stat-value safe-number" id="statSafe">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Warnings</div>
-                <div class="stat-value warning-number" id="statWarning">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Critical / High</div>
-                <div class="stat-value danger-number" id="statDanger">—</div>
-            </div>
-        </div>
-
-        <div class="filters-section">
-            <div class="filter-group">
-                <label for="statusFilter">Filter by status</label>
-                <select id="statusFilter">
-                    <option value="all">All</option>
-                    <option value="safe">Clean</option>
-                    <option value="warning">Warning</option>
-                    <option value="danger">Critical / High</option>
-                    <option value="running">Still running</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label>Date range</label>
-                <div class="date-fields">
-                    <input type="date" id="dateFrom">
-                    <span>to</span>
-                    <input type="date" id="dateTo">
-                </div>
-            </div>
-
-            <div class="filter-group search-group">
-                <label for="searchInput">Search</label>
-                <input type="search" id="searchInput" placeholder="Search URLs…">
-            </div>
-        </div>
-
-        <div class="table-container">
-            <div class="table-header">
-                <h2>Scans</h2>
-                <span id="resultCount">—</span>
-            </div>
-
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>URL</th>
-                            <th>Status</th>
-                            <th>Score</th>
-                            <th>Scan date</th>
-                            <th>Issues</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="pagination">
-            <button id="prevBtn" type="button">← Previous</button>
-            <span id="pageInfo"></span>
-            <button id="nextBtn" type="button">Next →</button>
-        </div>
-
-    </main>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<!-- Mobile Sidebar Script -->
-<script>
-    const toggle = document.getElementById("sidebarToggle");
-    const overlay = document.getElementById("sidebarOverlay");
-    const sidebar = document.getElementById("sidebar");
-    if (toggle && sidebar) {
-        toggle.addEventListener("click", () => {
-            sidebar.classList.toggle("open");
-            overlay?.classList.toggle("show");
-        });
-        overlay?.addEventListener("click", () => {
-            sidebar.classList.remove("open");
-            overlay.classList.remove("show");
-        });
-    }
-</script>
-
-<script src="scan_historyjava.js"></script>
-
+    <!-- Scan History Controller -->
+    <script src="scan_historyjava.js"></script>
+    <script src="notifications.js"></script>
 </body>
 </html>
-

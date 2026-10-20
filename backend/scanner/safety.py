@@ -38,15 +38,19 @@ def is_safe_url(url: str) -> bool:
             continue # should not happen from getaddrinfo
             
         if not allow_local:
-            if ip.is_private:
-                raise UnsafeTargetError(f"Target resolves to a private IP: {ip_str}")
             if ip.is_loopback:
                 raise UnsafeTargetError(f"Target resolves to a loopback IP: {ip_str}")
+            if ip.is_private:
+                raise UnsafeTargetError(f"Target resolves to a private IP: {ip_str}")
             if ip.is_link_local:
                 raise UnsafeTargetError(f"Target resolves to a link-local IP: {ip_str}")
             if ip.is_multicast:
                 raise UnsafeTargetError(f"Target resolves to a multicast IP: {ip_str}")
             if ip.is_reserved:
                 raise UnsafeTargetError(f"Target resolves to a reserved IP: {ip_str}")
+            if ip.is_unspecified:
+                raise UnsafeTargetError(f"Target resolves to an unspecified IP: {ip_str}")
+            if not ip.is_global:
+                raise UnsafeTargetError(f"Target resolves to a non-global IP: {ip_str}")
             
     return True

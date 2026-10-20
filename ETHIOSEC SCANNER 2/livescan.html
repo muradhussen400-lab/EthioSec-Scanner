@@ -1,158 +1,436 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script>
-        if (localStorage.getItem("isLoggedIn") !== "true") {
-            window.location.href = "login.html";
-        }
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Scan Pipeline — EthioSecScan</title>
 
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scan in progress - EthioSecScan</title>
-  <link rel="stylesheet" href="shell.css">
-  <link rel="stylesheet" href="livestyle.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="shared_nav_header.css">
+    <link rel="stylesheet" href="livestyle.css">
+
+    <!-- Shared Auth & Identity -->
+    <script src="shared_auth.js"></script>
 </head>
 <body>
 
-  <!-- Background -->
-  <div class="dashboard-bg">
-    <div class="glow-one"></div>
-    <div class="glow-two"></div>
-  </div>
-
-  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
+  <!-- Mobile sidebar toggle & overlay -->
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </button>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <div class="layout">
 
-    <!-- ============ SIDEBAR ============ -->
+    <!-- ============ APPROVED SIDEBAR ============ -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <div class="logo-icon">🛡️</div>
-        <span class="logo-text">EthioSecScan</span>
-      </div>
-                        <nav class="sidebar-nav">
-        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
-        <a href="scanfinal.html" class="side-link active"><span class="side-icon">⚡</span> New Scan</a>
-        <a href="scan_history.html" class="side-link"><span class="side-icon">🕒</span> History</a>
-        <a href="results.html" class="side-link"><span class="side-icon">📈</span> Results</a>
-        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
-        <a href="assistant.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
-        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
-        <a href="settings.html" class="side-link"><span class="side-icon">⚙️</span> Settings</a>
-        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
+      <a href="dashboardfinal.html" class="sidebar-logo">
+        <div class="logo-shield-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M9 12l2 2 4-4" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="logo-text-group">
+          <span class="logo-title">EthioSecScan</span>
+          <span class="logo-subtitle">Scan • Detect • Secure</span>
+        </div>
+      </a>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav">
+        <a href="dashboardfinal.html" class="side-link" id="navDashboard">
+          <span class="side-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="9"></rect>
+              <rect x="14" y="3" width="7" height="5"></rect>
+              <rect x="14" y="12" width="7" height="9"></rect>
+              <rect x="3" y="16" width="7" height="5"></rect>
+            </svg>
+          </span>
+          <span>Dashboard</span>
+        </a>
+        <a href="scanfinal.html" class="side-link active" id="navNewScan">
+          <span class="side-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </span>
+          <span>New Scan</span>
+        </a>
+        <a href="scan_history.html" class="side-link" id="navHistory">
+          <span class="side-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </span>
+          <span>History</span>
+        </a>
+        <a href="results.html" class="side-link" id="navResults">
+          <span class="side-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </span>
+          <span>Results</span>
+        </a>
+        <a href="reports.html" class="side-link" id="navReports">
+          <span class="side-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+          </span>
+          <span>Reports</span>
+        </a>
+        <a href="assistant.html" class="side-link" id="navAssistant">
+          <span class="side-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+              <circle cx="12" cy="5" r="2"></circle>
+              <path d="M12 7v4"></path>
+              <line x1="8" y1="16" x2="8" y2="16"></line>
+              <line x1="16" y1="16" x2="16" y2="16"></line>
+            </svg>
+          </span>
+          <span>AI Assistant</span>
+        </a>
+
+        <div class="nav-divider"></div>
+
+        <a href="settings.html" class="side-link" id="navSettings">
+          <span class="side-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </span>
+          <span>Settings</span>
+        </a>
+        <a href="#" class="side-link" id="sidebarLogoutLink" onclick="logout(event)">
+          <span class="side-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </span>
+          <span>Logout</span>
+        </a>
       </nav>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      <div class="scanner-status">
-        <div class="status-dot"></div>
-        <span>Engine Active</span>
+
+      <!-- Bottom System Status Box -->
+      <div class="service-status-box" id="serviceStatusBox" title="Scanner engine telemetry active">
+        <div class="service-status-dot online" id="telemetryStatusDot"></div>
+        <div class="service-status-text">
+          <span class="service-name">Live Telemetry</span>
+          <span class="service-state" id="sidebarTelemetryText">Streaming metrics</span>
+        </div>
       </div>
     </aside>
 
     <!-- ============ MAIN CONTENT ============ -->
-    <main class="page-container">
+    <main class="page-container live-scan-main">
 
-      <div class="page-header">
-        <div class="header-content">
-          <h1>Scanning website</h1>
-          <p id="scanTarget">Preparing target…</p>
+      <!-- Page Top Header -->
+      <header class="page-header live-header">
+        <div class="header-content-left">
+          <div class="header-pulse-box" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+          </div>
+          <div class="header-title-text">
+            <h1 class="page-title">Scanning Website</h1>
+            <div class="header-target-subrow">
+              <a id="scanTargetLink" class="target-external-link" href="#" target="_blank" rel="noopener noreferrer" title="Open target website">
+                <span id="scanTarget">Preparing target…</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </a>
+              <span class="live-scan-badge" id="liveScanBadge">
+                <span class="live-dot-pulse"></span>
+                <span>Live Scan</span>
+              </span>
+            </div>
+          </div>
         </div>
-        <a href="scanfinal.html" class="ghost-btn">← Back to scanner</a>
-      </div>
 
-      <section class="panel progress-panel">
+        <div class="header-actions">
+          <a href="scanfinal.html" class="back-link-btn" id="backToScannerBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back to scanner</span>
+          </a>
 
-        <div class="progress-top">
-          <div class="progress-ring">
-            <svg viewBox="0 0 140 140">
+          <!-- User Profile Dropdown Pill -->
+          <div class="user-pill-dropdown-container">
+            <div class="user-pill-btn" id="userPillBtn" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" title="User Profile">
+              <div class="user-avatar-small" id="headerAvatar">--</div>
+              <div class="user-pill-info">
+                <span class="user-pill-name" id="headerUserName">—</span>
+                <span class="user-pill-role" id="headerUserRole">Administrator</span>
+              </div>
+              <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            
+            <!-- Dropdown Menu -->
+            <div class="user-menu-popover" id="userMenuPopover">
+              <div class="user-menu-header">
+                <span class="popover-name" id="menuUserName">—</span>
+                <span class="popover-email" id="menuUserEmail">—</span>
+                <span class="popover-role" id="menuUserRole">Administrator</span>
+              </div>
+              <div class="user-menu-divider"></div>
+              <a href="settings.html#profile" class="user-menu-item" id="menuProfileLink">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Profile</span>
+              </a>
+              <a href="settings.html" class="user-menu-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>Settings</span>
+              </a>
+              <a href="#" class="user-menu-item text-danger" onclick="logout(event)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Logout</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============ TOP HERO PROGRESS SECTION ============ -->
+      <section class="live-hero-card" id="heroProgressCard">
+        <div class="hero-left-section">
+          <!-- Circular Progress Ring -->
+          <div class="progress-ring-box">
+            <svg class="ring-svg" viewBox="0 0 160 160">
               <defs>
                 <linearGradient id="liveGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#cc2f0c" />
+                  <stop offset="0%" stop-color="#f97316" />
                   <stop offset="100%" stop-color="#1bb369" />
                 </linearGradient>
               </defs>
-              <circle cx="70" cy="70" r="60" class="ring-bg" />
-              <circle cx="70" cy="70" r="60" class="ring-progress" id="ringProgress" />
+              <circle cx="80" cy="80" r="66" class="ring-track" />
+              <circle cx="80" cy="80" r="66" class="ring-progress" id="ringProgress" />
             </svg>
-            <div class="ring-center">
-              <span id="progressPercent">0%</span>
-              <small id="statusLabel">queued</small>
+            <div class="ring-text-center">
+              <span class="ring-percent" id="progressPercent">0%</span>
+              <span class="ring-status-badge" id="statusLabel">QUEUED</span>
             </div>
           </div>
 
-          <div class="progress-copy">
-            <h2 id="stageText">Queued — initializing scanning worker</h2>
-            <p id="stageHint">Target accepted. Engine running pipeline diagnostics and module handshakes.</p>
+          <!-- Progress Info & Meta -->
+          <div class="hero-info-column">
+            <h2 class="hero-heading" id="stageText">Queued — initializing scanning worker</h2>
+            <p class="hero-subtext" id="stageHint">Target accepted. Engine running pipeline diagnostics and module handshakes.</p>
 
-            <div class="progress-bar">
-              <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-track-bar">
+              <div class="progress-fill-bar" id="progressFill"></div>
             </div>
 
-            <div class="meta-row">
-              <span>Scan ID: <strong id="scanIdLabel">—</strong></span>
-              <span>Depth: <strong id="depthLabel">Deep Audit</strong></span>
-              <span>Elapsed: <strong id="elapsed">0s</strong></span>
+            <div class="hero-meta-row">
+              <div class="meta-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                <span>Scan ID: <strong id="scanIdLabel">—</strong></span>
+                <button type="button" class="copy-id-btn" id="copyScanIdBtn" title="Copy Scan ID to clipboard" aria-label="Copy Scan ID">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="meta-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                <span>Depth: <strong id="depthLabel">—</strong></span>
+              </div>
+
+              <div class="meta-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>Elapsed: <strong id="elapsed">0s</strong></span>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Check item grid -->
-        <div class="check-grid" id="checkGrid">
-          <div class="check" data-check="misconfig"><span class="check-dot"></span> Security misconfiguration</div>
-          <div class="check" data-check="https"><span class="check-dot"></span> SSL / TLS</div>
-          <div class="check" data-check="access_control"><span class="check-dot"></span> Broken Access Control</div>
-          <div class="check" data-check="auth"><span class="check-dot"></span> Authentication</div>
-          <div class="check" data-check="sqli"><span class="check-dot"></span> SQL Injection</div>
-          <div class="check" data-check="xss"><span class="check-dot"></span> Cross-Site Scripting (XSS)</div>
-          <div class="check" data-check="headers"><span class="check-dot"></span> Security Headers &amp; Cookies</div>
-        </div>
+        <!-- Right Side: Scan Details Panel -->
+        <aside class="hero-details-card" aria-label="Scan configuration details">
+          <div class="details-card-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+            </svg>
+            <span>Scan Details</span>
+          </div>
 
-        <div class="log-panel">
-          <div class="log-title">Pipeline</div>
-          <ul class="log" id="log"></ul>
-        </div>
+          <div class="details-list">
+            <div class="detail-row">
+              <span class="detail-label">Target URL</span>
+              <span class="detail-val truncate-text" id="detailsTargetUrl" title="Target URL">—</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Profile</span>
+              <span class="detail-pill" id="detailsProfile">Standard Scan</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Max Pages</span>
+              <span class="detail-val" id="detailsMaxPages">15</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Max Depth</span>
+              <span class="detail-val" id="detailsMaxDepth">2</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Selected Checks</span>
+              <span class="detail-val text-success" id="detailsSelectedChecks">12 of 12</span>
+            </div>
+          </div>
 
-        <div class="progress-actions">
-          <button class="ghost-btn" id="cancelScan" type="button">Cancel scan</button>
-          <a class="primary-btn" id="viewResults" href="#" hidden>View results →</a>
-        </div>
-
+          <button type="button" class="details-view-action" id="openDetailsModalBtn">
+            <span>View details</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </aside>
       </section>
+
+      <!-- ============ HORIZONTAL SEVEN-STAGE PIPELINE ============ -->
+      <section class="pipeline-card" id="pipelineCard" aria-label="Assessment Pipeline Stages">
+        <div class="pipeline-track" id="pipelineTrack">
+          <!-- 7-stage connected timeline nodes generated & updated by livejava.js -->
+        </div>
+      </section>
+
+      <!-- Failure / Security Constraint Notice Banner (truthful state) -->
+      <div id="scanNoticeBox" class="scan-notice-box" style="display:none;" role="alert"></div>
+
+      <!-- ============ LOWER TWO-COLUMN SECTION ============ -->
+      <div class="scan-lower-layout">
+
+        <!-- Column 1: Module Execution Status Grid (~65% width) -->
+        <section class="modules-column" aria-label="Module Execution Status">
+          <div class="section-header-bar">
+            <div class="section-title-group">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              <h2>Module Execution Status</h2>
+            </div>
+
+            <!-- Color-coded Legend -->
+            <div class="module-legend" aria-label="Status Legend">
+              <span class="legend-item"><span class="legend-dot running"></span> Running</span>
+              <span class="legend-item"><span class="legend-dot completed"></span> Completed</span>
+              <span class="legend-item"><span class="legend-dot skipped"></span> Skipped</span>
+              <span class="legend-item"><span class="legend-dot failed"></span> Failed</span>
+              <span class="legend-item"><span class="legend-dot inconclusive"></span> Inconclusive</span>
+            </div>
+          </div>
+
+          <!-- Dynamic 12-module card grid -->
+          <div class="check-grid" id="checkGrid">
+            <!-- Dynamically populated from canonical registry in livejava.js -->
+          </div>
+        </section>
+
+        <!-- Column 2: Live Execution Log (~35% width) -->
+        <section class="log-column" aria-label="Live Execution Log">
+          <div class="section-header-bar">
+            <div class="section-title-group">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 17 10 11 4 5"></polyline>
+                <line x1="12" y1="19" x2="20" y2="19"></line>
+              </svg>
+              <h2>Live Execution Log</h2>
+            </div>
+            <div class="log-telemetry-indicator" id="logTelemetryIndicator" title="Telemetry stream status">
+              <span class="stream-dot" id="streamPulseDot"></span>
+              <span class="stream-label" id="streamStatusText">Streaming</span>
+            </div>
+          </div>
+
+          <div class="log-panel" id="logPanelContainer">
+            <ul class="timeline-list" id="pipelineList" aria-live="polite">
+              <!-- Chronological deduplicated backend event log -->
+            </ul>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Action Buttons Row -->
+      <footer class="scan-actions-footer">
+        <button class="ghost-btn-danger" id="cancelScan" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Cancel scan</span>
+        </button>
+
+        <a class="primary-btn-finish" id="viewResults" href="#" hidden>
+          <span>View Results</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </a>
+      </footer>
 
     </main>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <!-- Scan Details Modal Overlay -->
+  <div class="modal-backdrop" id="detailsModalBackdrop" style="display:none;" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalDetailsTitle">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+          <h3 id="modalDetailsTitle">Scan Configuration & Telemetry</h3>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeDetailsModalBtn" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="modal-body" id="detailsModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <!-- Pure Frontend Runtime Shim -->
   <script>
@@ -193,13 +471,13 @@
       });
       overlay?.addEventListener("click", () => {
         sidebar.classList.remove("open");
-        overlay.classList.remove("show");
+        overlay?.classList.remove("show");
       });
     }
   </script>
 
   <!-- Live Scan Script -->
   <script src="livejava.js"></script>
+  <script src="notifications.js"></script>
 </body>
 </html>
-

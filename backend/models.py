@@ -16,6 +16,24 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, default="user")
     website = Column(String, nullable=True)
+    
+    # Email verification (default True for direct DB entities; register endpoint explicitly sets False)
+    is_verified = Column(Boolean, default=True, nullable=False)
+    verification_code_hash = Column(String, nullable=True)
+    verification_expires_at = Column(String, nullable=True)
+    verification_attempts = Column(Integer, default=0, nullable=False)
+    verification_sent_at = Column(String, nullable=True)
+
+    # Password reset
+    reset_token_hash = Column(String, nullable=True)
+    reset_expires_at = Column(String, nullable=True)
+    reset_attempts = Column(Integer, default=0, nullable=False)
+
+    # Session & Account Lockout
+    session_revoked_at = Column(String, nullable=True)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(String, nullable=True)
+
     created_at = Column(String, default=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
 
 class ScanTarget(Base):

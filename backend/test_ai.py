@@ -347,3 +347,127 @@ def test_normal_successful_response(test_data):
     assert data["finding_id"] == finding_id
     assert "### What it means" in data["reply"]
     assert "### How to fix it" in data["reply"]
+
+# 13. Unauthenticated request rejection (401)
+def test_unauthenticated_request():
+    res = client.post(
+        "/api/ai/chat",
+        json={"message": "What is XSS?"}
+    )
+    assert res.status_code == 401
+
+# 14. Empty and whitespace-only message rejection (422)
+def test_empty_message_rejection(test_data):
+    token_a = get_auth_token("user_a_ai@test.com", "passA")
+    res_empty = client.post(
+        "/api/ai/chat",
+        json={"message": ""},
+        headers={"Authorization": f"Bearer {token_a}"}
+    )
+    assert res_empty.status_code == 422
+
+    res_whitespace = client.post(
+        "/api/ai/chat",
+        json={"message": "    \n   "},
+        headers={"Authorization": f"Bearer {token_a}"}
+    )
+    assert res_whitespace.status_code == 422
+
+# 15. Missing Gemini API key handled safely
+def test_missing_gemini_api_key(test_data, monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    set_mock_provider(None)
+
+    token_a = get_auth_token("user_a_ai@test.com", "passA")
+    res = client.post(
+        "/api/ai/chat",
+        json={"message": "What is SQL injection?"},
+        headers={"Authorization": f"Bearer {token_a}"}
+    )
+    assert res.status_code == 200
+    assert "GEMINI_API_KEY is not configured" in res.json()["reply"]
+
+# 16. Invalid provider configuration produces clear error
+def test_invalid_provider_configuration(test_data, monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "unsupported_llm")
+    set_mock_provider(None)
+
+    token_a = get_auth_token("user_a_ai@test.com", "passA")
+    res = client.post(
+        "/api/ai/chat",
+        json={"message": "What is SQL injection?"},
+        headers={"Authorization": f"Bearer {token_a}"}
+    )
+    assert res.status_code == 200
+    assert "Unsupported AI provider" in res.json()["reply"]
+
+# 17. Credential secrecy: API key never exposed in responses or logs
+def test_api_key_not_exposed_in_response(test_data, monkeypatch):
+    dummy_secret = "super-secret-dummy-api-key-xyz123"
+    monkeypatch.setenv("AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", dummy_secret)
+
+    def provider_with_key_leak(context, message):
+        raise RuntimeError(f"Internal crash with secret {dummy_secret}")
+
+    set_mock_provider(provider_with_key_leak)
+    token_a = get_auth_token("user_a_ai@test.com", "passA")
+
+    res = client.post(
+        "/api/ai/chat",
+        json={"message": "Test key secrecy"},
+        headers={"Authorization": f"Bearer {token_a}"}
+    )
+    assert res.status_code == 200
+    raw_response = res.text
+    assert dummy_secret not in raw_response
+    assert "error while processing your request" in res.json()["reply"].lower()
+
+# 18. Provider timeout handled safely without crashing
+def test_provider_timeout_handling(test_data):
+    import asyncio
+    async def timeout_mock(context, message):
+        await asyncio.sleep(0.01)
+        raise asyncio.TimeoutError("Timeout exceeded")
+
+    def sync_timeout(context, message):
+        raise TimeoutError("Request timed out")
+
+    set_mock_provider(sync_timeout)
+    token_a = get_auth_token("user_a_ai@test.com", "passA")
+
+    res = client.post(
+        "/api/ai/chat",
+        json={"message": "Timeout test"},
+        headers={"Authorization": f"Bearer {token_a}"}
+    )
+    assert res.status_code == 200
+    assert "error while processing your request" in res.json()["reply"].lower()
+
+# 19. Real live Gemini provider smoke test
+def test_real_gemini_smoke_test(test_data):
+    from dotenv import load_dotenv
+    load_dotenv()
+    key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not key:
+        pytest.skip("GEMINI_API_KEY is not configured in environment; skipping live provider smoke test.")
+
+    # Unset mock so it calls the real Gemini API
+    set_mock_provider(None)
+    token_a = get_auth_token("user_a_ai@test.com", "passA")
+
+    res = client.post(
+        "/api/ai/chat",
+        json={"message": "What is EthioSec Scanner, and what does it do?"},
+        headers={"Authorization": f"Bearer {token_a}"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    reply = data.get("reply", "")
+    assert len(reply) > 20
+    # Ensure key is not leaked in the response text
+    assert key not in reply
+    # Should contain relevant answer about EthioSec or vulnerability scanner
+    assert any(term in reply.lower() for term in ["ethiosec", "scanner", "vulnerability", "security"])
+

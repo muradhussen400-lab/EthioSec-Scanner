@@ -49,7 +49,7 @@ async def check_cookies(scanner: SecurityScanner, url: str, response: httpx.Resp
             test_case.status = "SCANNER_ERROR"
             test_case.evidence = f"Error evaluating cookie: {str(e)}"
             
-        if test_case.status in ["HIGH", "LOW", "SCANNER_ERROR"]:
+        if test_case.status in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "SCANNER_ERROR"]:
             scanner._add_finding(
                 f_type="cookies",
                 severity=test_case.severity if test_case.status != "SCANNER_ERROR" else "info",

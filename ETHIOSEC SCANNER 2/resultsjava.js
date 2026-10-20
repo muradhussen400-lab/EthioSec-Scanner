@@ -1,12 +1,20 @@
-if (!localStorage.getItem('token')) {
-    window.location.href = 'login.html';
-}
-/* =====================================================
-   VULNERABILITY RESULTS (resultsjava.js) - Real Backend Sync
-   ===================================================== */
+/* ==========================================================================
+   ETHIOSECSCAN — SCAN RESULTS CONTROLLER (resultsjava.js)
+   Strict Real Backend API Integration (/api/scans/{id}/results, /api/scans)
+   ========================================================================== */
 
 document.addEventListener("DOMContentLoaded", async () => {
+    const API_BASE = "http://127.0.0.1:8000/api";
+    function getAuthToken() {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            window.location.href = "login.html";
+            return "";
+        }
+        return token;
+    }
 
+    // UI Helpers
     const UI = {
         escapeHTML: (str) => {
             if (!str) return "";
@@ -18,420 +26,1076 @@ document.addEventListener("DOMContentLoaded", async () => {
                 .replace(/'/g, "&#039;");
         },
         timeAgo: (dateString) => {
-            if (!dateString) return "Recently";
-            const diff = Date.now() - new Date(dateString).getTime();
-            const mins = Math.floor(diff / 60000);
-            if (mins < 1) return "Just now";
-            if (mins < 60) return `${mins}m ago`;
-            const hours = Math.floor(mins / 60);
-            if (hours < 24) return `${hours}h ago`;
-            const days = Math.floor(hours / 24);
-            return `${days}d ago`;
-        },
-        severityClass: (sev) => {
-            const map = { 
-                high: "sev-high", 
-                medium: "sev-medium", 
-                low: "sev-low", 
-                info: "sev-info" 
-            };
-            return map[sev?.toLowerCase()] || "sev-info";
-        },
-        toast: (msg) => {
-            const t = document.getElementById("toast");
-            if (t) {
-                t.textContent = msg;
-                t.classList.add("show");
-                setTimeout(() => t.classList.remove("show"), 3000);
+            if (!dateString) return "—";
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return "—";
+                const diff = Date.now() - date.getTime();
+                const mins = Math.floor(diff / 60000);
+                if (mins < 1) return "Just now";
+                if (mins < 60) return `${mins}m ago`;
+                const hours = Math.floor(mins / 60);
+                if (hours < 24) return `${hours}h ago`;
+                const days = Math.floor(hours / 24);
+                return `${days}d ago`;
+            } catch {
+                return "—";
             }
         },
-        getQueryParam: (param) => new URLSearchParams(window.location.search).get(param)
+        formatDate: (dateString) => {
+            if (!dateString) return "—";
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return "—";
+                return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                });
+            } catch {
+                return "—";
+            }
+        },
+        calculateDuration: (startStr, finishStr) => {
+            if (!startStr || !finishStr) return null;
+            try {
+                const start = new Date(startStr).getTime();
+                const finish = new Date(finishStr).getTime();
+                if (isNaN(start) || isNaN(finish) || finish < start) return null;
+                const totalSeconds = Math.max(0, Math.round((finish - start) / 1000));
+                if (totalSeconds < 60) return `${totalSeconds}s`;
+                const mins = Math.floor(totalSeconds / 60);
+                const secs = totalSeconds % 60;
+                return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+            } catch {
+                return null;
+            }
+        },
+        toast: (msg, type = "info") => {
+            const toastEl = document.getElementById("toast");
+            if (toastEl) {
+                toastEl.textContent = msg;
+                toastEl.className = `toast show ${type === "error" ? "error" : ""}`;
+                setTimeout(() => toastEl.classList.remove("show"), 3500);
+            }
+        },
+        getQueryParam: (name) => {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
     };
 
-    let scanId = UI.getQueryParam("id");
-    const RING_LENGTH = 2 * Math.PI * 60;
+    // DOM Elements
+    const targetBreadcrumb = document.getElementById("targetBreadcrumb");
+    const scanIdBadge = document.getElementById("scanIdBadge");
+    const btnExportJson = document.getElementById("btnExportJson");
+    const inProgressBanner = document.getElementById("inProgressBanner");
+    const linkLiveMonitor = document.getElementById("linkLiveMonitor");
 
-    let findings = [];
-    let filterSeverity = "all";
-    let filterModule = "all";
-    let search = "";
+    const ringProgress = document.getElementById("ringProgress");
+    const scoreValue = document.getElementById("scoreValue");
+    const verdictTitle = document.getElementById("verdictTitle");
+    const verdictDesc = document.getElementById("verdictDesc");
+    const metaStatusPill = document.getElementById("metaStatusPill");
+    const metaStatusText = document.getElementById("metaStatusText");
+    const metaScanId = document.getElementById("metaScanId");
+    const metaProfile = document.getElementById("metaProfile");
+    const metaScannedAt = document.getElementById("metaScannedAt");
+    const metaDurationItem = document.getElementById("metaDurationItem");
+    const metaDuration = document.getElementById("metaDuration");
 
-    const list = document.getElementById("findingList");
-    const scanIdLabel = document.getElementById("scanIdLabel");
-    const openReport = document.getElementById("openReport");
+    // Summary counts (6 Distinct Primary Categories)
+    const countCritical = document.getElementById("countCritical");
+    const countHigh = document.getElementById("countHigh");
+    const countMedium = document.getElementById("countMedium");
+    const countLow = document.getElementById("countLow");
+    const countPassed = document.getElementById("countPassed");
+    const countError = document.getElementById("countError");
 
-    // If no scan ID specified in URL, resolve the user's latest scan from backend
-    if (!scanId) {
+    // Assessment Coverage Section
+    const coverageSection = document.getElementById("coverageSection");
+    const coverageList = document.getElementById("coverageList");
+    const coverageCountPill = document.getElementById("coverageCountPill");
+
+    // Modal AI Explain Action
+    const btnModalAiExplain = document.getElementById("btnModalAiExplain");
+    let activeModalFinding = null;
+
+    // Filter controls
+    const findingSearchInput = document.getElementById("findingSearchInput");
+    const btnFindingSearchClear = document.getElementById("btnFindingSearchClear");
+    const filterSeverity = document.getElementById("filterSeverity");
+    const filterModule = document.getElementById("filterModule");
+    const filterStatus = document.getElementById("filterStatus");
+    const btnResetFilters = document.getElementById("btnResetFilters");
+    const summaryPillsRow = document.getElementById("summaryPillsRow");
+
+    // Findings List
+    const findingsList = document.getElementById("findingsList");
+    const findingsCountBadge = document.getElementById("findingsCountBadge");
+
+    // Details Modal
+    const detailModalOverlay = document.getElementById("detailModalOverlay");
+    const modalCloseBtn = document.getElementById("modalCloseBtn");
+    const btnModalClose = document.getElementById("btnModalClose");
+    const dSeverityBadge = document.getElementById("dSeverityBadge");
+    const dStatusBadge = document.getElementById("dStatusBadge");
+    const dConfidence = document.getElementById("dConfidence");
+    const dModuleTag = document.getElementById("dModuleTag");
+    const dTitle = document.getElementById("dTitle");
+    const dEndpoint = document.getElementById("dEndpoint");
+    const dDescription = document.getElementById("dDescription");
+    const dParamBlock = document.getElementById("dParamBlock");
+    const dParameterMethod = document.getElementById("dParameterMethod");
+    const dEvidenceBlock = document.getElementById("dEvidenceBlock");
+    const dEvidence = document.getElementById("dEvidence");
+    const dImpactBlock = document.getElementById("dImpactBlock");
+    const dImpact = document.getElementById("dImpact");
+    const dAiBlock = document.getElementById("dAiBlock");
+    const dAiText = document.getElementById("dAiText");
+    const dRemediationBlock = document.getElementById("dRemediationBlock");
+    const dRemediationList = document.getElementById("dRemediationList");
+    const dOwaspTag = document.getElementById("dOwaspTag");
+    const dCweTag = document.getElementById("dCweTag");
+
+    // State Variables
+    let currentScanId = UI.getQueryParam("id");
+    let scanResultData = null;
+    let allFindings = [];
+    let filteredFindings = [];
+    const CIRCUMFERENCE = 2 * Math.PI * 58; // 364.42px
+
+    // Step 1: Resolve Scan ID if not supplied
+    if (!currentScanId) {
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch("http://127.0.0.1:8000/api/scans?limit=1", {
+            const token = getAuthToken();
+            const res = await fetch(`${API_BASE}/scans?limit=1`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (res.ok) {
                 const data = await res.json();
                 if (data.scans && data.scans.length > 0) {
-                    scanId = data.scans[0].id;
-                    history.replaceState(null, "", `results.html?id=${encodeURIComponent(scanId)}`);
+                    currentScanId = data.scans[0].id;
+                    history.replaceState(null, "", `results.html?id=${encodeURIComponent(currentScanId)}`);
                 }
             }
         } catch (e) {
-            console.error("Could not resolve latest scan ID", e);
+            console.error("Could not auto-resolve latest scan ID:", e);
         }
     }
 
-    if (scanIdLabel) scanIdLabel.textContent = scanId || "—";
-    if (openReport && scanId) openReport.href = `reports.html?id=r${encodeURIComponent(scanId)}`;
+    if (!currentScanId) {
+        renderNoScanState();
+        return;
+    }
 
-    /* =====================================================
-       DATA RESOLVER (Strict Backend API)
-       ===================================================== */
-    async function fetchScanData(id) {
-        if (!id) {
-            return {
-                target: "No scan selected",
-                depth: "—",
-                scanned_at: new Date().toISOString(),
-                security_score: 0,
-                counts: { critical: 0, high: 0, medium: 0, low: 0, passed: 0 },
-                findings: []
-            };
-        }
+    currentScanId = String(currentScanId).trim();
+    if (!/^[a-zA-Z0-9_\-]{1,64}$/.test(currentScanId)) {
+        renderNotFoundError("Invalid scan identifier format. Please select a valid assessment from Scan History.");
+        return;
+    }
+
+    // Step 2: Load Scan Results
+    async function loadScanResults() {
+        renderLoading();
+        const token = getAuthToken();
 
         try {
-            const token = localStorage.getItem("token");
-            const headers = { "Content-Type": "application/json" };
-            if (token) headers["Authorization"] = `Bearer ${token}`;
+            // Concurrent fetch: results + scan record metadata (to get exact timestamps)
+            const [resultsRes, scanListRes] = await Promise.all([
+                fetch(`${API_BASE}/scans/${encodeURIComponent(currentScanId)}/results`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                }),
+                fetch(`${API_BASE}/scans?limit=50`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                }).catch(() => null)
+            ]);
 
-            const res = await fetch(`http://127.0.0.1:8000/api/scans/${id}/results`, { headers });
-            if (!res.ok) {
-                if (res.status === 409) {
-                    // Scan still running, redirect to livescan
-                    window.location.href = `livescan.html?id=${encodeURIComponent(id)}`;
-                    return null;
-                }
-                throw new Error(`Failed to load scan results (HTTP ${res.status})`);
+            // Handle HTTP 409: Scan Still Running
+            if (resultsRes.status === 409) {
+                renderInProgressState();
+                return;
             }
-            
-            return await res.json();
+
+            // Handle HTTP 404: Scan Not Found
+            if (resultsRes.status === 404) {
+                renderNotFoundError("Scan record was not found or has been deleted.");
+                return;
+            }
+
+            // Handle HTTP 401 / 403: Auth Expired
+            if (resultsRes.status === 401 || resultsRes.status === 403) {
+                renderAuthExpiredError();
+                return;
+            }
+
+            if (!resultsRes.ok) {
+                throw new Error(`Server returned HTTP ${resultsRes.status}`);
+            }
+
+            scanResultData = await resultsRes.json();
+            allFindings = scanResultData.findings || [];
+
+            // Extract additional duration metadata if available
+            let scanMetaRecord = null;
+            if (scanListRes && scanListRes.ok) {
+                try {
+                    const listData = await scanListRes.json();
+                    scanMetaRecord = (listData.scans || []).find(s => s.id === currentScanId);
+                } catch (_) {}
+            }
+
+            paintOverview(scanResultData, scanMetaRecord);
+            renderAssessmentCoverage(scanResultData);
+            populateModuleFilter(allFindings);
+            applyFindingsFilters();
+
         } catch (err) {
-            console.error("Scan results fetch error:", err);
-            return {
-                target: "Error loading scan data from backend",
-                depth: "Unknown",
-                scanned_at: new Date().toISOString(),
-                security_score: 0,
-                counts: { critical: 0, high: 0, medium: 0, low: 0, passed: 0 },
-                findings: []
-            };
+            console.error("Error loading scan results:", err);
+            renderGeneralError(err.message || "Unable to retrieve scan results from backend.");
         }
     }
 
-    /* =====================================================
-       LOAD CONTROLLER
-       ===================================================== */
-    async function load() {
-        if (!scanId) {
-            if (list) list.innerHTML = '<p class="empty-state">No scans found. <a href="scanfinal.html" style="color:#ff4b20">Start a new scan →</a></p>';
-            const targetEl = document.getElementById("resultTarget");
-            if (targetEl) targetEl.textContent = "No scan data";
+    // Paint Overview Banner and Score Ring
+    function paintOverview(result, metaRecord) {
+        const target = result.target || "Target Web Application";
+        const depth = (result.depth || "standard").toUpperCase();
+        const isScoreAvailable = result.security_score !== undefined && result.security_score !== null;
+        const score = isScoreAvailable ? Number(result.security_score) : null;
+        const counts = result.counts || {};
+
+        // Breadcrumb and IDs
+        if (targetBreadcrumb) {
+            targetBreadcrumb.textContent = target;
+            targetBreadcrumb.href = target.startsWith("http") ? target : `https://${target}`;
+        }
+        if (scanIdBadge) {
+            scanIdBadge.textContent = `#${result.scan_id}`;
+        }
+        if (metaScanId) metaScanId.textContent = result.scan_id.slice(0, 12);
+        if (metaProfile) metaProfile.textContent = depth;
+        if (metaScannedAt) metaScannedAt.textContent = UI.formatDate(result.scanned_at || metaRecord?.created_at);
+
+        // Calculate Duration if timestamps exist
+        const duration = UI.calculateDuration(metaRecord?.created_at, metaRecord?.finished_at || result.scanned_at);
+        if (duration && metaDurationItem && metaDuration) {
+            metaDurationItem.style.display = "flex";
+            metaDuration.textContent = duration;
+        }
+
+        // Animate Circular Score Ring
+        if (ringProgress) {
+            ringProgress.style.strokeDasharray = CIRCUMFERENCE;
+            if (score === null) {
+                ringProgress.style.strokeDashoffset = CIRCUMFERENCE;
+                ringProgress.style.stroke = "var(--sev-inconclusive)";
+            } else {
+                const offset = Math.max(0, CIRCUMFERENCE - (score / 100) * CIRCUMFERENCE);
+                requestAnimationFrame(() => {
+                    ringProgress.style.strokeDashoffset = offset;
+                    // Color interpolation
+                    if (score >= 80) {
+                        ringProgress.style.stroke = "var(--sev-passed)";
+                    } else if (score >= 60) {
+                        ringProgress.style.stroke = "var(--sev-medium)";
+                    } else {
+                        ringProgress.style.stroke = "var(--brand-red)";
+                    }
+                });
+            }
+        }
+
+        // Animate Numeric Score
+        if (scoreValue) {
+            if (score === null) {
+                scoreValue.textContent = "—";
+            } else {
+                animateNumber(scoreValue, score);
+            }
+        }
+
+        // Calculate Exact 6 Primary Categories from findings & backend counts
+        let cCrit = 0, cHigh = 0, cMed = 0, cLow = 0, cPass = 0, cErr = 0, cInconc = 0;
+
+        if (allFindings.length > 0) {
+            allFindings.forEach(f => {
+                const sev = (f.severity || "low").toLowerCase();
+                const stat = (f.status || "NOT_DETECTED").toUpperCase();
+
+                if (stat === "SCANNER_ERROR" || f.type === "scanner_error") {
+                    cErr++;
+                } else if (stat === "NOT_DETECTED") {
+                    cPass++;
+                } else if (stat === "INCONCLUSIVE") {
+                    cInconc++;
+                } else {
+                    // Confirmed vulnerability finding
+                    if (sev === "critical") cCrit++;
+                    else if (sev === "high") cHigh++;
+                    else if (sev === "medium") cMed++;
+                    else cLow++; // low or info
+                }
+            });
+        } else if (counts) {
+            cCrit = Number(counts.critical || 0);
+            const rawHigh = Number(counts.high || 0);
+            cHigh = Math.max(0, rawHigh - cCrit);
+            cMed = Number(counts.medium || 0);
+            cLow = Number(counts.low || 0);
+            cPass = Number(counts.not_detected || 0);
+            cErr = Number(counts.scanner_error || 0);
+            cInconc = Number(counts.inconclusive || 0);
+        }
+
+        if (countCritical) animateNumber(countCritical, cCrit);
+        if (countHigh) animateNumber(countHigh, cHigh);
+        if (countMedium) animateNumber(countMedium, cMed);
+        if (countLow) animateNumber(countLow, cLow);
+        if (countPassed) animateNumber(countPassed, cPass);
+        if (countError) animateNumber(countError, cErr);
+
+        // Contextual Evidence-Based Verdict Header
+        if (verdictTitle && verdictDesc) {
+            const totalConfirmed = cCrit + cHigh + cMed + cLow;
+
+            if (cCrit > 0) {
+                verdictTitle.textContent = `Critical Security Vulnerabilities Confirmed (${totalConfirmed} Total)`;
+                verdictTitle.style.color = "var(--sev-critical)";
+                verdictDesc.textContent = `Audit confirmed ${cCrit} critical risk issue(s) supported by direct probe evidence (${totalConfirmed} total confirmed vulnerabilities). Immediate remediation is required to protect the application.`;
+            } else if (cHigh > 0) {
+                verdictTitle.textContent = `High-Severity Vulnerabilities Confirmed (${totalConfirmed} Total)`;
+                verdictTitle.style.color = "var(--brand-red)";
+                verdictDesc.textContent = `Audit confirmed ${cHigh} high-severity issue(s) (${totalConfirmed} total confirmed vulnerabilities across all severities). ${cPass} executed check(s) completed clean with no vulnerabilities detected.`;
+            } else if (totalConfirmed > 0) {
+                verdictTitle.textContent = `Security Hardening Findings Identified (${totalConfirmed} Total)`;
+                verdictTitle.style.color = "var(--sev-medium)";
+                verdictDesc.textContent = `Audit confirmed ${totalConfirmed} moderate/low security misconfiguration(s) (${cMed} Medium, ${cLow} Low). ${cPass} executed check(s) completed clean. Review headers, cookies, and CORS controls to strengthen defense-in-depth.`;
+            } else if (cInconc > 0) {
+                verdictTitle.textContent = `No Confirmed Vulnerabilities in Tested Scope (${cInconc} Inconclusive Check${cInconc === 1 ? '' : 's'})`;
+                verdictTitle.style.color = "var(--sev-inconclusive)";
+                verdictDesc.textContent = `${cPass} executed check(s) completed clean with no vulnerabilities detected. However, ${cInconc} check(s) had coverage limitations (such as missing dual-account credentials for access control) and require authenticated follow-up testing.`;
+            } else if (cErr > 0) {
+                verdictTitle.textContent = `Scan Completed with Probe Notices (${cErr} Scanner Error${cErr === 1 ? '' : 's'})`;
+                verdictTitle.style.color = "var(--text-primary)";
+                verdictDesc.textContent = `Executed checks completed. ${cErr} probe warning(s) were recorded due to target response timeouts. Security status for failed probes remains unknown.`;
+            } else {
+                verdictTitle.textContent = `No Vulnerabilities Detected in Executed Scope (${cPass} Passed)`;
+                verdictTitle.style.color = "var(--sev-passed)";
+                verdictDesc.textContent = `All ${cPass} executed automated security checks completed without detecting vulnerabilities on assessed endpoints. Note: This assessment covers executed checks only and does not establish that the application is completely invulnerable.`;
+            }
+        }
+    }
+
+    // Render Assessment Coverage & Scope Limitations Section
+    function renderAssessmentCoverage(result) {
+        if (!coverageSection || !coverageList) return;
+
+        const moduleDetails = result.module_details || {};
+        const coverageItems = [];
+
+        // 1. Inconclusive findings from engine (e.g. Broken Access Control without dual auth tokens)
+        const inconclusiveFindings = allFindings.filter(f => (f.status || "").toUpperCase() === "INCONCLUSIVE");
+        inconclusiveFindings.forEach(f => {
+            const modKey = (f.type || "").toLowerCase();
+            let name = f.title || "Inconclusive Assessment";
+            let reason = f.evidence || "Assessment required credentials or dual authentication contexts that were not supplied.";
+            let tested = f.url || "Target web endpoints (baseline reachability)";
+            let unverified = "Object-level authorization boundaries, cross-tenant isolation, or advanced exploitability.";
+            let nextSteps = "Provide dual authenticated user tokens or run an authorized multi-account security verification.";
+
+            if (modKey === "access_control" || f.title.toLowerCase().includes("access control")) {
+                name = "Broken Access Control & IDOR (OWASP A01)";
+                reason = "Dual authorization contexts were not provided. Automated access control and IDOR testing requires two independent session tokens to verify object ownership boundaries.";
+                tested = "Passive response inspection and public endpoint reachability.";
+                unverified = "Horizontal privilege escalation, IDOR, and tenant boundary enforcement.";
+                nextSteps = "Configure user credentials (auth_context_1 and auth_context_2) in New Scan > Scan Configuration, or perform authorized manual multi-role testing.";
+            }
+
+            coverageItems.push({
+                type: "inconclusive",
+                badge: "INCONCLUSIVE ASSESSMENT",
+                name,
+                reason,
+                tested,
+                unverified,
+                nextSteps
+            });
+        });
+
+        // 2. Telemetry modules from module_details
+        Object.entries(moduleDetails).forEach(([modKey, mod]) => {
+            const st = (mod.status || "").toLowerCase();
+            const isAlreadyCaptured = inconclusiveFindings.some(f => (f.type || "").toLowerCase() === modKey);
+
+            if (st === "inconclusive" && !isAlreadyCaptured) {
+                coverageItems.push({
+                    type: "inconclusive",
+                    badge: "INCONCLUSIVE ASSESSMENT",
+                    name: mod.name || modKey.toUpperCase(),
+                    reason: mod.message || "Required authentication or environmental conditions were not available.",
+                    tested: "Public perimeter and basic route reachability.",
+                    unverified: "Authenticated application logic and sensitive privilege boundaries.",
+                    nextSteps: "Provide required test credentials and re-execute assessment."
+                });
+            } else if (st === "failed") {
+                coverageItems.push({
+                    type: "error",
+                    badge: "SCANNER ERROR",
+                    name: mod.name || modKey.toUpperCase(),
+                    reason: mod.message || "Scanner engine encountered probe timeout or connection reset.",
+                    tested: "Initial connection handshake.",
+                    unverified: "Module could not complete execution; security outcome is unknown.",
+                    nextSteps: "Verify network firewall permissions and re-run probe."
+                });
+            } else if (mod.selected === false || st === "skipped") {
+                coverageItems.push({
+                    type: "skipped",
+                    badge: "SKIPPED CHECK",
+                    name: mod.name || modKey.toUpperCase(),
+                    reason: "This module was intentionally not selected for this assessment.",
+                    tested: "None (excluded from scan profile).",
+                    unverified: `Vulnerabilities in this category (${mod.category || 'Module scope'}) were not assessed.`,
+                    nextSteps: "To evaluate this attack vector, enable this module in New Scan."
+                });
+            }
+        });
+
+        if (coverageItems.length === 0) {
+            coverageSection.style.display = "none";
             return;
         }
 
-        const data = await fetchScanData(scanId);
-        if (!data) return;
-
-        findings = data.findings || [];
-
-        const targetEl = document.getElementById("resultTarget");
-        const depthEl = document.getElementById("depthLabel");
-        const finishedEl = document.getElementById("finishedLabel");
-
-        if (targetEl) targetEl.textContent = data.target;
-        if (depthEl) depthEl.textContent = (data.depth || "standard").toUpperCase();
-        if (finishedEl) finishedEl.textContent = UI.timeAgo(data.scanned_at || data.finished_at);
-
-        paintScore(data.security_score ?? 0, data.counts || {});
-        buildModuleFilter();
-        render();
-    }
-
-    function paintScore(score, counts) {
-        const ring = document.getElementById("ringProgress");
-        if (ring) {
-            ring.style.strokeDasharray = RING_LENGTH;
-            requestAnimationFrame(() => {
-                ring.style.strokeDashoffset = RING_LENGTH - (score / 100) * RING_LENGTH;
-            });
+        coverageSection.style.display = "block";
+        if (coverageCountPill) {
+            coverageCountPill.textContent = `${coverageItems.length} Scope Limitation${coverageItems.length === 1 ? "" : "s"}`;
         }
 
-        const scoreValEl = document.getElementById("scoreValue");
-        if (scoreValEl) countUp(scoreValEl, score);
-
-        const setSafeText = (id, val) => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = val;
-        };
-
-        setSafeText("cHigh", counts.high || 0);
-        setSafeText("cMedium", counts.medium || 0);
-        setSafeText("cLow", counts.low || 0);
-        setSafeText("cInconclusive", counts.inconclusive || 0);
-        setSafeText("cPassed", counts.not_detected || counts.passed || 0);
-        setSafeText("cError", counts.scanner_error || 0);
-
-        const verdict = document.getElementById("verdict");
-        const note = document.getElementById("verdictNote");
-
-        const hasHigh = Boolean(counts.high);
-        const hasMediumOrLow = Boolean(counts.medium || counts.low);
-        const hasErrors = findings.some(f => f.status === "SCANNER_ERROR" || f.type === "scanner_error");
-
-        if (verdict && note) {
-            if (hasHigh) {
-                verdict.textContent = "High Security Concerns";
-                note.textContent = "High-severity vulnerabilities identified. Prompt remediation recommended.";
-            } else if (hasMediumOrLow) {
-                verdict.textContent = "Hardening Recommended";
-                note.textContent = "Security misconfigurations or lower-severity issues detected.";
-            } else if (hasErrors) {
-                verdict.textContent = "Scan Completed with Warnings";
-                note.textContent = "Some resources encountered network or connectivity notices.";
-            } else {
-                verdict.textContent = "No Vulnerabilities Detected";
-                note.textContent = "All executed security checks completed without finding known vulnerabilities.";
-            }
-        }
+        coverageList.innerHTML = coverageItems.map(item => `
+            <div class="coverage-item-card ${item.type}">
+                <div class="coverage-item-header">
+                    <span class="coverage-item-badge ${item.type}">${item.badge}</span>
+                    <h4 class="coverage-item-name">${UI.escapeHTML(item.name)}</h4>
+                </div>
+                <div class="coverage-item-grid">
+                    <div class="coverage-metric-col">
+                        <span class="cov-label">Why Incomplete</span>
+                        <p class="cov-text">${UI.escapeHTML(item.reason)}</p>
+                    </div>
+                    <div class="coverage-metric-col">
+                        <span class="cov-label">Tested Scope</span>
+                        <p class="cov-text">${UI.escapeHTML(item.tested)}</p>
+                    </div>
+                    <div class="coverage-metric-col">
+                        <span class="cov-label">Remains Unverified</span>
+                        <p class="cov-text highlight">${UI.escapeHTML(item.unverified)}</p>
+                    </div>
+                    <div class="coverage-metric-col">
+                        <span class="cov-label">Recommended Next Step</span>
+                        <p class="cov-text action">${UI.escapeHTML(item.nextSteps)}</p>
+                    </div>
+                </div>
+            </div>
+        `).join("");
     }
 
-    function countUp(el, target) {
-        const duration = 700;
-        const start = performance.now();
+    // Populate Dynamic Module Filter
+    function populateModuleFilter(findings) {
+        if (!filterModule) return;
+        const currentSelected = filterModule.value;
+        filterModule.innerHTML = '<option value="all">All Modules</option>';
 
-        function frame(now) {
-            const p = Math.min((now - start) / duration, 1);
-            el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
-            if (p < 1) requestAnimationFrame(frame);
-        }
-
-        requestAnimationFrame(frame);
-    }
-
-    /* =====================================================
-       FILTERS + RENDER
-       ===================================================== */
-    function buildModuleFilter() {
-        const select = document.getElementById("moduleFilter");
-        if (!select) return;
-
-        select.innerHTML = '<option value="all">All modules</option>';
-
-        [...new Set(findings.map(f => f.type).filter(Boolean))].sort().forEach(type => {
+        const uniqueModules = [...new Set(findings.map(f => f.type).filter(Boolean))].sort();
+        uniqueModules.forEach(mod => {
             const opt = document.createElement("option");
-            opt.value = type;
-            opt.textContent = type.replace(/_/g, " ").toUpperCase();
-            select.appendChild(opt);
+            opt.value = mod;
+            opt.textContent = mod.replace(/_/g, " ").toUpperCase();
+            if (mod === currentSelected) opt.selected = true;
+            filterModule.appendChild(opt);
         });
     }
 
-    function visible() {
-        return findings.filter(f => {
-            const isPassed = f.status === "NOT_DETECTED" || f.status === "not_detected";
-            const isError = f.status === "SCANNER_ERROR" || f.status === "scanner_error";
-            const isInconclusive = f.status === "INCONCLUSIVE" || f.status === "inconclusive";
-            
-            // Completely hide inconclusive findings as requested
-            if (isInconclusive) return false;
-            const isConfirmed = f.status === "CONFIRMED" || f.status === "confirmed";
+    // Apply Client-Side Filters & Render Findings
+    function applyFindingsFilters() {
+        const query = (findingSearchInput?.value || "").trim().toLowerCase();
+        const selSev = filterSeverity?.value || "all";
+        const selMod = filterModule?.value || "all";
+        const selStat = filterStatus?.value || "all";
 
-            if (filterSeverity === "confirmed" && !isConfirmed) return false;
-            if (filterSeverity === "not_detected" && !isPassed) return false;
-            if (filterSeverity === "scanner_error" && !isError) return false;
-            if (filterSeverity === "inconclusive" && !isInconclusive) return false;
-            
-            if (!["all", "confirmed", "not_detected", "scanner_error", "inconclusive"].includes(filterSeverity)) {
-                if (f.severity !== filterSeverity) return false;
+        if (btnFindingSearchClear) {
+            btnFindingSearchClear.style.display = query ? "block" : "none";
+        }
+
+        filteredFindings = allFindings.filter(f => {
+            const sev = (f.severity || "info").toLowerCase();
+            const stat = (f.status || "NOT_DETECTED").toUpperCase();
+            const mod = (f.type || "").toLowerCase();
+
+            // Scope Separation: Inconclusive checks live in Assessment Coverage, NOT in main findings list
+            // unless user explicitly filters by status INCONCLUSIVE
+            if (stat === "INCONCLUSIVE" && selStat !== "INCONCLUSIVE") {
+                return false;
             }
 
-            if (filterModule !== "all" && f.type !== filterModule) return false;
+            // Severity filter (CRITICAL, HIGH, MEDIUM, LOW, NOT DETECTED, SCANNER ERROR)
+            if (selSev === "confirmed") {
+                if (stat === "NOT_DETECTED" || stat === "SCANNER_ERROR" || stat === "INCONCLUSIVE") return false;
+            } else if (selSev === "critical") {
+                if (sev !== "critical" || stat === "NOT_DETECTED" || stat === "SCANNER_ERROR") return false;
+            } else if (selSev === "high") {
+                if (sev !== "high" || stat === "NOT_DETECTED" || stat === "SCANNER_ERROR") return false;
+            } else if (selSev === "medium") {
+                if (sev !== "medium" || stat === "NOT_DETECTED" || stat === "SCANNER_ERROR") return false;
+            } else if (selSev === "low") {
+                if ((sev !== "low" && sev !== "info") || stat === "NOT_DETECTED" || stat === "SCANNER_ERROR") return false;
+            } else if (selSev === "not_detected") {
+                if (stat !== "NOT_DETECTED") return false;
+            } else if (selSev === "scanner_error") {
+                if (stat !== "SCANNER_ERROR" && mod !== "scanner_error") return false;
+            } else if (selSev !== "all") {
+                if (sev !== selSev) return false;
+            }
 
-            if (search) {
-                const hay = `${f.title} ${f.description} ${f.type} ${f.owasp || ""} ${f.cwe || ""} ${f.evidence || ""}`.toLowerCase();
-                if (!hay.includes(search)) return false;
+            // Module filter
+            if (selMod !== "all" && mod !== selMod.toLowerCase()) {
+                return false;
+            }
+
+            // Verification status filter
+            if (selStat !== "all" && stat !== selStat) {
+                return false;
+            }
+
+            // Search query match across title, description, parameter, url, evidence, owasp, cwe
+            if (query) {
+                const hay = `${f.title} ${f.description} ${f.parameter || ""} ${f.url || ""} ${f.evidence || ""} ${f.owasp || ""} ${f.cwe || ""}`.toLowerCase();
+                if (!hay.includes(query)) return false;
             }
 
             return true;
         });
-    }
 
-    const SEV_ORDER = { high: 0, medium: 1, low: 2, info: 3 };
+        // Sort findings: Critical -> High -> Medium -> Low -> Info -> Not Detected -> Error
+        const SEV_WEIGHT = {
+            critical: 0,
+            high: 1,
+            medium: 2,
+            low: 3,
+            info: 4
+        };
 
-    function render() {
-        if (!list) return;
-
-        const rows = visible().sort((a, b) => {
-            const aPassed = a.status === "NOT_DETECTED" || a.status === "not_detected";
-            const bPassed = b.status === "NOT_DETECTED" || b.status === "not_detected";
+        filteredFindings.sort((a, b) => {
+            const aPassed = a.status === "NOT_DETECTED";
+            const bPassed = b.status === "NOT_DETECTED";
             if (aPassed !== bPassed) return aPassed ? 1 : -1;
-            return (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9);
+
+            const aErr = a.status === "SCANNER_ERROR";
+            const bErr = b.status === "SCANNER_ERROR";
+            if (aErr !== bErr) return aErr ? 1 : -1;
+
+            const wA = SEV_WEIGHT[(a.severity || "info").toLowerCase()] ?? 9;
+            const wB = SEV_WEIGHT[(b.severity || "info").toLowerCase()] ?? 9;
+            return wA - wB;
         });
 
-        if (!rows.length) {
-            if (findings.length === 0) {
-                list.innerHTML = '<p class="empty-state">No vulnerabilities detected. The target appears secure for all executed checks.</p>';
+        renderFindingsList();
+    }
+
+    // Render Findings List
+    function renderFindingsList() {
+        if (!findingsList) return;
+
+        if (filteredFindings.length === 0) {
+            if (allFindings.length === 0) {
+                findingsList.innerHTML = `
+                    <div class="state-container">
+                        <div class="state-icon-wrap" style="color:var(--sev-passed); border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.06);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <h4 class="state-title">No Security Findings Detected</h4>
+                        <p class="state-desc">The executed security checks completed with clean responses across all probed endpoints. Note: This assessment covers tested scope only and does not imply absolute invulnerability.</p>
+                    </div>`;
             } else {
-                list.innerHTML = '<p class="empty-state">No findings match the selected filters.</p>';
+                findingsList.innerHTML = `
+                    <div class="state-container">
+                        <div class="state-icon-wrap">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </div>
+                        <h4 class="state-title">No Findings Match Filter</h4>
+                        <p class="state-desc">No findings matched your current severity, module, or keyword filters.</p>
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('btnResetFilters').click()">
+                            <span>Reset Filters</span>
+                        </button>
+                    </div>`;
             }
+
+            if (findingsCountBadge) findingsCountBadge.textContent = "0 findings";
             return;
         }
 
-        list.innerHTML = rows.map(f => {
-            const isPassed = f.status === "NOT_DETECTED" || f.status === "not_detected";
-            const isError = f.status === "SCANNER_ERROR" || f.status === "scanner_error";
-            const isInconclusive = f.status === "INCONCLUSIVE" || f.status === "inconclusive";
-            
-            let badgeText = f.severity.toUpperCase();
-            let badgeClass = UI.severityClass(f.severity);
-            
+        if (findingsCountBadge) {
+            findingsCountBadge.textContent = `${filteredFindings.length} of ${allFindings.length} finding${allFindings.length === 1 ? "" : "s"}`;
+        }
+
+        findingsList.innerHTML = filteredFindings.map((f, idx) => {
+            const rawSev = (f.severity || "info").toLowerCase();
+            const status = (f.status || "NOT_DETECTED").toUpperCase();
+            const isPassed = status === "NOT_DETECTED";
+            const isError = status === "SCANNER_ERROR" || f.type === "scanner_error";
+
+            let cardClass = rawSev;
+            let badgeClass = rawSev;
+            let badgeLabel = rawSev.toUpperCase();
+
             if (isError) {
-                badgeText = "SCANNER ERROR";
-                badgeClass = "sev-info";
+                cardClass = "error";
+                badgeClass = "error";
+                badgeLabel = "SCANNER ERROR";
             } else if (isPassed) {
-                badgeText = "NOT DETECTED";
-                badgeClass = "sev-passed";
-            } else if (isInconclusive) {
-                badgeText = "INCONCLUSIVE";
-                badgeClass = "sev-info";
+                cardClass = "passed";
+                badgeClass = "passed";
+                badgeLabel = "NOT DETECTED";
+            }
+
+            // Evidence preview (safe excerpt)
+            let evidencePreviewHtml = "";
+            if (f.evidence && String(f.evidence).trim()) {
+                const cleanEv = String(f.evidence).trim().slice(0, 180);
+                evidencePreviewHtml = `<pre class="finding-evidence-preview" title="Verified scanner probe evidence">${UI.escapeHTML(cleanEv)}${f.evidence.length > 180 ? "…" : ""}</pre>`;
+            }
+
+            // Real-world Impact summary
+            let impactPreviewHtml = "";
+            if (f.impact && String(f.impact).trim()) {
+                impactPreviewHtml = `<div class="finding-impact-preview"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span><strong>Impact:</strong> ${UI.escapeHTML(f.impact)}</span></div>`;
             }
 
             return `
-            <div class="finding ${f.severity}" data-id="${UI.escapeHTML(f.id)}">
-                <div class="finding-main">
-                    <div class="finding-title">
-                        <strong>${UI.escapeHTML(f.title)}</strong>
-                        <span class="sev-badge ${badgeClass}">${badgeText}</span>
-                    </div>
-                    <div class="finding-desc">${UI.escapeHTML(f.description)}</div>
-                    <div class="finding-tags">
-                        <span class="tag">${UI.escapeHTML(f.type.toUpperCase())}</span>
-                        ${f.owasp ? `<span class="tag">${UI.escapeHTML(f.owasp)}</span>` : ""}
-                        ${f.cwe ? `<span class="tag">${UI.escapeHTML(f.cwe)}</span>` : ""}
-                        ${f.parameter ? `<span class="tag">param: ${UI.escapeHTML(f.parameter)}</span>` : ""}
-                        ${f.url ? `<span class="tag" style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${UI.escapeHTML(f.url)}</span>` : ""}
+                <div class="finding-card ${cardClass}" data-finding-id="${UI.escapeHTML(f.id)}" data-index="${idx}">
+                    <div class="finding-main">
+                        <div class="finding-header-row">
+                            <span class="sev-badge ${badgeClass}">${badgeLabel}</span>
+                            <span class="status-badge-outline ${status.toLowerCase()}">${UI.escapeHTML(status)}</span>
+                            <span class="finding-title-text">${UI.escapeHTML(f.title)}</span>
+                        </div>
+                        <p class="finding-desc-snippet">${UI.escapeHTML(f.description)}</p>
+                        
+                        ${evidencePreviewHtml}
+                        ${impactPreviewHtml}
+
+                        <div class="finding-footer-meta">
+                            <div class="finding-tags-row">
+                                <span class="chip-tag">${UI.escapeHTML((f.type || "MODULE").toUpperCase())}</span>
+                                ${f.parameter ? `<span class="chip-tag">param: <strong>${UI.escapeHTML(f.parameter)}</strong></span>` : ""}
+                                ${f.url ? `<span class="chip-tag endpoint" title="${UI.escapeHTML(f.url)}">${UI.escapeHTML(f.url)}</span>` : ""}
+                                ${f.owasp ? `<span class="chip-tag">${UI.escapeHTML(f.owasp)}</span>` : ""}
+                                ${f.cwe ? `<span class="chip-tag">${UI.escapeHTML(f.cwe)}</span>` : ""}
+                            </div>
+                            <div class="finding-actions-row">
+                                <button type="button" class="btn-card-ai" data-finding-id="${UI.escapeHTML(f.id)}" title="Explain finding and get remediation guidance with EthioSec AI">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                                    <span>Explain with AI</span>
+                                </button>
+                                <button type="button" class="btn-card-details" data-finding-id="${UI.escapeHTML(f.id)}">
+                                    <span>Inspect Details →</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <span class="finding-arrow">›</span>
-            </div>`;
+            `;
         }).join("");
 
-        list.querySelectorAll(".finding").forEach(row => {
-            row.addEventListener("click", () => openDetail(row.dataset.id));
+        // Attach Click to open Detail Modal and Explain with AI
+        findingsList.querySelectorAll(".finding-card").forEach(card => {
+            const fId = card.getAttribute("data-finding-id");
+            const found = allFindings.find(item => item.id === fId);
+
+            // Card click opens modal
+            card.addEventListener("click", () => {
+                if (found) openDetailModal(found);
+            });
+
+            // Card "Explain with AI" button click
+            const btnAi = card.querySelector(".btn-card-ai");
+            if (btnAi) {
+                btnAi.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    window.location.href = `assistant.html?scan_id=${encodeURIComponent(currentScanId)}&finding_id=${encodeURIComponent(fId)}`;
+                });
+            }
+
+            // Card "Inspect Details" button click
+            const btnDetails = card.querySelector(".btn-card-details");
+            if (btnDetails) {
+                btnDetails.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (found) openDetailModal(found);
+                });
+            }
         });
     }
 
-    const sevFilterEl = document.getElementById("severityFilter");
-    if (sevFilterEl) {
-        sevFilterEl.addEventListener("change", e => {
-            filterSeverity = e.target.value;
-            syncCountButtons();
-            render();
+    // Open Technical Details Modal
+    function openDetailModal(finding) {
+        if (!detailModalOverlay) return;
+        activeModalFinding = finding;
+
+        const sev = (finding.severity || "info").toLowerCase();
+        const stat = (finding.status || "NOT_DETECTED").toUpperCase();
+
+        if (dSeverityBadge) {
+            dSeverityBadge.textContent = sev.toUpperCase();
+            dSeverityBadge.className = `sev-badge ${sev}`;
+        }
+        if (dStatusBadge) {
+            dStatusBadge.textContent = stat;
+        }
+        if (dConfidence) {
+            dConfidence.textContent = `Confidence: ${finding.confidence || "HIGH"}`;
+        }
+        if (dModuleTag) {
+            dModuleTag.textContent = `MODULE: ${(finding.type || "CHECK").toUpperCase()}`;
+        }
+        if (dTitle) {
+            dTitle.textContent = finding.title;
+        }
+        if (dEndpoint) {
+            dEndpoint.textContent = finding.url || "Target Webroot";
+        }
+        if (dDescription) {
+            dDescription.textContent = finding.description;
+        }
+
+        // Parameter & HTTP Method
+        if (finding.parameter || finding.http_method) {
+            if (dParamBlock) dParamBlock.style.display = "block";
+            const parts = [];
+            if (finding.http_method) parts.push(`Method: ${finding.http_method}`);
+            if (finding.parameter) parts.push(`Parameter: ${finding.parameter}`);
+            if (dParameterMethod) dParameterMethod.textContent = parts.join(" · ");
+        } else {
+            if (dParamBlock) dParamBlock.style.display = "none";
+        }
+
+        // Evidence code box
+        if (dEvidence) {
+            if (finding.evidence) {
+                dEvidence.textContent = finding.evidence;
+                if (dEvidenceBlock) dEvidenceBlock.style.display = "block";
+            } else if (finding.response_summary || finding.request) {
+                const combined = [
+                    finding.request ? `--- REQUEST ---\n${finding.request}` : "",
+                    finding.response_summary ? `--- RESPONSE ---\n${finding.response_summary}` : ""
+                ].filter(Boolean).join("\n\n");
+                dEvidence.textContent = combined;
+                if (dEvidenceBlock) dEvidenceBlock.style.display = "block";
+            } else {
+                dEvidence.textContent = "No raw payload evidence was required or logged for this check.";
+                if (dEvidenceBlock) dEvidenceBlock.style.display = "block";
+            }
+        }
+
+        // Real-World Impact
+        if (finding.impact) {
+            if (dImpactBlock) dImpactBlock.style.display = "block";
+            if (dImpact) dImpact.textContent = finding.impact;
+        } else {
+            if (dImpactBlock) dImpactBlock.style.display = "none";
+        }
+
+        // AI Explanation (if present)
+        if (finding.ai_explanation) {
+            if (dAiBlock) dAiBlock.style.display = "block";
+            if (dAiText) dAiText.textContent = finding.ai_explanation;
+        } else {
+            if (dAiBlock) dAiBlock.style.display = "none";
+        }
+
+        // Remediation list
+        if (dRemediationList) {
+            dRemediationList.innerHTML = "";
+            let items = finding.remediation;
+            if (typeof items === "string") {
+                try { items = JSON.parse(items); } catch { items = [items]; }
+            }
+            if (Array.isArray(items) && items.length > 0) {
+                items.forEach(step => {
+                    const li = document.createElement("li");
+                    li.textContent = step;
+                    dRemediationList.appendChild(li);
+                });
+                if (dRemediationBlock) dRemediationBlock.style.display = "block";
+            } else {
+                const li = document.createElement("li");
+                li.textContent = "Review secure coding standards and consult relevant OWASP / CWE guidelines.";
+                dRemediationList.appendChild(li);
+                if (dRemediationBlock) dRemediationBlock.style.display = "block";
+            }
+        }
+
+        // OWASP & CWE tags
+        if (dOwaspTag) {
+            if (finding.owasp) {
+                dOwaspTag.textContent = `OWASP: ${finding.owasp}`;
+                dOwaspTag.style.display = "inline-block";
+            } else {
+                dOwaspTag.style.display = "none";
+            }
+        }
+        if (dCweTag) {
+            if (finding.cwe) {
+                dCweTag.textContent = `CWE: ${finding.cwe}`;
+                dCweTag.style.display = "inline-block";
+            } else {
+                dCweTag.style.display = "none";
+            }
+        }
+
+        // Wire Modal "Explain with AI" Button
+        if (btnModalAiExplain) {
+            btnModalAiExplain.onclick = () => {
+                if (activeModalFinding) {
+                    window.location.href = `assistant.html?scan_id=${encodeURIComponent(currentScanId)}&finding_id=${encodeURIComponent(activeModalFinding.id)}`;
+                }
+            };
+        }
+
+        detailModalOverlay.classList.add("open");
+    }
+
+    function closeDetailModal() {
+        if (detailModalOverlay) {
+            detailModalOverlay.classList.remove("open");
+        }
+    }
+
+    // Export Scan Data as Clean JSON
+    function exportFindingsAsJson() {
+        if (!scanResultData) {
+            UI.toast("No scan data available to export.", "error");
+            return;
+        }
+
+        const exportPayload = {
+            scan_id: scanResultData.scan_id,
+            target: scanResultData.target,
+            depth: scanResultData.depth,
+            scanned_at: scanResultData.scanned_at,
+            security_score: scanResultData.security_score,
+            counts: scanResultData.counts,
+            findings: allFindings
+        };
+
+        const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
+        const downloadAnchor = document.createElement("a");
+        downloadAnchor.setAttribute("href", jsonStr);
+        downloadAnchor.setAttribute("download", `EthioSecScan-${scanResultData.scan_id}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        UI.toast("Scan report JSON downloaded.", "info");
+    }
+
+    // Number Counting Animation
+    function animateNumber(element, target) {
+        const duration = 750;
+        const start = performance.now();
+        function update(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const easeOut = 1 - Math.pow(1 - progress, 3);
+            element.textContent = Math.round(target * easeOut);
+            if (progress < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+    }
+
+    // Loading State
+    function renderLoading() {
+        if (findingsList) {
+            findingsList.innerHTML = `
+                <div class="state-container">
+                    <div class="spinner"></div>
+                    <h3 class="state-title">Loading Scan Results</h3>
+                    <p class="state-desc">Retrieving vulnerability records and engine telemetry from the backend…</p>
+                </div>`;
+        }
+    }
+
+    // In-Progress State (HTTP 409)
+    function renderInProgressState() {
+        if (inProgressBanner) {
+            inProgressBanner.style.display = "flex";
+            if (linkLiveMonitor) {
+                linkLiveMonitor.href = `livescan.html?id=${encodeURIComponent(currentScanId)}`;
+            }
+        }
+        if (findingsList) {
+            findingsList.innerHTML = `
+                <div class="state-container">
+                    <div class="spinner" style="border-top-color:#3B82F6;"></div>
+                    <h3 class="state-title">Scan in Progress</h3>
+                    <p class="state-desc">The security scanner is currently assessing this target. Results will be published once all selected check modules complete execution.</p>
+                    <a href="livescan.html?id=${encodeURIComponent(currentScanId)}" class="btn-primary" style="background:#2563EB;">
+                        <span>View Live Engine Telemetry →</span>
+                    </a>
+                </div>`;
+        }
+        if (verdictTitle) verdictTitle.textContent = "Scan in Progress…";
+        if (verdictDesc) verdictDesc.textContent = "The background crawler and module dispatchers are actively executing security checks.";
+        if (metaStatusText) metaStatusText.textContent = "Running";
+        if (metaStatusPill) metaStatusPill.className = "status-pill running";
+    }
+
+    // Not Found State (HTTP 404)
+    function renderNotFoundError(message) {
+        if (findingsList) {
+            findingsList.innerHTML = `
+                <div class="state-container">
+                    <div class="state-icon-wrap" style="color:var(--brand-red); border-color:rgba(232,59,37,0.3); background:rgba(232,59,37,0.06);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    </div>
+                    <h3 class="state-title">Scan Not Found</h3>
+                    <p class="state-desc">${UI.escapeHTML(message)}</p>
+                    <a href="scan_history.html" class="btn-primary">
+                        <span>← Back to Scan History</span>
+                    </a>
+                </div>`;
+        }
+    }
+
+    // Auth Expired State (HTTP 401/403)
+    function renderAuthExpiredError() {
+        if (findingsList) {
+            findingsList.innerHTML = `
+                <div class="state-container">
+                    <div class="state-icon-wrap" style="color:var(--brand-red); border-color:rgba(232,59,37,0.3); background:rgba(232,59,37,0.06);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <h3 class="state-title">Authentication Expired</h3>
+                    <p class="state-desc">Your session has expired. Please sign in again to access this scan result.</p>
+                    <a href="login.html" class="btn-primary">
+                        <span>Log In Again →</span>
+                    </a>
+                </div>`;
+        }
+    }
+
+    // No Scan State (no ID and no history)
+    function renderNoScanState() {
+        if (findingsList) {
+            findingsList.innerHTML = `
+                <div class="state-container">
+                    <div class="state-icon-wrap">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    </div>
+                    <h3 class="state-title">No Scan Selected</h3>
+                    <p class="state-desc">No previous scans were found on record. Start an automated assessment on an authorized target to view results.</p>
+                    <a href="scanfinal.html" class="btn-primary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                        <span>Start New Scan</span>
+                    </a>
+                </div>`;
+        }
+    }
+
+    // General Error State
+    function renderGeneralError(message) {
+        if (findingsList) {
+            findingsList.innerHTML = `
+                <div class="state-container">
+                    <div class="state-icon-wrap" style="color:var(--brand-red); border-color:rgba(232,59,37,0.3); background:rgba(232,59,37,0.06);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    </div>
+                    <h3 class="state-title">Failed to Load Scan Results</h3>
+                    <p class="state-desc">${UI.escapeHTML(message)}</p>
+                    <button type="button" class="btn-secondary" onclick="window.location.reload()">
+                        <span>Retry Loading</span>
+                    </button>
+                </div>`;
+        }
+    }
+
+    // Summary Pill Click Filter Handler
+    if (summaryPillsRow) {
+        summaryPillsRow.querySelectorAll(".summary-pill-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const targetSev = btn.getAttribute("data-severity");
+                const isCurrentlyActive = btn.classList.contains("active");
+
+                summaryPillsRow.querySelectorAll(".summary-pill-btn").forEach(b => b.classList.remove("active"));
+
+                if (isCurrentlyActive) {
+                    if (filterSeverity) filterSeverity.value = "all";
+                } else {
+                    btn.classList.add("active");
+                    if (filterSeverity) filterSeverity.value = targetSev;
+                }
+                applyFindingsFilters();
+            });
         });
     }
 
-    const modFilterEl = document.getElementById("moduleFilter");
-    if (modFilterEl) {
-        modFilterEl.addEventListener("change", e => {
-            filterModule = e.target.value;
-            render();
+    // Event Listeners
+    if (findingSearchInput) {
+        findingSearchInput.addEventListener("input", applyFindingsFilters);
+    }
+    if (btnFindingSearchClear) {
+        btnFindingSearchClear.addEventListener("click", () => {
+            findingSearchInput.value = "";
+            applyFindingsFilters();
+            findingSearchInput.focus();
+        });
+    }
+    if (filterSeverity) {
+        filterSeverity.addEventListener("change", () => {
+            // Synchronize active class on summary pills
+            if (summaryPillsRow) {
+                summaryPillsRow.querySelectorAll(".summary-pill-btn").forEach(b => {
+                    b.classList.toggle("active", b.getAttribute("data-severity") === filterSeverity.value);
+                });
+            }
+            applyFindingsFilters();
+        });
+    }
+    if (filterModule) {
+        filterModule.addEventListener("change", applyFindingsFilters);
+    }
+    if (filterStatus) {
+        filterStatus.addEventListener("change", applyFindingsFilters);
+    }
+    if (btnResetFilters) {
+        btnResetFilters.addEventListener("click", () => {
+            if (findingSearchInput) findingSearchInput.value = "";
+            if (filterSeverity) filterSeverity.value = "all";
+            if (filterModule) filterModule.value = "all";
+            if (filterStatus) filterStatus.value = "all";
+            if (summaryPillsRow) {
+                summaryPillsRow.querySelectorAll(".summary-pill-btn").forEach(b => b.classList.remove("active"));
+            }
+            applyFindingsFilters();
         });
     }
 
-    const searchEl = document.getElementById("findingSearch");
-    if (searchEl) {
-        searchEl.addEventListener("input", e => {
-            search = e.target.value.trim().toLowerCase();
-            render();
-        });
+    if (btnExportJson) {
+        btnExportJson.addEventListener("click", exportFindingsAsJson);
     }
 
-    document.querySelectorAll(".count").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const value = btn.dataset.filter;
-            filterSeverity = filterSeverity === value ? "all" : value;
-            if (sevFilterEl) sevFilterEl.value = filterSeverity;
-            syncCountButtons();
-            render();
+    // Modal Close Listeners
+    if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeDetailModal);
+    if (btnModalClose) btnModalClose.addEventListener("click", closeDetailModal);
+    if (detailModalOverlay) {
+        detailModalOverlay.addEventListener("click", (e) => {
+            if (e.target === detailModalOverlay) closeDetailModal();
         });
+    }
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && detailModalOverlay?.classList.contains("open")) {
+            closeDetailModal();
+        }
     });
 
-    function syncCountButtons() {
-        document.querySelectorAll(".count").forEach(b => {
-            b.classList.toggle("active", b.dataset.filter === filterSeverity);
-        });
-    }
-
-    /* =====================================================
-       DETAILS MODAL
-       ===================================================== */
-    const modal = document.getElementById("detailModal");
-
-    function openDetail(id) {
-        const f = findings.find(x => x.id === id);
-        if (!f || !modal) return;
-
-        const isPassed = f.status === "NOT_DETECTED" || f.status === "not_detected";
-        const isError = f.status === "SCANNER_ERROR" || f.status === "scanner_error";
-        const isInconclusive = f.status === "INCONCLUSIVE" || f.status === "inconclusive";
-
-        document.getElementById("dTitle").textContent = f.title;
-        document.getElementById("dUrl").textContent = f.url || "Target domain";
-
-        const sev = document.getElementById("dSeverity");
-        if (sev) {
-            sev.textContent = isError ? "SCANNER ERROR" : isPassed ? "NOT DETECTED" : isInconclusive ? "INCONCLUSIVE" : f.severity.toUpperCase();
-            sev.className = "sev-badge " + (isError ? "sev-info" : isPassed ? "sev-passed" : isInconclusive ? "sev-info" : UI.severityClass(f.severity));
-        }
-
-        document.getElementById("dConfidence").textContent = (f.confidence || "high") + " confidence";
-        document.getElementById("dDescription").textContent = f.description || "—";
-        document.getElementById("dEvidence").textContent = f.evidence || "No raw evidence captured for this check.";
-        document.getElementById("dImpact").textContent = f.impact || (isPassed ? "No security impact — check verified as passed." : "Review technical details.");
-        document.getElementById("dAi").textContent = f.ai_explanation || "You can consult the EthioSec AI Assistant for deep-dive contextual remediation.";
-
-        const steps = document.getElementById("dRemediation");
-        if (steps) {
-            steps.innerHTML = (f.remediation && f.remediation.length)
-                ? f.remediation.map(s => `<li>${UI.escapeHTML(s)}</li>`).join("")
-                : (isPassed ? "<li>No remediation required — check verified as safe.</li>" : "<li>Implement defense-in-depth principles and context validation.</li>");
-        }
-
-        document.getElementById("dOwasp").textContent = f.owasp || "OWASP Standard";
-        document.getElementById("dCwe").textContent = f.cwe || "CWE Category";
-
-        const param = document.getElementById("dParam");
-        if (param) {
-            param.hidden = !f.parameter;
-            if (f.parameter) param.textContent = "Parameter: " + f.parameter;
-        }
-
-        const askAi = document.getElementById("askAi");
-        if (askAi) {
-            askAi.href = `assistant.html?scan=${encodeURIComponent(scanId)}&finding=${encodeURIComponent(f.id)}`;
-        }
-
-        modal.hidden = false;
-        document.body.style.overflow = "hidden";
-    }
-
-    function closeDetail() {
-        if (!modal) return;
-        modal.hidden = true;
-        document.body.style.overflow = "";
-    }
-
-    document.getElementById("modalClose")?.addEventListener("click", closeDetail);
-    document.getElementById("modalDone")?.addEventListener("click", closeDetail);
-    if (modal) modal.addEventListener("click", e => { if (e.target === modal) closeDetail(); });
-    document.addEventListener("keydown", e => { if (e.key === "Escape" && modal && !modal.hidden) closeDetail(); });
-
-    load();
+    // Initial Load Execution
+    await loadScanResults();
 });

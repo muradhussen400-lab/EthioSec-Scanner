@@ -3,18 +3,29 @@ from fastapi.testclient import TestClient
 from main import app
 from database import Base, engine, SessionLocal
 from models import User, ScanTarget, Scan, Finding
+from email_service import email_service
+from rate_limiter import _limiter
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    _limiter.clear()
+    yield
+    _limiter.clear()
 
 def setup_module(module):
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     # Mock the scanner task to prevent background SQLite race conditions during teardown
     import routers
+    module._orig_run_scan_task = getattr(routers, "run_scan_task", None)
     routers.run_scan_task = lambda scan_id: None
 
 def teardown_module(module):
-    pass
+    import routers
+    if hasattr(module, "_orig_run_scan_task") and module._orig_run_scan_task:
+        routers.run_scan_task = module._orig_run_scan_task
 
 def test_health():
     response = client.get("/health")
@@ -27,7 +38,15 @@ def test_register_login_user_a():
         "email": "userA@test.com", "password": "passwordA", "full_name": "User A"
     })
     assert res.status_code == 200
-    token = res.json()["token"]
+    
+    # Verify email
+    code_a = email_service.get_last_sent_code("userA@test.com")
+    if code_a:
+        ver_res = client.post("/api/auth/verify-email", json={"email": "userA@test.com", "code": code_a})
+        assert ver_res.status_code == 200
+        token = ver_res.json()["token"]
+    else:
+        token = res.json()["token"]
     
     # Login
     res2 = client.post("/api/auth/login", json={"email": "userA@test.com", "password": "passwordA"})
@@ -36,13 +55,17 @@ def test_register_login_user_a():
     # Get Me
     res3 = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert res3.status_code == 200
-    assert res3.json()["user"]["email"] == "userA@test.com"
+    assert res3.json()["user"]["email"].lower() == "userA@test.com".lower()
 
 def test_register_user_b():
     res = client.post("/api/auth/register", json={
         "email": "userB@test.com", "password": "passwordB", "full_name": "User B"
     })
     assert res.status_code == 200
+    code_b = email_service.get_last_sent_code("userB@test.com")
+    if code_b:
+        ver_res = client.post("/api/auth/verify-email", json={"email": "userB@test.com", "code": code_b})
+        assert ver_res.status_code == 200
 
 def test_authorization_isolation():
     # Login again since we already registered

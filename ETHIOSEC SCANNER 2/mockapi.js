@@ -1,7 +1,9 @@
-/* =====================================================
-   ETHIOSECSCAN — PURE FRONTEND MOCK ENGINE (EthioMock)
-   Self-contained mock database and simulation engine.
-   ===================================================== */
+/* ==============================================================================
+   ETHIOSECSCAN — DEPRECATED LEGACY MOCK FIXTURE (mockapi.js)
+   STATUS: DISABLED / DEPRECATED IN NORMAL APPLICATION OPERATION.
+   EthioSecScan is strictly integrated with the live FastAPI backend.
+   This file is retained exclusively as an isolated offline dev fixture.
+   ============================================================================== */
 
 window.EthioMock = (() => {
 

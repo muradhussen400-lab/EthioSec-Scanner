@@ -48,7 +48,7 @@ async def check_info_disclosure(scanner: SecurityScanner, url: str, response: ht
     if test_case.status != "SCANNER_ERROR":
         test_case.evaluate()
         
-    if test_case.status in ["HIGH", "LOW", "SCANNER_ERROR"]:
+    if test_case.status in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "SCANNER_ERROR"]:
         scanner._add_finding(
             f_type="info_disclosure", 
             severity="medium" if test_case.status == "HIGH" else "low", 

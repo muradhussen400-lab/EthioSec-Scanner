@@ -15,6 +15,31 @@ from models import User, ScanTarget, Scan, Finding
 import pytest
 from scanner.engine import SecurityScanner
 
+import subprocess
+import time
+
+@pytest.fixture(scope="module", autouse=True)
+def run_vulnerable_app():
+    proc = None
+    try:
+        httpx.get("http://127.0.0.1:3000/", timeout=1.0)
+    except Exception:
+        proc = subprocess.Popen([sys.executable, "vulnerable_app.py"])
+        for _ in range(30):
+            try:
+                r = httpx.get("http://127.0.0.1:3000/", timeout=1.0)
+                if r.status_code == 200:
+                    break
+            except Exception:
+                time.sleep(0.2)
+    yield
+    if proc:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
+
 @pytest.mark.asyncio
 async def test_scan():
     # Setup DB

@@ -16,7 +16,7 @@ async def check_security_headers(scanner: SecurityScanner, url: str, response: h
             test_case.status = "SCANNER_ERROR"
             test_case.evidence = f"Error evaluating header: {str(e)}"
             
-        if test_case.status in ["HIGH", "LOW", "SCANNER_ERROR"]:
+        if test_case.status in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "SCANNER_ERROR"]:
             scanner._add_finding(
                 f_type="headers", severity=test_case.severity if test_case.status != "SCANNER_ERROR" else "info", status=test_case.status,
                 title=title if test_case.status != "SCANNER_ERROR" else f"{title} (Error)",

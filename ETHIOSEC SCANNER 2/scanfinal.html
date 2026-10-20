@@ -1,375 +1,953 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <script>
-        if (localStorage.getItem("isLoggedIn") !== "true" || !localStorage.getItem("token")) {
-            window.location.href = "login.html";
-        }
-    </script>
-
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Security Scan - EthioSec Scanner</title>
-  <link rel="stylesheet" href="scanstylefinal.css">
-  <style>
-    .depth-profiles {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      margin-top: 10px;
-    }
-    .profile-card {
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 10px;
-      padding: 16px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      position: relative;
-    }
-    .profile-card:hover {
-      border-color: rgba(204, 47, 12, 0.5);
-      background: rgba(255, 255, 255, 0.05);
-    }
-    .profile-card.active {
-      border-color: #cc2f0c;
-      background: rgba(204, 47, 12, 0.08);
-      box-shadow: 0 0 15px rgba(204, 47, 12, 0.15);
-    }
-    .profile-card input[type="radio"] {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      accent-color: #cc2f0c;
-    }
-    .profile-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .profile-badge {
-      font-size: 0.72rem;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .badge-std { background: rgba(27, 179, 105, 0.2); color: #1bb369; border: 1px solid rgba(27, 179, 105, 0.4); }
-    .badge-deep { background: rgba(255, 138, 61, 0.2); color: #ff8a3d; border: 1px solid rgba(255, 138, 61, 0.4); }
-    .badge-future { background: rgba(255, 255, 255, 0.1); color: #b0a9a6; }
-    .profile-specs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      font-size: 0.8rem;
-      color: var(--text-muted, #b0a9a6);
-      margin-top: 4px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      padding-top: 8px;
-    }
-    .spec-item strong {
-      color: #eaeaea;
-      display: block;
-      font-size: 0.82rem;
-    }
-    .profile-card.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      border-color: rgba(255, 255, 255, 0.06);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Security Scan — EthioSecScan</title>
+    
+    <!-- Shared Auth & Identity -->
+    <script src="shared_auth.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="scanstylefinal.css">
+    <link rel="stylesheet" href="shared_nav_header.css">
 </head>
 <body>
 
-  <!-- Background glows -->
-  <div class="dashboard-bg">
-    <div class="glow-one"></div>
-    <div class="glow-two"></div>
-  </div>
+    <!-- Mobile sidebar toggle & overlay -->
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open navigation menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-  <!-- Mobile sidebar toggle -->
-  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="layout">
 
-  <div class="layout">
+        <!-- ============ SIDEBAR ============ -->
+        <aside class="sidebar" id="sidebar">
+            
+            <!-- Brand Logo -->
+            <a href="dashboardfinal.html" class="sidebar-logo">
+                <div class="logo-shield-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="logo-text-group">
+                    <span class="logo-title">EthioSecScan</span>
+                    <span class="logo-subtitle">Scan • Detect • Secure</span>
+                </div>
+            </a>
 
-    <!-- ============ SIDEBAR ============ -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <div class="logo-icon">🛡️</div>
-        <span class="logo-text">EthioSecScan</span>
-      </div>
-      <nav class="sidebar-nav">
-        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
-        <a href="scanfinal.html" class="side-link active"><span class="side-icon">⚡</span> New Scan</a>
-        <a href="scan_history.html" class="side-link"><span class="side-icon">🕒</span> History</a>
-        <a href="results.html" class="side-link"><span class="side-icon">📈</span> Results</a>
-        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
-        <a href="assistant.html" class="side-link"><span class="side-icon">🤖</span> AI Assistant</a>
-        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
-        <a href="settings.html" class="side-link"><span class="side-icon">⚙️</span> Settings</a>
-        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
-      </nav>
-      
-      <script>
+            <!-- Navigation Links -->
+            <nav class="sidebar-nav">
+                <a href="dashboardfinal.html" class="side-link" id="navDashboard">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="9"></rect>
+                            <rect x="14" y="3" width="7" height="5"></rect>
+                            <rect x="14" y="12" width="7" height="9"></rect>
+                            <rect x="3" y="16" width="7" height="5"></rect>
+                        </svg>
+                    </span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="scanfinal.html" class="side-link active" id="navNewScan">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>New Scan</span>
+                </a>
+                <a href="scan_history.html" class="side-link" id="navHistory">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </span>
+                    <span>History</span>
+                </a>
+                <a href="results.html" class="side-link" id="navResults">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </span>
+                    <span>Results</span>
+                </a>
+                <a href="reports.html" class="side-link" id="navReports">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                    </span>
+                    <span>Reports</span>
+                </a>
+                <a href="assistant.html" class="side-link" id="navAssistant">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                            <circle cx="12" cy="5" r="2"></circle>
+                            <path d="M12 7v4"></path>
+                            <line x1="8" y1="16" x2="8" y2="16"></line>
+                            <line x1="16" y1="16" x2="16" y2="16"></line>
+                        </svg>
+                    </span>
+                    <span>AI Assistant</span>
+                </a>
+
+                <div class="nav-divider"></div>
+
+                <a href="settings.html" class="side-link" id="navSettings">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </span>
+                    <span>Settings</span>
+                </a>
+                <a href="#" class="side-link" id="sidebarLogoutLink" onclick="logout(event)">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>Logout</span>
+                </a>
+            </nav>
+
+            <!-- Bottom System Status Box -->
+            <div class="service-status-box" id="serviceStatusBox" title="All services operational">
+                <div class="service-status-dot online"></div>
+                <div class="service-status-text">
+                    <span class="service-name">System Healthy</span>
+                    <span class="service-state">All services running</span>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- ============ MAIN CONTENT ============ -->
+        <main class="main-content">
+
+            <!-- Page Header -->
+            <header class="page-header">
+                <div class="page-header-titles">
+                    <h1>New Security Scan</h1>
+                    <p>Configure an authorized security assessment of your web application.</p>
+                </div>
+                <div class="header-actions">
+                    <!-- Notification Bell with Dropdown Panel -->
+                    <div class="notif-dropdown-wrapper" id="notifDropdownWrapper">
+                        <button class="header-icon-btn" id="notifBtn" type="button" aria-label="Notifications" title="Notifications">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span class="notif-badge" id="notifBadge"></span>
+                        </button>
+
+                        <div class="notif-dropdown-panel" id="notifPanel">
+                            <div class="notif-panel-header">
+                                <span class="notif-panel-title">Notifications</span>
+                                <button class="notif-clear-btn" id="markAllReadBtn" type="button">Mark all read</button>
+                            </div>
+                            <div class="notif-list" id="notifList">
+                                <div class="notif-item unread">
+                                    <div class="notif-icon-circle warn">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">High Vulnerability Alert</div>
+                                        <div class="notif-desc">Target security scan found critical risk items on audited host.</div>
+                                        <div class="notif-time">10m ago</div>
+                                    </div>
+                                </div>
+                                <div class="notif-item">
+                                    <div class="notif-icon-circle success">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">Scan Completed</div>
+                                        <div class="notif-desc">Audit for target has completed successfully.</div>
+                                        <div class="notif-time">1h ago</div>
+                                    </div>
+                                </div>
+                                <div class="notif-item">
+                                    <div class="notif-icon-circle info">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">Scanner Engine Ready</div>
+                                        <div class="notif-desc">FastAPI backend online and database synchronized.</div>
+                                        <div class="notif-time">2h ago</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Profile Dropdown Pill -->
+                    <div class="user-pill-dropdown-container">
+                        <div class="user-pill-btn" id="userPillBtn" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" title="User Profile">
+                            <div class="user-avatar-small" id="headerAvatar">--</div>
+                            <div class="user-pill-info">
+                                <span class="user-pill-name" id="headerUserName">—</span>
+                                <span class="user-pill-role" id="headerUserRole">Administrator</span>
+                            </div>
+                            <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        
+                        <!-- Dropdown Menu -->
+                        <div class="user-menu-popover" id="userMenuPopover">
+                            <div class="user-menu-header">
+                                <span class="popover-name" id="menuUserName">—</span>
+                                <span class="popover-email" id="menuUserEmail">—</span>
+                                <span class="popover-role" id="menuUserRole">Administrator</span>
+                            </div>
+                            <div class="user-menu-divider"></div>
+                            <a href="settings.html#profile" class="user-menu-item" id="menuProfileLink">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <span>Profile</span>
+                            </a>
+                            <a href="settings.html" class="user-menu-item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                                <span>Settings</span>
+                            </a>
+                            <div class="user-menu-divider"></div>
+                            <a href="#" class="user-menu-item text-danger" onclick="logout(event)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                <span>Logout</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Backend Health / Offline Alert Banner -->
+            <div class="server-notice-banner" id="serverNoticeBanner">
+                <div class="server-notice-left">
+                    <span class="server-notice-icon">⚠️</span>
+                    <div>
+                        <div class="server-notice-title">FastAPI Scanner Backend Offline</div>
+                        <div class="server-notice-desc">
+                            Cannot communicate with the scanner service at <code>http://127.0.0.1:8000</code>.
+                            Please start the backend: <code>cd backend && python -m uvicorn main:app --reload --port 8000</code> or run <code>start.bat</code>.
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="server-notice-btn" id="btnRetryBackend" onclick="checkBackendHealth(true)">Check Connection ⟳</button>
+            </div>
+
+            <!-- Workflow Progress Stepper -->
+            <section class="workflow-stepper" aria-label="Scan creation steps">
+                <button type="button" class="step-item active" id="stepIndicator1" onclick="navigateToStep(1)">
+                    <div class="step-num">1</div>
+                    <div class="step-info">
+                        <span class="step-title">Target & Profile</span>
+                        <span class="step-sub">Set target URL and scan profile</span>
+                    </div>
+                </button>
+                <div class="step-divider-line active" id="stepLine1"></div>
+                <button type="button" class="step-item" id="stepIndicator2" onclick="navigateToStep(2)">
+                    <div class="step-num">2</div>
+                    <div class="step-info">
+                        <span class="step-title">Security Checks</span>
+                        <span class="step-sub">Select security modules</span>
+                    </div>
+                </button>
+                <div class="step-divider-line" id="stepLine2"></div>
+                <button type="button" class="step-item" id="stepIndicator3" onclick="navigateToStep(3)">
+                    <div class="step-num">3</div>
+                    <div class="step-info">
+                        <span class="step-title">Review & Launch</span>
+                        <span class="step-sub">Confirm and start scan</span>
+                    </div>
+                </button>
+            </section>
+
+            <!-- 2-Column Content Grid -->
+            <div class="scan-grid" id="scanConfigGrid">
+
+                <!-- Left Column: Step Configuration Blocks -->
+                <div class="config-column">
+
+                    <!-- SECTION 1: Target Specification -->
+                    <section class="section-block" id="sectionTarget">
+                        <div class="section-head">
+                            <h2 class="section-title">
+                                <span>1. Target Specification</span>
+                            </h2>
+                            <p class="section-subtitle">Provide the authorized web application URL you intend to audit.</p>
+                        </div>
+
+                        <div class="target-input-row">
+                            <div class="url-input-wrap">
+                                <span class="url-lead-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                    </svg>
+                                </span>
+                                <input type="text" id="targetUrl" name="target_endpoint_url" class="target-url-input" placeholder="https://example.com" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" value="" required>
+                                <button type="button" class="url-clear-btn" id="clearUrlBtn" aria-label="Clear URL input">✕</button>
+                                <span class="url-valid-icon" id="urlValidIcon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </span>
+                            </div>
+
+                            <!-- Target Validation Side-Indicator -->
+                            <div class="target-validation-box" id="targetValidationBox">
+                                <span class="validation-header">Target Validation</span>
+                                <span class="validation-indicator" id="valFormatIndicator">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+                                    <span>URL Format</span>
+                                </span>
+                                <span class="validation-indicator" id="valSchemeIndicator">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+                                    <span>HTTP/HTTPS Scheme</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="target-helper-row">
+                            <span class="target-helper-text" id="targetHelperText">Specify the fully qualified domain or endpoint to audit.</span>
+                        </div>
+                    </section>
+
+                    <!-- SECTION 2: Scan Profile & Depth -->
+                    <section class="section-block" id="sectionProfile">
+                        <div class="section-head">
+                            <h2 class="section-title">
+                                <span>2. Scan Profile & Depth</span>
+                            </h2>
+                            <p class="section-subtitle">Choose the scan profile that matches your security testing needs.</p>
+                        </div>
+
+                        <div class="profile-cards-grid">
+
+                            <!-- Standard Scan Card -->
+                            <div class="profile-card selected" id="cardStandard" data-profile="standard" onclick="selectProfile('standard')">
+                                <div class="profile-top">
+                                    <div class="profile-icon-title">
+                                        <div class="profile-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <polyline points="12 6 12 12 14 14"></polyline>
+                                            </svg>
+                                        </div>
+                                        <span class="profile-name">Standard Scan</span>
+                                    </div>
+                                    <div class="profile-radio-circle"></div>
+                                </div>
+                                <p class="profile-desc">A balanced security assessment for routine checks and development feedback.</p>
+                            </div>
+
+                            <!-- Deep Scan Card -->
+                            <div class="profile-card" id="cardDeep" data-profile="deep" onclick="selectProfile('deep')">
+                                <div class="profile-top">
+                                    <div class="profile-icon-title">
+                                        <div class="profile-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="18" cy="5" r="3"></circle>
+                                                <circle cx="6" cy="12" r="3"></circle>
+                                                <circle cx="18" cy="19" r="3"></circle>
+                                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                            </svg>
+                                        </div>
+                                        <span class="profile-name">Deep Scan</span>
+                                    </div>
+                                    <div class="profile-radio-circle"></div>
+                                </div>
+                                <p class="profile-desc">Explore more of your application and perform more extensive supported testing.</p>
+                            </div>
+
+                            <!-- Super Scan Card (Disabled Future Profile) -->
+                            <div class="profile-card disabled" id="cardSuper" data-profile="super" title="Super Scan is coming soon and currently disabled">
+                                <div class="profile-top">
+                                    <div class="profile-icon-title">
+                                        <div class="profile-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                            </svg>
+                                        </div>
+                                        <span class="profile-name">Super Scan</span>
+                                    </div>
+                                    <span class="profile-badge coming-soon">COMING SOON</span>
+                                </div>
+                                <p class="profile-desc">Continuous monitoring and multi-agent distributed testing.</p>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    <!-- SECTION 3: Security Check Selection -->
+                    <section class="section-block" id="sectionChecks">
+                        <div class="checks-header-row">
+                            <div class="section-head" style="margin-bottom:0;">
+                                <h2 class="section-title">
+                                    <span>3. Security Check Selection</span>
+                                </h2>
+                                <p class="section-subtitle">Select the security checks you want to run. Each check maps to a specific module in the backend engine.</p>
+                            </div>
+                            <div class="checks-actions">
+                                <button type="button" class="btn-ghost-sm" id="btnSelectAll" onclick="selectAllChecks(true)">Select All Supported</button>
+                                <button type="button" class="btn-ghost-sm" id="btnClearAll" onclick="selectAllChecks(false)">Clear Selection</button>
+                                <span class="checks-count-badge" id="checksCountBadge">7 selected</span>
+                            </div>
+                        </div>
+
+                        <!-- 12 Security Checks Grid -->
+                        <div class="checks-grid">
+
+                            <!-- 1. SQL Injection -->
+                            <div class="check-card checked" data-module="sqli" onclick="toggleCheckCard('sqli')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom">✓</div>
+                                </div>
+                                <h3 class="check-title">SQL Injection</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">sqli</span>
+                                </div>
+                            </div>
+
+                            <!-- 2. Cross-Site Scripting (XSS) -->
+                            <div class="check-card checked" data-module="xss" onclick="toggleCheckCard('xss')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="16 18 22 12 16 6"></polyline>
+                                            <polyline points="8 6 2 12 8 18"></polyline>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom">✓</div>
+                                </div>
+                                <h3 class="check-title">Cross-Site Scripting (XSS)</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">xss</span>
+                                </div>
+                            </div>
+
+                            <!-- 3. Security Headers -->
+                            <div class="check-card checked" data-module="headers" onclick="toggleCheckCard('headers')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom">✓</div>
+                                </div>
+                                <h3 class="check-title">Security Headers</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">headers</span>
+                                </div>
+                            </div>
+
+                            <!-- 4. Cookie Security -->
+                            <div class="check-card" data-module="cookies" onclick="toggleCheckCard('cookies')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <path d="M12 2a10 10 0 0 0-2 19.8"></path>
+                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                            <circle cx="15.5" cy="8.5" r="1.5"></circle>
+                                            <circle cx="12" cy="15" r="1.5"></circle>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom"></div>
+                                </div>
+                                <h3 class="check-title">Cookie Security</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">cookies</span>
+                                </div>
+                            </div>
+
+                            <!-- 5. CORS Configuration -->
+                            <div class="check-card" data-module="cors" onclick="toggleCheckCard('cors')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="18" cy="18" r="3"></circle>
+                                            <circle cx="6" cy="6" r="3"></circle>
+                                            <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
+                                            <line x1="6" y1="9" x2="6" y2="21"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom"></div>
+                                </div>
+                                <h3 class="check-title">CORS Configuration</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">cors</span>
+                                </div>
+                            </div>
+
+                            <!-- 6. HTTPS/TLS Configuration -->
+                            <div class="check-card checked" data-module="https" onclick="toggleCheckCard('https')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom">✓</div>
+                                </div>
+                                <h3 class="check-title">HTTPS/TLS Configuration</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">https</span>
+                                </div>
+                            </div>
+
+                            <!-- 7. Authentication Security -->
+                            <div class="check-card checked" data-module="auth" onclick="toggleCheckCard('auth')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="12" cy="7" r="4"></circle>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom">✓</div>
+                                </div>
+                                <h3 class="check-title">Authentication Security</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">auth</span>
+                                </div>
+                            </div>
+
+                            <!-- 8. Broken Access Control -->
+                            <div class="check-card checked" data-module="access_control" onclick="toggleCheckCard('access_control')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom">✓</div>
+                                </div>
+                                <h3 class="check-title">Broken Access Control</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">access_control</span>
+                                </div>
+                            </div>
+
+                            <!-- 9. Exposed Files -->
+                            <div class="check-card checked" data-module="exposed_files" onclick="toggleCheckCard('exposed_files')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                                            <polyline points="13 2 13 9 20 9"></polyline>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom">✓</div>
+                                </div>
+                                <h3 class="check-title">Exposed Files</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">exposed_files</span>
+                                </div>
+                            </div>
+
+                            <!-- 10. HTTP Methods -->
+                            <div class="check-card" data-module="http_methods" onclick="toggleCheckCard('http_methods')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom"></div>
+                                </div>
+                                <h3 class="check-title">HTTP Methods</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">http_methods</span>
+                                </div>
+                            </div>
+
+                            <!-- 11. Information Disclosure -->
+                            <div class="check-card" data-module="info_disclosure" onclick="toggleCheckCard('info_disclosure')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom"></div>
+                                </div>
+                                <h3 class="check-title">Information Disclosure</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">info_disclosure</span>
+                                </div>
+                            </div>
+
+                            <!-- 12. Security Misconfiguration -->
+                            <div class="check-card" data-module="misconfig" onclick="toggleCheckCard('misconfig')">
+                                <div class="check-card-top">
+                                    <div class="check-icon-wrap">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="check-checkbox-custom"></div>
+                                </div>
+                                <h3 class="check-title">Security Misconfiguration</h3>
+                                <div class="check-footer">
+                                    <span class="module-tag">misconfig</span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Optional Authentication Context Section (Collapsed by Default) -->
+                        <div class="auth-context-container">
+                            <button type="button" class="auth-context-toggle" id="authContextToggle" onclick="toggleAuthContextBox()">
+                                <span>🔐 Advanced Authentication Settings (Optional — For Access Control & IDOR Checks)</span>
+                                <span id="authToggleIcon">▼</span>
+                            </button>
+                            <div class="auth-context-content" id="authContextContent">
+                                <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px; line-height: 1.5;">
+                                    Configure authorized test identities to enable multi-tenant authorization testing.
+                                    <strong>Context 1</strong> is your primary test account. <strong>Context 2</strong> is a secondary account used for cross-user Broken Access Control & IDOR comparisons.
+                                    If omitted, access-control checks will be recorded as <em>Inconclusive</em> rather than falsely reported as passed.
+                                </p>
+                                <div class="auth-context-grid">
+                                    <div class="auth-context-card">
+                                        <span class="auth-context-title">Context 1 — Primary Test Identity</span>
+                                        <p style="font-size:10px; color:var(--text-muted); margin: 0 0 6px 0;">Primary authorized session or API user</p>
+                                        <input type="text" class="auth-input-field" id="authHeader1Key" placeholder="Header Name (e.g. Authorization or Cookie)" autocomplete="off">
+                                        <input type="password" class="auth-input-field" id="authHeader1Val" placeholder="Header Value (e.g. Bearer eyJ... or session=abc)" autocomplete="off">
+                                    </div>
+                                    <div class="auth-context-card">
+                                        <span class="auth-context-title">Context 2 — Secondary Test Identity (Cross-User / IDOR)</span>
+                                        <p style="font-size:10px; color:var(--text-muted); margin: 0 0 6px 0;">Second user context for cross-account boundary tests</p>
+                                        <input type="text" class="auth-input-field" id="authHeader2Key" placeholder="Header Name (e.g. Authorization or Cookie)" autocomplete="off">
+                                        <input type="password" class="auth-input-field" id="authHeader2Val" placeholder="Header Value (e.g. Bearer eyJ... or session=xyz)" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div style="font-size:10.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px; margin-top:2px;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    <span>Credentials are held in memory during scan dispatch only, never saved to browser storage or server logs, and cleared immediately upon submission.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </section>
+
+                </div>
+
+                <!-- Right Column: Scan Summary & Legal Authorization -->
+                <aside class="sidebar-panel-column">
+
+                    <!-- Scan Summary Card -->
+                    <div class="summary-card">
+                        <div class="summary-card-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <span>Scan Summary</span>
+                        </div>
+
+                        <div class="summary-details-list">
+                            <div class="summary-row">
+                                <span class="summary-label">Target URL</span>
+                                <span class="summary-val" id="summaryTargetUrl">Not specified</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Profile</span>
+                                <span class="summary-val" id="summaryProfileName">Standard Scan</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Max Pages</span>
+                                <span class="summary-val" id="summaryMaxPages">15</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Max Depth</span>
+                                <span class="summary-val" id="summaryMaxDepth">2</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Selected Checks</span>
+                                <span class="summary-val highlight" id="summaryChecksCount">7 of 12</span>
+                            </div>
+                        </div>
+
+                        <button type="button" class="summary-view-details-link" onclick="openReviewModal()">
+                            <span>View details →</span>
+                        </button>
+                    </div>
+
+                    <!-- Legal Authorization Card -->
+                    <div class="legal-card">
+                        <div class="legal-card-title">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                            <span>Legal Authorization</span>
+                        </div>
+
+                        <label class="legal-checkbox-label" for="authCheckbox">
+                            <input type="checkbox" id="authCheckbox" required>
+                            <span>I confirm that I own this target or have explicit written authorization to perform security testing. EthioSec strictly enforces target safety constraints, SSRF blocking, and audit logging.</span>
+                        </label>
+
+                        <div class="legal-alert-box">
+                            <span class="legal-alert-icon">ⓘ</span>
+                            <span>You must have explicit authorization to scan this target. Scanning without permission is illegal and may lead to serious consequences.</span>
+                        </div>
+
+                        <button type="button" class="btn-launch-cta" id="launchBtn" onclick="onLaunchClicked()" disabled>
+                            <span>Review & Launch →</span>
+                        </button>
+                    </div>
+
+                </aside>
+
+            </div>
+
+            <!-- ============ ACTIVE SCAN TELEMETRY SECTION ============ -->
+            <section class="active-scan-section" id="activeScanSection" style="display: none;">
+                
+                <!-- Active Scan Header Card: Status, Target, Scan ID, Timer -->
+                <div class="active-scan-header-card">
+                    <div class="active-scan-header-left">
+                        <div class="active-scan-title-row">
+                            <div class="live-status-pill running" id="liveStatusPill">
+                                <span class="live-status-dot"></span>
+                                <span id="liveStatusText">RUNNING</span>
+                            </div>
+                            <a href="#" target="_blank" rel="noopener noreferrer" class="live-target-url-text" id="liveTargetUrl">
+                                <span id="liveTargetUrlText">https://example.com</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                            </a>
+                        </div>
+                        <div class="live-meta-chips-row">
+                            <span class="live-meta-chip">
+                                <span>Scan ID:</span>
+                                <code id="liveScanId">—</code>
+                                <button type="button" class="btn-copy-chip" onclick="copyLiveScanId()" title="Copy Scan ID">📋</button>
+                            </span>
+                            <span class="live-meta-chip">
+                                <span>Profile:</span>
+                                <strong id="liveProfileBadge" style="color:#FFFFFF;">Standard Scan</strong>
+                            </span>
+                            <span class="live-meta-chip">
+                                <span>Started:</span>
+                                <span id="liveStartTime">—</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="active-scan-header-right">
+                        <div class="live-timer-badge">
+                            <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted);">Elapsed</span>
+                            <span class="live-timer-val" id="liveElapsed">0s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telemetry & Stage Grid -->
+                <div class="active-scan-telemetry-grid">
+                    
+                    <!-- Progress Ring Hero -->
+                    <div class="live-progress-hero-card">
+                        <div class="live-ring-wrapper">
+                            <svg class="live-ring-svg" viewBox="0 0 140 140">
+                                <circle class="live-ring-bg" cx="70" cy="70" r="58" />
+                                <circle class="live-ring-fill" id="liveRingFill" cx="70" cy="70" r="58" stroke-dasharray="364.4" stroke-dashoffset="364.4" />
+                            </svg>
+                            <div class="live-ring-center">
+                                <span class="live-ring-percent-num" id="liveProgressPercent">0%</span>
+                                <span class="live-ring-percent-label" id="liveRingStatusLabel">QUEUED</span>
+                            </div>
+                        </div>
+                        <h3 class="live-hero-stage-title" id="liveStageHeadline">Initializing scanner worker…</h3>
+                        <p class="live-hero-stage-desc" id="liveStageDesc">Target accepted. Engine running security baseline handshakes.</p>
+                    </div>
+
+                    <!-- Live Telemetry Details Card -->
+                    <div class="live-telemetry-details-card">
+                        
+                        <div class="live-card-section-title">
+                            <span>Selected Security Checks Progress</span>
+                            <span id="liveChecksCountSummary" style="color:var(--text-primary); font-size:11.5px; font-weight:600;">0 of 0 Completed</span>
+                        </div>
+
+                        <!-- Live Modules Grid (All 11 modules) -->
+                        <div class="live-modules-status-grid" id="liveModulesStatusGrid">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+
+                        <div class="live-card-section-title" style="margin-top:4px;">
+                            <span>Findings Discovered (Live Truthful Count)</span>
+                            <span style="font-size:11px; color:var(--text-muted); font-weight:400;">Backend Verified Findings</span>
+                        </div>
+
+                        <!-- Incremental Findings Counters -->
+                        <div class="live-findings-summary-row">
+                            <div class="live-findings-counter-box high">
+                                <span class="live-finding-number" id="liveCountHigh">0</span>
+                                <span class="live-finding-label">High</span>
+                            </div>
+                            <div class="live-findings-counter-box medium">
+                                <span class="live-finding-number" id="liveCountMedium">0</span>
+                                <span class="live-finding-label">Medium</span>
+                            </div>
+                            <div class="live-findings-counter-box low">
+                                <span class="live-finding-number" id="liveCountLow">0</span>
+                                <span class="live-finding-label">Low</span>
+                            </div>
+                            <div class="live-findings-counter-box passed">
+                                <span class="live-finding-number" id="liveCountPassed">0</span>
+                                <span class="live-finding-label">Passed</span>
+                            </div>
+                            <div class="live-findings-counter-box">
+                                <span class="live-finding-number" id="liveCountTotal">0</span>
+                                <span class="live-finding-label">Total</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Bottom Actions Bar -->
+                <div class="live-actions-bar">
+                    <button type="button" class="btn-cancel-scan" id="liveCancelBtn" onclick="cancelActiveScan()">
+                        <span>✕ Cancel Scan</span>
+                    </button>
+                    <div class="live-actions-right">
+                        <button type="button" class="btn-reset-scan" id="liveResetBtn" onclick="returnToScanConfig()">
+                            <span>← Configure Another Scan</span>
+                        </button>
+                        <a href="#" class="btn-view-results-live" id="liveViewResultsBtn" hidden>
+                            <span>View Full Results →</span>
+                        </a>
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <!-- Step 3: Review & Launch Modal -->
+    <div class="review-modal-backdrop" id="reviewModal">
+        <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="review-modal-header">
+                <h3 class="review-modal-title" id="modalTitle">Review Security Assessment</h3>
+                <button type="button" class="review-modal-close" onclick="closeReviewModal()">✕</button>
+            </div>
+            <div class="review-modal-body">
+                <div class="review-section-box">
+                    <span class="review-section-title">Target Endpoint</span>
+                    <div class="review-target-url" id="modalTargetUrl">https://example.com</div>
+                </div>
+
+                <div class="review-section-box">
+                    <span class="review-section-title">Scan Profile & Crawl Constraints</span>
+                    <div style="font-size:13px; color:#FFFFFF; font-weight:600;" id="modalProfileName">Standard Scan</div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;" id="modalProfileLimits">Max Pages: 15 · Max Crawl Depth: 2</div>
+                </div>
+
+                <div class="review-section-box">
+                    <span class="review-section-title">Selected Security Categories (<span id="modalChecksNum">7</span>)</span>
+                    <div class="review-tags-list" id="modalSelectedTags">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="review-warning-box" id="modalAuthWarning" style="display:none;">
+                    <strong>Notice on Authorization Contexts:</strong>
+                    <span>You selected Access Control / Auth testing without providing authorized session tokens. Access Control will evaluate public boundaries and report as Inconclusive rather than claiming full verification.</span>
+                </div>
+
+                <div class="review-section-box">
+                    <span class="review-section-title">Ownership & Legal Authorization</span>
+                    <div style="font-size:12.5px; color:var(--sev-passed); display:flex; align-items:center; gap:6px;">
+                        <span>✓</span>
+                        <span>Explicit written testing authorization confirmed.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="review-modal-footer">
+                <button type="button" class="btn-ghost-sm" style="padding:8px 16px; font-size:13px;" onclick="closeReviewModal()">Back to Edit</button>
+                <button type="button" class="btn-launch-cta" style="width:auto; padding:0 24px;" id="modalLaunchBtn" onclick="executeScanLaunch()">
+                    <span>Launch Security Scan</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Scripts -->
+    <script src="scanjavafinal.js"></script>
+    <script src="notifications.js"></script>
+
+    <script>
         function logout(e) {
-            e.preventDefault();
+            if (e) e.preventDefault();
             localStorage.removeItem("isLoggedIn");
             localStorage.removeItem("userEmail");
             localStorage.removeItem("token");
             window.location.href = "login.html";
         }
-      </script>
-      
-      <div class="scanner-status">
-        <div class="status-dot"></div>
-        <span>Scanner Engine Ready</span>
-      </div>
-    </aside>
-
-    <!-- ============ MAIN ============ -->
-    <main class="scanner-container">
-
-      <div class="page-header">
-        <div class="header-content">
-          <h1>New Security Scan</h1>
-          <p>Configure and launch an authorized web vulnerability assessment</p>
-        </div>
-        <a href="dashboardfinal.html" class="ghost-btn">← Back to dashboard</a>
-      </div>
-
-      <section class="scanner-grid">
-
-        <!-- ---------- Target + settings ---------- -->
-        <div class="panel scan-config">
-
-          <div class="workflow-step">
-            <div class="step-title">
-              <span class="step-num">01</span> Target Specification
-            </div>
-            
-            <div class="url-input" style="margin-bottom: 8px;">
-              <span class="url-icon">🌐</span>
-              <input type="url" id="url" placeholder="https://example.com" autocomplete="url">
-              <button class="clear-url" id="clearUrl" title="Clear">✕</button>
-            </div>
-            <p class="input-help" id="urlHelp">Specify the fully qualified domain or endpoint to audit.</p>
-            <div class="chips" id="recentTargets" style="margin-top: 12px;"></div>
-          </div>
-
-          <div class="workflow-step">
-            <div class="step-title">
-              <span class="step-num">02</span> Vulnerability Check Selection
-            </div>
-            <div class="settings-head">
-              <span style="font-size: 0.85rem; color: var(--text-muted);">The backend engine will execute only the selected security checks.</span>
-              <button class="link-btn" id="toggleAll" type="button">Select all</button>
-            </div>
-
-            <div class="settings">
-              <label class="setting">
-                <div class="setting-text">
-                  <strong>SQL Injection (SQLi)</strong>
-                  <small>CWE-89 syntax, boolean error, and quote escape checks</small>
-                </div>
-                <input type="checkbox" id="modSqli" data-module="sqli" checked>
-                <span class="switch"></span>
-              </label>
-              <label class="setting">
-                <div class="setting-text">
-                  <strong>Cross-Site Scripting (XSS)</strong>
-                  <small>CWE-79 reflected input parameter and form fuzzing</small>
-                </div>
-                <input type="checkbox" id="modXss" data-module="xss" checked>
-                <span class="switch"></span>
-              </label>
-              <label class="setting">
-                <div class="setting-text">
-                  <strong>Security Headers & Cookies</strong>
-                  <small>CSP, HSTS, X-Content-Type, CORS, Referrer policy</small>
-                </div>
-                <input type="checkbox" id="modHeaders" data-module="headers" checked>
-                <span class="switch"></span>
-              </label>
-              <label class="setting">
-                <div class="setting-text">
-                  <strong>TLS / HTTPS Transport Security</strong>
-                  <small>CWE-319 cleartext communication and protocol verification</small>
-                </div>
-                <input type="checkbox" id="modSsl" data-module="https" checked>
-                <span class="switch"></span>
-              </label>
-              <label class="setting">
-                <div class="setting-text">
-                  <strong>Authentication & Session Security</strong>
-                  <small>CWE-287 credential transmission and auth form posture</small>
-                </div>
-                <input type="checkbox" id="modAuth" data-module="auth" checked>
-                <span class="switch"></span>
-              </label>
-              <label class="setting">
-                <div class="setting-text">
-                  <strong>Broken Access Control</strong>
-                  <small>CWE-284 IDOR endpoint analysis and authorization flaws</small>
-                </div>
-                <input type="checkbox" id="modAccess" data-module="access_control" checked>
-                <span class="switch"></span>
-              </label>
-              <label class="setting">
-                <div class="setting-text">
-                  <strong>Security Misconfiguration & Exposed Files</strong>
-                  <small>CWE-16 exposed metadata (.git, .env) and dangerous HTTP methods</small>
-                </div>
-                <input type="checkbox" id="modMisconfig" data-module="exposed_files" checked>
-                <span class="switch"></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="workflow-step">
-            <div class="step-title">
-              <span class="step-num">03</span> Scan Profile & Depth
-            </div>
-            
-            <div class="depth-profiles">
-              <!-- Standard Profile -->
-              <label class="profile-card active" id="cardStandard">
-                <input type="radio" name="depth" value="standard" checked>
-                <div class="profile-header">
-                  <strong>Standard Scan</strong>
-                  <span class="profile-badge badge-std">Fast Baseline</span>
-                </div>
-                <p style="font-size:0.85rem; margin:0; color:var(--text-muted);">Rapid vulnerability assessment suitable for routine health checks and quick surface testing.</p>
-                <div class="profile-specs">
-                  <div class="spec-item">
-                    <strong>Discovery Scope:</strong> Up to 15 pages (Depth: 2)
-                  </div>
-                  <div class="spec-item">
-                    <strong>Coverage:</strong> Selected active/passive checks on primary endpoints
-                  </div>
-                </div>
-              </label>
-              
-              <!-- Deep Profile -->
-              <label class="profile-card" id="cardDeep">
-                <input type="radio" name="depth" value="deep">
-                <div class="profile-header">
-                  <strong>Deep Scan</strong>
-                  <span class="profile-badge badge-deep">Exhaustive Audit</span>
-                </div>
-                <p style="font-size:0.85rem; margin:0; color:var(--text-muted);">Extended crawling across nested routes, aggressive parameter discovery, and exposed file inspections.</p>
-                <div class="profile-specs">
-                  <div class="spec-item">
-                    <strong>Discovery Scope:</strong> Up to 50 pages (Depth: 4)
-                  </div>
-                  <div class="spec-item">
-                    <strong>Coverage:</strong> Full crawler discovery + all selected checks + file checks
-                  </div>
-                </div>
-              </label>
-
-              <!-- Super Profile (Future/Enterprise) -->
-              <div class="profile-card disabled" title="Enterprise continuous scanning is in roadmap">
-                <div class="profile-header">
-                  <strong>Super Scan</strong>
-                  <span class="profile-badge badge-future">Enterprise / Future</span>
-                </div>
-                <p style="font-size:0.85rem; margin:0; color:var(--text-muted);">Continuous asynchronous attack surface monitoring and multi-agent distributed testing. (Unavailable in current profile)</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="workflow-step">
-            <div class="step-title">
-              <span class="step-num">04</span> Legal Authorization
-            </div>
-            <label class="authorize" for="authorized" style="margin-top: 0;">
-              <input type="checkbox" id="authorized">
-              <span>
-                <strong>I confirm that I own this target or have explicit written authorization to perform security testing.</strong>
-                <small>EthioSec strictly enforces target safety constraints, SSRF blocking, and audit logging.</small>
-              </span>
-            </label>
-          </div>
-
-          <div class="workflow-step" style="margin-bottom: 0;">
-            <div class="step-title">
-              <span class="step-num">05</span> Launch Assessment
-            </div>
-            <button class="scan-button" id="scanButton" type="button" disabled style="width: 100%; margin-top: 10px; font-size: 1.05rem; padding: 16px;">
-              <span>⚡</span> START REAL SCAN
-            </button>
-          </div>
-
-        </div>
-
-        <!-- ---------- Right column ---------- -->
-        <div class="right-column">
-
-          <div class="panel info-card">
-            <div class="card-header"><h2>Scanner Architecture</h2></div>
-
-            <div class="step">
-              <div class="step-number">1</div>
-              <div>
-                <strong>SSRF & Target Safety</strong>
-                <p>Private subnets, metadata IPs, and localhost targets are safely filtered.</p>
-              </div>
-            </div>
-
-            <div class="step">
-              <div class="step-number">2</div>
-              <div>
-                <strong>Real Check Execution</strong>
-                <p>Only your chosen checks run. Results reflect real evidence or explicit Not Detected states.</p>
-              </div>
-            </div>
-
-            <div class="step">
-              <div class="step-number">3</div>
-              <div>
-                <strong>Actionable Remediation</strong>
-                <p>Clear CWE/OWASP mapping with exact parameter and response evidence.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel stats-card">
-            <div class="stat">
-              <span>Last Scan</span>
-              <strong id="lastScan">—</strong>
-            </div>
-            <div class="stat">
-              <span>URLs Scanned</span>
-              <strong id="totalScans">0</strong>
-            </div>
-          </div>
-
-        </div>
-
-      </section>
-
-      <!-- ---------- Recent Scans section ---------- -->
-      <section class="panel history-card" id="history">
-        <div class="card-header">
-          <h2>Recent Scans</h2>
-          <a href="scan_history.html" class="link-btn">View all →</a>
-        </div>
-        <div class="history-list" id="historyList">
-          <p class="empty-state">Loading real scans…</p>
-        </div>
-      </section>
-
-    </main>
-  </div>
-
-  <div class="toast" id="toast"></div>
-
-  <!-- Scanner Controller -->
-  <script src="scanjavafinal.js"></script>
+    </script>
 </body>
 </html>

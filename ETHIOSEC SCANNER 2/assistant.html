@@ -1,159 +1,362 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script>
-        if (localStorage.getItem("isLoggedIn") !== "true") {
-            window.location.href = "login.html";
-        }
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Security Assistant — EthioSecScan</title>
+    <meta name="description" content="Technical vulnerability analysis, remediation advice, and evidence-grounded security posture analysis on EthioSecScan.">
 
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Assistant - EthioSecScan</title>
-  <link rel="stylesheet" href="shell.css">
-  <link rel="stylesheet" href="assistantstyle.css">
+    <!-- Design System Typography & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Unified Stylesheets -->
+    <link rel="stylesheet" href="assistantstyle.css">
+    <link rel="stylesheet" href="shared_nav_header.css">
+
+    <!-- Shared Auth & Identity -->
+    <script src="shared_auth.js"></script>
 </head>
 <body>
 
-  <div class="dashboard-bg">
-    <div class="glow-one"></div>
-    <div class="glow-two"></div>
-  </div>
+    <!-- Mobile Navigation Toggle & Backdrop -->
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Navigation Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">☰</button>
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="layout">
 
-  <div class="layout">
+        <!-- ============ APPROVED SIDEBAR ============ -->
+        <aside class="sidebar" id="sidebar">
+            <a href="dashboardfinal.html" class="sidebar-logo">
+                <div class="logo-shield-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="logo-text-group">
+                    <span class="logo-title">EthioSecScan</span>
+                    <span class="logo-subtitle">Scan • Detect • Secure</span>
+                </div>
+            </a>
 
-    <aside class="sidebar" id="sidebar">
-      <div class="brand">
-        <h2>EthioSecScan</h2>
-      </div>
-                        <nav class="sidebar-nav">
-        <a href="dashboardfinal.html" class="side-link"><span class="side-icon">📊</span> Dashboard</a>
-        <a href="scanfinal.html" class="side-link"><span class="side-icon">⚡</span> New Scan</a>
-        <a href="scan_history.html" class="side-link"><span class="side-icon">🕒</span> History</a>
-        <a href="results.html" class="side-link"><span class="side-icon">📈</span> Results</a>
-        <a href="reports.html" class="side-link"><span class="side-icon">📄</span> Reports</a>
-        <a href="assistant.html" class="side-link active"><span class="side-icon">🤖</span> AI Assistant</a>
-        <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
-        <a href="settings.html" class="side-link"><span class="side-icon">⚙️</span> Settings</a>
-        <a href="#" class="side-link" onclick="logout(event)"><span class="side-icon">🚪</span> Logout</a>
-      </nav>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-      
-      <script>
-        function logout(e) {
-            e.preventDefault();
-            localStorage.removeItem("isLoggedIn");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
-        }
-      </script>
-    </aside>
+            <!-- Navigation Links -->
+            <nav class="sidebar-nav">
+                <a href="dashboardfinal.html" class="side-link" id="navDashboard">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="9"></rect>
+                            <rect x="14" y="3" width="7" height="5"></rect>
+                            <rect x="14" y="12" width="7" height="9"></rect>
+                            <rect x="3" y="16" width="7" height="5"></rect>
+                        </svg>
+                    </span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="scanfinal.html" class="side-link" id="navNewScan">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>New Scan</span>
+                </a>
+                <a href="scan_history.html" class="side-link" id="navHistory">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </span>
+                    <span>History</span>
+                </a>
+                <a href="results.html" class="side-link" id="navResults">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </span>
+                    <span>Results</span>
+                </a>
+                <a href="reports.html" class="side-link" id="navReports">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                    </span>
+                    <span>Reports</span>
+                </a>
+                <a href="assistant.html" class="side-link active" id="navAssistant">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                            <circle cx="12" cy="5" r="2"></circle>
+                            <path d="M12 7v4"></path>
+                            <line x1="8" y1="16" x2="8" y2="16"></line>
+                            <line x1="16" y1="16" x2="16" y2="16"></line>
+                        </svg>
+                    </span>
+                    <span>AI Assistant</span>
+                </a>
 
-    <main class="page-container">
+                <div class="nav-divider"></div>
 
-      <div class="page-header">
-        <div class="header-content">
-          <h1>AI Security Assistant</h1>
-          <p>Ask about findings the scanner already produced</p>
-        </div>
-        <a href="results.html" class="ghost-btn" id="backLink" hidden>← Back to results</a>
-      </div>
+                <a href="settings.html" class="side-link" id="navSettings">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </span>
+                    <span>Settings</span>
+                </a>
+                <a href="#" class="side-link" id="sidebarLogoutLink" onclick="logout(event)">
+                    <span class="side-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </span>
+                    <span>Logout</span>
+                </a>
+            </nav>
 
-      <section class="panel chat-panel">
+            <!-- Bottom System Status Box -->
+            <div class="service-status-box" id="serviceStatusBox" title="All services operational">
+                <div class="service-status-dot online" id="serviceStatusDot"></div>
+                <div class="service-status-text">
+                    <span class="service-name">System Healthy</span>
+                    <span class="service-state" id="serviceStateText">All services running</span>
+                </div>
+            </div>
+        </aside>
 
-        <!-- Context chips show which scan/finding is in focus -->
-        <div class="context-row" id="contextRow">
-          <span class="context-chip muted" id="chipNone">No scan in focus — answers will be general</span>
-        </div>
+        <!-- ============ MAIN CONTENT AREA ============ -->
+        <main class="page-container">
 
-        <div class="chat" id="chat"></div>
+            <!-- Page Header -->
+            <header class="page-header">
+                <div class="header-left">
+                    <h1 class="page-title">AI Security Assistant</h1>
+                    <p class="page-subtitle">Evidence-grounded vulnerability insights, code remediation, and security posture analysis</p>
+                </div>
 
-        <div class="suggestions" id="suggestions">
-          <button class="suggestion" type="button">How do I fix this?</button>
-          <button class="suggestion" type="button">How severe is this really?</button>
-          <button class="suggestion" type="button">What does the OWASP tag mean?</button>
-        </div>
+                <div class="header-actions">
+                    <!-- Notification Bell with Dropdown Panel -->
+                    <div class="notif-dropdown-wrapper" id="notifDropdownWrapper">
+                        <button class="header-icon-btn" id="notifBtn" type="button" aria-label="Notifications" title="Notifications">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span class="notif-badge" id="notifBadge"></span>
+                        </button>
 
-        <form class="composer" id="composer">
-          <input type="text" id="message" placeholder="Ask about this scan…" autocomplete="off">
-          <button class="primary-btn" id="sendBtn" type="submit">Send</button>
-        </form>
+                        <div class="notif-dropdown-panel" id="notifPanel">
+                            <div class="notif-panel-header">
+                                <span class="notif-panel-title">Notifications</span>
+                                <button class="notif-clear-btn" id="markAllReadBtn" type="button">Mark all read</button>
+                            </div>
+                            <div class="notif-list" id="notifList">
+                                <div class="notif-item unread">
+                                    <div class="notif-icon-circle warn">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">High Vulnerability Alert</div>
+                                        <div class="notif-desc">Target security scan found critical risk items on audited host.</div>
+                                        <div class="notif-time">10m ago</div>
+                                    </div>
+                                </div>
+                                <div class="notif-item">
+                                    <div class="notif-icon-circle success">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="notif-title">Scan Completed</div>
+                                        <div class="notif-desc">Audit for target has completed successfully.</div>
+                                        <div class="notif-time">1h ago</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        <p class="guardrail">
-          The assistant only explains findings the scanner produced. It never decides on its own that something is vulnerable.
-        </p>
+                    <!-- Navigation to Results -->
+                    <a href="results.html" class="btn-secondary" id="linkToResults">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        <span>Results</span>
+                    </a>
 
-      </section>
+                    <!-- New Scan Action -->
+                    <a href="scanfinal.html" class="btn-primary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>New Scan</span>
+                    </a>
 
-    </main>
-  </div>
+                    <!-- User Profile Dropdown Pill -->
+                    <div class="user-pill-dropdown-container">
+                        <div class="user-pill-btn" id="userPillBtn" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" title="User Profile">
+                            <div class="user-avatar-small" id="headerAvatar">--</div>
+                            <div class="user-pill-info">
+                                <span class="user-pill-name" id="headerUserName">—</span>
+                                <span class="user-pill-role" id="headerUserRole">Administrator</span>
+                            </div>
+                            <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        
+                        <!-- Dropdown Menu -->
+                        <div class="user-menu-popover" id="userMenuPopover">
+                            <div class="user-menu-header">
+                                <span class="popover-name" id="menuUserName">—</span>
+                                <span class="popover-email" id="menuUserEmail">—</span>
+                                <span class="popover-role" id="menuUserRole">Administrator</span>
+                            </div>
+                            <div class="user-menu-divider"></div>
+                            <a href="settings.html#profile" class="user-menu-item" id="menuProfileLink">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <span>Profile</span>
+                            </a>
+                            <a href="settings.html" class="user-menu-item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                                <span>Settings</span>
+                            </a>
+                            <a href="#" class="user-menu-item text-danger" onclick="logout(event)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                <span>Logout</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
 
-  <div class="toast" id="toast"></div>
+            <!-- Assessment Context Selector Bar -->
+            <div class="assistant-context-card">
+                <div class="context-selector-left">
+                    <div class="context-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </div>
+                    <div class="context-select-group">
+                        <label for="scanSelect">Active Scan Context</label>
+                        <select id="scanSelect" class="context-dropdown">
+                            <option value="">General Cybersecurity Assistant (No scan selected)</option>
+                        </select>
+                    </div>
+                </div>
 
-  <!-- Pure Frontend Runtime Shim -->
-  <script>
-    window.EthioShell = window.EthioShell || {
-      init: () => true,
-      escapeHTML: (str) => {
-        if (!str) return "";
-        return String(str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      },
-      timeAgo: () => "Just now",
-      severityClass: (sev) => "sev-" + (sev || "info").toLowerCase(),
-      toast: (msg) => {
-        const t = document.getElementById("toast");
-        if (t) {
-          t.textContent = msg;
-          t.classList.add("show");
-          setTimeout(() => t.classList.remove("show"), 3000);
-        }
-      }
-    };
+                <div class="context-details" id="contextDetails" style="display:none;">
+                    <div class="context-stat">
+                        <span class="stat-label">Target</span>
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="stat-val" id="ctxTarget">—</a>
+                    </div>
+                    <div class="context-stat">
+                        <span class="stat-label">Score</span>
+                        <span class="stat-badge" id="ctxScore">—</span>
+                    </div>
+                    <div class="context-stat">
+                        <span class="stat-label">Findings</span>
+                        <span class="stat-val" id="ctxFindings">—</span>
+                    </div>
+                    <div class="context-stat" id="ctxFindingStat" style="display:none;">
+                        <span class="stat-label">Focus Finding</span>
+                        <span class="stat-badge" id="ctxFindingBadge" style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:rgba(232,59,37,0.15); color:#FF6B55; border:1px solid rgba(232,59,37,0.4);">—</span>
+                    </div>
+                    <a href="results.html" class="btn-secondary" id="linkToResults" style="display:none; padding:4px 10px; font-size:11px; text-decoration:none; align-items:center; gap:4px;" title="Return to Security Assessment Report">
+                        <span>← Results</span>
+                    </a>
+                    <button type="button" class="btn-clear-context" id="btnClearContext" title="Switch to General Assistant">✕ Clear</button>
+                </div>
+            </div>
 
-    window.EthioAuth = window.EthioAuth || {
-      isAuthenticated: () => true,
-      getQueryParam: (param) => new URLSearchParams(window.location.search).get(param)
-    };
+            <!-- Chat Main Container -->
+            <section class="chat-container">
 
-    window.EthioAPI = window.EthioAPI || {
-      askAssistant: async ({ message, scan_id, finding_id }) => {
-        return {
-          reply: `Based on your scan (${scan_id || "general"}), here is what you need to know regarding "${message}": Ensure inputs are parameterized and headers like Content-Security-Policy and X-Frame-Options are strictly configured.`
-        };
-      }
-    };
-  </script>
+                <div class="chat-header-bar">
+                    <div class="chat-status-indicator">
+                        <span class="status-pulse-dot"></span>
+                        <span class="chat-model-label" id="chatStatusText">Gemini Security Intelligence · Ready</span>
+                    </div>
+                    <button type="button" class="btn-chat-action" id="btnClearChat" title="Reset current conversation">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="1 4 1 10 7 10"></polyline>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                        </svg>
+                        <span>New Conversation</span>
+                    </button>
+                </div>
 
-  <!-- Main UI script -->
-  <script src="assistantjava.js"></script>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Populated dynamically via assistantjava.js -->
+                </div>
+
+                <!-- Suggestions Row -->
+                <div class="chat-suggestions" id="chatSuggestions">
+                    <!-- Dynamic suggestion chips based on active scan/general context -->
+                </div>
+
+                <!-- Composer Form -->
+                <form class="chat-composer" id="chatForm">
+                    <div class="composer-input-wrap">
+                        <textarea id="chatInput" rows="1" placeholder="Ask about this scan's findings, remediation code, or general security..." autocomplete="off"></textarea>
+                    </div>
+                    <button class="btn-send" id="sendBtn" type="submit" aria-label="Send message">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        <span>Send</span>
+                    </button>
+                </form>
+
+                <div class="chat-footer-guardrail">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span>EthioSec AI grounds explanations exclusively on verified scanner evidence. Credentials and scan parameters remain protected on the backend.</span>
+                </div>
+
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Feedback Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Scripts -->
+    <script src="shared_auth.js"></script>
+    <script src="assistantjava.js"></script>
+    <script src="notifications.js"></script>
 </body>
 </html>
-
