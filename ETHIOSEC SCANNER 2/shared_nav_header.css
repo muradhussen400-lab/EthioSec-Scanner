@@ -111,27 +111,28 @@ html, body {
 }
 
 .logo-shield-icon {
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
-    border-radius: 8px !important;
-    background: rgba(232, 59, 37, 0.14) !important;
-    border: 1px solid rgba(232, 59, 37, 0.4) !important;
-    color: var(--brand-red, #E83B25) !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     flex-shrink: 0 !important;
-    box-shadow: 0 0 14px rgba(232, 59, 37, 0.25) !important;
     box-sizing: border-box !important;
     transition: transform 0.2s ease !important;
 }
 
 .logo-shield-icon svg {
-    width: 20px !important;
-    height: 20px !important;
-    stroke-width: 2.2 !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    flex-shrink: 0 !important;
+    display: block !important;
 }
 
 .sidebar-logo:hover .logo-shield-icon {

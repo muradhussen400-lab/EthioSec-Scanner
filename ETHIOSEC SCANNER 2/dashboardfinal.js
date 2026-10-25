@@ -180,6 +180,16 @@ function renderMetricCards(scans) {
     setCardValue("metricLow", low);
     setCardValue("metricNotDetected", notDetected);
     setCardValue("metricScannerError", scannerError);
+
+    const growthEl = document.getElementById("metricGrowthText");
+    if (growthEl) {
+        const oneWeekAgo = Date.now() - 7 * 86400000;
+        const thisWeekCount = scans.filter(s => {
+            const ts = new Date(s.created_at || s.finished_at).getTime();
+            return !isNaN(ts) && ts >= oneWeekAgo;
+        }).length;
+        growthEl.textContent = `+ ${thisWeekCount} this week`;
+    }
 }
 
 function setCardValue(id, value) {

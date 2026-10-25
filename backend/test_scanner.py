@@ -21,7 +21,8 @@ def run_vulnerable_app():
     try:
         httpx.get("http://127.0.0.1:3000/", timeout=1.0)
     except Exception:
-        proc = subprocess.Popen([sys.executable, "vulnerable_app.py"])
+        app_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vulnerable_app.py")
+        proc = subprocess.Popen([sys.executable, app_path])
         for _ in range(30):
             try:
                 r = httpx.get("http://127.0.0.1:3000/", timeout=1.0)
@@ -43,9 +44,11 @@ async def test():
     db = SessionLocal()
     
     # Create dummy user and target to satisfy foreign key constraints
-    user = User(email="scanner_test@example.com", password_hash="hash")
-    db.add(user)
-    db.commit()
+    user = db.query(User).filter(User.email == "scanner_test@example.com").first()
+    if not user:
+        user = User(email="scanner_test@example.com", password_hash="hash")
+        db.add(user)
+        db.commit()
     
     target = ScanTarget(user_id=user.id, url="http://127.0.0.1:3000", authorized=True)
     db.add(target)

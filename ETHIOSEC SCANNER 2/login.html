@@ -5,135 +5,169 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login — EthioSec Scanner</title>
     <meta name="description" content="Sign in to your EthioSec Scanner account to scan websites, analyze vulnerabilities, and inspect security reports.">
-    <link rel="stylesheet" href="auth_theme.css">
+    <link rel="stylesheet" href="auth_theme.css?v=2026.12">
 </head>
 <body>
 
     <!-- Ambient Red Background Glow -->
     <div class="ambient-glow" aria-hidden="true"></div>
 
-    <!-- Main Two-Column Auth Card -->
+    <!-- Main Two-Column Auth Container (Exact Match to Reference Image 1) -->
     <main class="auth-container">
 
         <!-- =================================================================
-             LEFT PROMOTIONAL COLUMN (Exact match to reference design)
+             LEFT PROMOTIONAL COLUMN
              ================================================================= -->
         <section class="promo-column" aria-label="Platform Overview">
             
-            <!-- Brand Header -->
+            <!-- Brand Header with Shield-and-Star Logo (Reference Image 2) -->
             <a href="index.html" class="promo-brand" title="EthioSec Scanner Homepage">
                 <div class="promo-brand-logo">
-                    <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M22 2L6 8.5V20.8C6 30.5 12.8 39.5 22 42C31.2 39.5 38 30.5 38 20.8V8.5L22 2Z" fill="#A90012" stroke="#FF2028" stroke-width="2"/>
-                        <path d="M22 6L9 11.3V21.4C9 28.7 14.5 35.8 22 37.9C29.5 35.8 35 28.7 35 21.4V11.3L22 6Z" fill="#FF2028" opacity="0.3"/>
-                        <path d="M22 13L24.5 18.5H30.5L25.6 22.2L27.5 28L22 24.3L16.5 28L18.4 22.2L13.5 18.5H19.5L22 13Z" fill="#FFFFFF"/>
+                    <svg width="38" height="38" style="width:38px!important; height:38px!important; flex-shrink:0!important;" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="shieldRimGrad1" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#FF3B47"/>
+                                <stop offset="35%" stop-color="#E50914"/>
+                                <stop offset="100%" stop-color="#7A000A"/>
+                            </linearGradient>
+                            <linearGradient id="shieldBodyGrad1" x1="24" y1="6" x2="24" y2="42" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#E50914"/>
+                                <stop offset="55%" stop-color="#B8000E"/>
+                                <stop offset="100%" stop-color="#5E0007"/>
+                            </linearGradient>
+                            <linearGradient id="shieldHighlightGrad1" x1="8.5" y1="9.8" x2="24" y2="41.2" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32"/>
+                                <stop offset="50%" stop-color="#FF2A38" stop-opacity="0.08"/>
+                                <stop offset="100%" stop-color="#000000" stop-opacity="0.25"/>
+                            </linearGradient>
+                            <filter id="shieldGlow1" x="-15%" y="-15%" width="130%" height="130%">
+                                <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#FF2028" flood-opacity="0.35"/>
+                            </filter>
+                        </defs>
+                        <path d="M24 3.5C30 5.8 38 6.5 42 7.8V21.5C42 32.5 34.2 41.2 24 44.5C13.8 41.2 6 32.5 6 21.5V7.8C10 6.5 18 5.8 24 3.5Z" 
+                              fill="url(#shieldRimGrad1)" filter="url(#shieldGlow1)"/>
+                        <path d="M24 6.2C29 8.2 36 8.8 39.5 9.8V21C39.5 30.5 32.8 38.2 24 41.2C15.2 38.2 8.5 30.5 8.5 21V9.8C12 8.8 19 8.2 24 6.2Z" 
+                              fill="url(#shieldBodyGrad1)"/>
+                        <path d="M24 6.2V41.2C15.2 38.2 8.5 30.5 8.5 21V9.8C12 8.8 19 8.2 24 6.2Z" 
+                              fill="url(#shieldHighlightGrad1)"/>
+                        <path d="M24 14.5L26.6 20.8L33.5 21.3L28.2 25.8L29.9 32.5L24 28.8L18.1 32.5L19.8 25.8L14.5 21.3L21.4 20.8L24 14.5Z" 
+                              fill="#FFFFFF"/>
                     </svg>
                 </div>
                 <div class="promo-brand-text">
                     <div class="promo-brand-title">EthioSec <span>Scanner</span></div>
-                    <div class="promo-brand-sub">Secure Today, Safer Tomorrow</div>
+                    <div class="promo-brand-sub">Secure Today. Safer Tomorrow.</div>
                 </div>
             </a>
 
-            <!-- Headline -->
+            <!-- Headline (Exact match to Reference Image 1) -->
             <h1 class="promo-headline">
-                Detect Real Vulnerabilities.
-                <span class="accent-red">Build a Safer Web.</span>
+                Welcome Back<br>
+                <span class="accent-red">Login to Your Account</span>
             </h1>
 
             <p class="promo-description">
-                EthioSec Scanner helps you find and fix web application vulnerabilities with accurate detection, detailed reports, and AI-powered insights.
+                Access your EthioSec Scanner account and continue securing your web applications.
             </p>
 
-            <!-- 4 Features List -->
+            <!-- 3 Features List (Exact match to Reference Image 1) -->
             <div class="promo-features">
                 
                 <div class="feature-item">
                     <div class="feature-icon-wrap" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            <path d="m9 12 2 2 4-4"/>
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                     </div>
                     <div class="feature-text">
-                        <div class="feature-title">Scan & Detect</div>
-                        <div class="feature-desc">SQLi, XSS, IDOR and more</div>
+                        <div class="feature-title">Secure Access</div>
+                        <div class="feature-desc">Your data is protected.</div>
                     </div>
                 </div>
 
                 <div class="feature-item">
                     <div class="feature-icon-wrap" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/>
                         </svg>
                     </div>
                     <div class="feature-text">
-                        <div class="feature-title">Detailed Reports</div>
-                        <div class="feature-desc">Clear, actionable, easy to read</div>
+                        <div class="feature-title">Real-time Scanning</div>
+                        <div class="feature-desc">Find issues, faster.</div>
                     </div>
                 </div>
 
                 <div class="feature-item">
                     <div class="feature-icon-wrap" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect width="18" height="18" x="3" y="3" rx="2"/>
-                            <path d="M9 9h6v6H9z"/>
-                            <path d="M9 1v2m6-2v2M9 21v2m6-2v2M1 9h2m-2 6h2m18-6h2m-2 6h2"/>
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                         </svg>
                     </div>
                     <div class="feature-text">
-                        <div class="feature-title">AI Assistant</div>
-                        <div class="feature-desc">Get expert help and explanations</div>
-                    </div>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon-wrap" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="16 18 22 12 16 6"/>
-                            <polyline points="8 6 2 12 8 18"/>
-                        </svg>
-                    </div>
-                    <div class="feature-text">
-                        <div class="feature-title">Professional Platform</div>
-                        <div class="feature-desc">For students, developers and security professionals</div>
+                        <div class="feature-title">AI-Powered Insights</div>
+                        <div class="feature-desc">Get clear, actionable advice.</div>
                     </div>
                 </div>
 
             </div>
 
-            <!-- Bottom Graphic (Hacker with Glowing Laptop) -->
+            <!-- Bottom Graphic (Hacker with Glowing Laptop - Exact match to Reference Image 1) -->
             <div class="promo-graphic-container">
-                <img src="hacker_cyber_graphic.jpg" alt="Cybersecurity Scanner Shield Graphics" class="promo-graphic-img">
+                <img src="hacker_cyber_graphic.jpg" alt="EthioSec Cybersecurity Hacker Graphic" class="promo-graphic-img">
             </div>
 
         </section>
 
         <!-- =================================================================
-             RIGHT FORM COLUMN (Login Form)
+             RIGHT FORM COLUMN (Floating Auth Card)
              ================================================================= -->
         <section class="form-column" aria-label="Sign In Panel">
-            <div>
-                
-                <!-- Top Switch Link -->
-                <div class="top-switch-bar">
-                    <span>Don't have an account?</span>
-                    <a href="signup.html" id="signupLink">Sign Up</a>
+            
+            <div class="auth-card">
+
+                <!-- Card Brand Header with Compact Inline Shield Badge (Reference Image 1) -->
+                <div class="card-brand-header">
+                    <div class="card-shield-wrap">
+                        <svg class="card-shield-svg" width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <defs>
+                                <linearGradient id="shieldRimCardLg" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#FF3B47"/>
+                                    <stop offset="35%" stop-color="#E50914"/>
+                                    <stop offset="100%" stop-color="#7A000A"/>
+                                </linearGradient>
+                                <linearGradient id="shieldBodyCardLg" x1="24" y1="6" x2="24" y2="42" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#E50914"/>
+                                    <stop offset="55%" stop-color="#B8000E"/>
+                                    <stop offset="100%" stop-color="#5E0007"/>
+                                </linearGradient>
+                                <linearGradient id="shieldHighlightCardLg" x1="8.5" y1="9.8" x2="24" y2="41.2" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32"/>
+                                    <stop offset="50%" stop-color="#FF2A38" stop-opacity="0.08"/>
+                                    <stop offset="100%" stop-color="#000000" stop-opacity="0.25"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M24 3.5C30 5.8 38 6.5 42 7.8V21.5C42 32.5 34.2 41.2 24 44.5C13.8 41.2 6 32.5 6 21.5V7.8C10 6.5 18 5.8 24 3.5Z" 
+                                  fill="url(#shieldRimCardLg)"/>
+                            <path d="M24 6.2C29 8.2 36 8.8 39.5 9.8V21C39.5 30.5 32.8 38.2 24 41.2C15.2 38.2 8.5 30.5 8.5 21V9.8C12 8.8 19 8.2 24 6.2Z" 
+                                  fill="url(#shieldBodyCardLg)"/>
+                            <path d="M24 6.2V41.2C15.2 38.2 8.5 30.5 8.5 21V9.8C12 8.8 19 8.2 24 6.2Z" 
+                                  fill="url(#shieldHighlightCardLg)"/>
+                            <path d="M24 14.5L26.6 20.8L33.5 21.3L28.2 25.8L29.9 32.5L24 28.8L18.1 32.5L19.8 25.8L14.5 21.3L21.4 20.8L24 14.5Z" 
+                                  fill="#FFFFFF"/>
+                        </svg>
+                    </div>
+                    <span class="card-brand-title">EthioSec <span>Scanner</span></span>
                 </div>
 
                 <!-- Form Header -->
-                <div class="form-header">
-                    <div class="form-title-group">
-                        <div class="accent-bar" aria-hidden="true"></div>
-                        <h2 class="form-title">Welcome Back</h2>
-                    </div>
-                    <p class="form-subtitle" id="loginSubtext">Login to your EthioSec Scanner account</p>
+                <div class="card-header-text">
+                    <h2 class="card-title">Login to Your Account</h2>
+                    <p class="card-subtitle" id="loginSubtext">Welcome back! Please enter your details to continue.</p>
                 </div>
 
-                <!-- Inline Feedback Alert Banner -->
+                <!-- Inline Feedback Alert Banners -->
                 <div class="alert-banner error" id="formError" role="alert" style="display:none;"></div>
                 <div class="alert-banner success" id="formSuccess" role="status" style="display:none;"></div>
 
@@ -150,7 +184,7 @@
                                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
                                 </svg>
                             </span>
-                            <input type="email" id="email" class="form-input" placeholder="Enter your email address" autocomplete="email" required>
+                            <input type="email" id="email" class="form-input" placeholder="you@example.com" autocomplete="email" required>
                         </div>
                     </div>
 
@@ -178,7 +212,7 @@
                     <div class="form-options-row">
                         <label class="remember-label">
                             <input type="checkbox" id="remember" class="remember-checkbox">
-                            <span>Remember me</span>
+                            <span class="remember-text">Remember me</span>
                         </label>
                         <a href="reset-password.html" class="forgot-link">Forgot password?</a>
                     </div>
@@ -186,23 +220,22 @@
                     <!-- Primary Red Login Button -->
                     <button type="submit" class="btn-submit-primary" id="loginBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                            <polyline points="10 17 15 12 10 7"></polyline>
-                            <line x1="15" y1="12" x2="3" y2="12"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
                         </svg>
                         <span>Login</span>
                     </button>
 
                     <!-- Divider -->
                     <div class="auth-divider">
-                        <div class="divider-line"></div>
+                        <span class="divider-line"></span>
                         <span class="divider-text">OR</span>
-                        <div class="divider-line"></div>
+                        <span class="divider-line"></span>
                     </div>
 
                     <!-- Continue with Google Button -->
                     <button type="button" class="btn-social-google" id="googleBtn">
-                        <svg class="google-icon-svg" viewBox="0 0 24 24">
+                        <svg class="google-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.15z" fill="#4285F4"/>
                             <path d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.94H1.24v3.15C3.26 21.36 7.33 24 12 24z" fill="#34A853"/>
                             <path d="M5.28 14.26a7.18 7.18 0 0 1 0-4.52V6.59H1.24a11.96 11.96 0 0 0 0 10.82l4.04-3.15z" fill="#FBBC05"/>
@@ -211,24 +244,26 @@
                         <span>Continue with Google</span>
                     </button>
 
+                    <!-- Bottom Switch Link -->
+                    <div class="card-bottom-switch">
+                        <span>Don't have an account?</span>
+                        <a href="signup.html" id="signupLink">Sign Up</a>
+                    </div>
+
                 </form>
 
             </div>
 
-            <!-- Footer -->
+            <!-- Footer (Clean & Subtle) -->
             <footer class="auth-footer">
-                <div class="terms-text">
-                    By continuing, you agree to our <a href="contact.html">Terms of Service</a> and <a href="contact.html">Privacy Policy</a>.
-                </div>
-                <div class="copyright-text">
-                    &copy; 2025 EthioSec Scanner. All rights reserved.
-                </div>
+                <div>By continuing, you agree to our <a href="contact.html">Terms</a> and <a href="contact.html">Privacy Policy</a>.</div>
+                <div>&copy; 2026 EthioSec Scanner. All rights reserved.</div>
             </footer>
 
         </section>
 
     </main>
 
-    <script src="loginjava.js?v=2026.3"></script>
+    <script src="loginjava.js?v=2026.5"></script>
 </body>
 </html>
