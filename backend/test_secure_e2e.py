@@ -22,8 +22,7 @@ def run_secure_app():
     try:
         httpx.get("http://127.0.0.1:3001/", timeout=1.0)
     except Exception:
-        app_path = os.path.join(os.path.dirname(__file__), "secure_app.py")
-        proc = subprocess.Popen([sys.executable, app_path], cwd=os.path.dirname(__file__))
+        proc = subprocess.Popen([sys.executable, "secure_app.py"])
         for _ in range(30):
             try:
                 r = httpx.get("http://127.0.0.1:3001/", timeout=1.0)
@@ -129,14 +128,17 @@ def test_secure_workflow():
             # Note: The secure app uses HTTP locally (no TLS config in uvicorn script).
             if f['type'] == 'https':
                 continue
-            # The test app submits a login form locally over HTTP and lacks csrf/rate-limiting
-            if f['type'] == 'auth' and any(k in f['title'] for k in ('Insecure', 'Anti-CSRF', 'Rate Limiting', 'Authentication', 'Confidence')):
+            # The test app submits a login form locally over HTTP.
+            if f['title'] == 'Insecure Authentication Form':
                 continue
             # Uvicorn exposes 'Server: uvicorn'. This is an info disclosure, but not a false positive logic error.
             if f['type'] == 'info_disclosure' and 'uvicorn' in f['evidence']:
                 continue
             # The secure app intentionally doesn't set all possible security headers, just some. We can ignore missing LOW impact headers.
             if f['type'] == 'headers' and f['status'] == 'LOW':
+                continue
+            # If we don't pass an auth context, it's a Low Confidence issue, which is a warning, not a FP vulnerability.
+            if f['title'] == 'Authentication Check Low Confidence':
                 continue
                 
             vulns_found += 1

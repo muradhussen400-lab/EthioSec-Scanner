@@ -203,26 +203,6 @@
         if ($("email")) $("email").value = user.email || "";
         if ($("userId")) $("userId").value = formattedUserId;
         if ($("memberSince")) $("memberSince").value = formattedMemberSince;
-
-        // Phone number & verification status
-        if ($("phoneNumber")) $("phoneNumber").value = user.phone_number || "";
-        const phoneBadge = $("phoneStatusBadge");
-        if (phoneBadge) {
-            if (user.phone_verified) {
-                phoneBadge.textContent = "✓ Verified";
-                phoneBadge.style.color = "#10B981";
-                phoneBadge.style.borderColor = "rgba(16, 185, 129, 0.4)";
-                phoneBadge.style.background = "rgba(16, 185, 129, 0.12)";
-            } else {
-                phoneBadge.textContent = "Unverified";
-                phoneBadge.style.color = "#f59e0b";
-                phoneBadge.style.borderColor = "rgba(245, 158, 11, 0.4)";
-                phoneBadge.style.background = "rgba(245, 158, 11, 0.12)";
-            }
-        }
-        if ($("btnSendPhoneCode")) {
-            $("btnSendPhoneCode").textContent = user.phone_verified ? "Re-verify Phone" : "Send SMS Code";
-        }
         
         if ($("role")) {
             const rVal = user.role || "Security Analyst";
@@ -273,7 +253,6 @@
         const feedback = $("profileFeedback");
         const fullName = ($("fullName") ? $("fullName").value : "").trim();
         const website = ($("website") ? $("website").value : "").trim();
-        const phoneNumber = ($("phoneNumber") ? $("phoneNumber").value : "").trim();
 
         if (btn) btn.classList.add("loading");
         if (btn) btn.disabled = true;
@@ -289,8 +268,7 @@
                 },
                 body: JSON.stringify({
                     full_name: fullName || null,
-                    website: website || null,
-                    phone_number: phoneNumber || null
+                    website: website || null
                 })
             });
 
@@ -322,135 +300,6 @@
             if (btn) btn.classList.remove("loading");
             if (btn) btn.disabled = false;
         }
-    };
-
-    // =========================================================================
-    // PHONE SMS VERIFICATION HANDLERS
-    // =========================================================================
-    window.sendPhoneVerificationCode = async function () {
-        const phoneInput = $("phoneNumber");
-        const phone = phoneInput ? phoneInput.value.trim() : "";
-        const btn = $("btnSendPhoneCode");
-
-        if (!phone) {
-            showToast("Phone Required", "Please enter a valid phone number in E.164 format (e.g. +251911223344).", true);
-            if (phoneInput) phoneInput.focus();
-            return;
-        }
-
-        if (btn) btn.disabled = true;
-
-        try {
-            const res = await fetch(`${API_BASE}/auth/phone/send-code`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ phone_number: phone })
-            });
-
-            const data = await res.json().catch(() => ({}));
-
-            if (res.ok) {
-                showToast("SMS Code Sent", data.message || "Verification code dispatched via SMS.");
-                const verifyBox = $("phoneVerifyBox");
-                if (verifyBox) verifyBox.style.display = "block";
-                const codeInput = $("phoneVerificationCode");
-                if (codeInput) {
-                    codeInput.value = "";
-                    codeInput.focus();
-                }
-
-                // 60-second cooldown timer on button
-                let remaining = 60;
-                if (btn) btn.textContent = `Resend in ${remaining}s`;
-                const timer = setInterval(() => {
-                    remaining--;
-                    if (remaining > 0) {
-                        if (btn) btn.textContent = `Resend in ${remaining}s`;
-                    } else {
-                        clearInterval(timer);
-                        if (btn) {
-                            btn.disabled = false;
-                            btn.textContent = "Resend SMS Code";
-                        }
-                    }
-                }, 1000);
-            } else {
-                showToast("SMS Failed", data.detail || "Unable to send verification code.", true);
-                if (btn) btn.disabled = false;
-            }
-        } catch (err) {
-            showToast("Network Error", "Could not connect to backend server.", true);
-            if (btn) btn.disabled = false;
-        }
-    };
-
-    window.confirmPhoneCode = async function () {
-        const phone = $("phoneNumber") ? $("phoneNumber").value.trim() : "";
-        const code = $("phoneVerificationCode") ? $("phoneVerificationCode").value.trim() : "";
-        const btn = $("btnConfirmPhoneCode");
-        const feedback = $("phoneVerifyFeedback");
-
-        if (!code) {
-            if (feedback) {
-                feedback.textContent = "Please enter the verification code received via SMS.";
-                feedback.style.color = "#EF4444";
-            }
-            return;
-        }
-
-        if (btn) btn.disabled = true;
-        if (feedback) feedback.textContent = "Verifying…";
-
-        try {
-            const res = await fetch(`${API_BASE}/auth/phone/verify-code`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ phone_number: phone, code: code })
-            });
-
-            const data = await res.json().catch(() => ({}));
-
-            if (res.ok && data.phone_verified) {
-                showToast("Phone Verified", "Your phone number has been successfully verified!");
-                const verifyBox = $("phoneVerifyBox");
-                if (verifyBox) verifyBox.style.display = "none";
-                const badge = $("phoneStatusBadge");
-                if (badge) {
-                    badge.textContent = "✓ Verified";
-                    badge.style.color = "#10B981";
-                    badge.style.borderColor = "rgba(16, 185, 129, 0.4)";
-                    badge.style.background = "rgba(16, 185, 129, 0.12)";
-                }
-                if ($("btnSendPhoneCode")) {
-                    $("btnSendPhoneCode").textContent = "Re-verify Phone";
-                }
-                loadProfile();
-            } else {
-                const errMsg = data.detail || "Invalid verification code.";
-                if (feedback) {
-                    feedback.textContent = `✕ ${errMsg}`;
-                    feedback.style.color = "#EF4444";
-                }
-                showToast("Verification Failed", errMsg, true);
-            }
-        } catch (err) {
-            showToast("Network Error", "Could not reach server to verify code.", true);
-        } finally {
-            if (btn) btn.disabled = false;
-        }
-    };
-
-    window.cancelPhoneVerification = function () {
-        const verifyBox = $("phoneVerifyBox");
-        if (verifyBox) verifyBox.style.display = "none";
-        const feedback = $("phoneVerifyFeedback");
-        if (feedback) feedback.textContent = "";
     };
 
     // =========================================================================

@@ -11,10 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
         : "http://127.0.0.1:8000/api";
 
     const urlParams = new URLSearchParams(window.location.search);
-    let heldTarget = urlParams.get("target") || urlParams.get("url");
-    if (heldTarget && (heldTarget.includes("@") || heldTarget.toLowerCase().startsWith("mailto:") || !/^https?:\/\//i.test(heldTarget.trim()))) {
-        heldTarget = null;
-    }
+    const heldTarget = urlParams.get("target") || urlParams.get("url");
 
     // 1. Auto-redirect if already fully authenticated
     const hasToken = Boolean(localStorage.getItem("token"));
@@ -77,73 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (formSuccess) formSuccess.style.display = "none";
     }
 
-    // 4. Handle Google OAuth Callbacks & Errors
-    const oauthError = urlParams.get("oauth_error");
-    if (oauthError) {
-        const cleanUrl = window.location.pathname + (heldTarget ? `?target=${encodeURIComponent(heldTarget)}` : "");
-        window.history.replaceState({}, document.title, cleanUrl);
-
-        const errorMap = {
-            "not_configured": "Google Sign-In is not configured on the server. Please ensure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set in the backend environment.",
-            "access_denied": "Google Sign-In was cancelled or access was denied.",
-            "invalid_state": "Authentication security check failed (invalid or expired OAuth state). Please try again.",
-            "unverified_google_email": "Your Google email address is unverified. Please verify your email with Google before signing in.",
-            "account_linked_to_different_google_id": "An account with this email already exists and is associated with a different Google account.",
-            "invalid_token": "Google identity token validation failed. Please try again.",
-            "token_exchange_failed": "Failed to exchange authorization token with Google. Please try again.",
-            "network_error": "Network error while connecting to Google authentication services."
-        };
-        showError(errorMap[oauthError] || `Google Sign-In failed (${oauthError}). Please try again or use your email and password.`);
-    }
-
-    const oauthCode = urlParams.get("oauth_code");
-    if (oauthCode) {
-        const cleanUrl = window.location.pathname + (heldTarget ? `?target=${encodeURIComponent(heldTarget)}` : "");
-        window.history.replaceState({}, document.title, cleanUrl);
-
-        showSuccess("Finalizing Google Sign-In, please wait…");
-        if (loginBtn) loginBtn.disabled = true;
-
-        fetch(`${API_BASE}/auth/google/exchange`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: oauthCode })
-        })
-        .then(res => res.json().then(data => ({ status: res.status, ok: res.ok, data })))
-        .then(({ ok, data }) => {
-            if (!ok) {
-                showError(data.detail || "Google authentication exchange failed. Please try logging in again.");
-                return;
-            }
-            showSuccess("✓ Signed in with Google! Redirecting to dashboard…");
-            localStorage.setItem("isLoggedIn", "true");
-            localStorage.setItem("token", data.token);
-            localStorage.setItem("userEmail", data.user.email);
-            localStorage.setItem("userRole", data.user.role || "Security Administrator");
-            localStorage.setItem("userName", data.user.full_name || data.user.email.split("@")[0]);
-
-            setTimeout(() => {
-                window.location.href = heldTarget 
-                    ? `scanfinal.html?target=${encodeURIComponent(heldTarget)}` 
-                    : "dashboardfinal.html";
-            }, 500);
-        })
-        .catch(err => {
-            console.error("Google exchange failure:", err);
-            showError("Failed to establish session after Google Sign-In. Please check your connection.");
-        });
-    }
-
-    // 5. Connect Continue with Google Button
-    if (googleBtn) {
-        googleBtn.addEventListener("click", (e) => {
-            e.preventDefault();
-            clearAlerts();
-            window.location.href = `${API_BASE}/auth/google/login`;
-        });
-    }
-
-    // 6. Carry Held Scan Target in Subtext and Signup Link
+    // 4. Carry Held Scan Target in Subtext and Signup Link
     if (heldTarget) {
         if (loginSubtext) {
             loginSubtext.textContent = `Sign in to run your security assessment on ${heldTarget}`;

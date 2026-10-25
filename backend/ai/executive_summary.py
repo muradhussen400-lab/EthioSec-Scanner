@@ -54,21 +54,16 @@ def map_finding_to_category(finding: Any) -> str:
     return "LOW"
 
 
-def aggregate_finding_counts(findings: List[Any], scan: Optional[Any] = None) -> Dict[str, int]:
+def aggregate_finding_counts(findings: List[Any]) -> Dict[str, int]:
     """
-    Calculates verified counts for all top-level categories with strict rules:
-    - Deduplicates findings by (type, url, parameter, title) so duplicates do not inflate dashboard counts.
+    Calculates verified counts for all 5 top-level categories with strict rules:
     - Confirmed HIGH severity -> high
     - Confirmed MEDIUM severity -> medium
     - Confirmed LOW severity -> low
     - Completed negative checks -> not_detected
     - Failed checks -> scanner_error
-    - Inconclusive checks -> recorded in 'inconclusive'
-    - Confirmed findings -> confirmed
-    - Potential findings -> potential
-    - Blocked checks -> blocked
-    - Skipped checks -> skipped
-    - Not tested checks -> not_tested
+    - Inconclusive checks -> recorded internally in 'inconclusive' but NEVER
+      falsely counted as confirmed vulnerabilities (high/medium/low) or not_detected.
     - Total confirmed vulnerabilities = high + medium + low.
     """
     c = {
@@ -80,71 +75,13 @@ def aggregate_finding_counts(findings: List[Any], scan: Optional[Any] = None) ->
         "inconclusive": 0,
         "critical": 0,  # Maintained for backward compatibility
         "info": 0,      # Maintained for backward compatibility
-        "confirmed": 0,
-        "potential": 0,
-        "blocked": 0,
-        "skipped": 0,
-        "not_tested": 0,
         "total": 0      # Total confirmed vulnerabilities
     }
 
-    # Deduplicate findings so accidental duplicate records do not inflate dashboard counts
-    seen_keys = set()
-    deduped_findings = []
-    for f in (findings or []):
-        f_type = getattr(f, "type", "")
-        f_url = getattr(f, "url", "")
-        f_param = getattr(f, "parameter", "")
-        f_title = getattr(f, "title", "")
-        key = (f_type, f_url, f_param, f_title)
-        if key in seen_keys:
-            continue
-        seen_keys.add(key)
-        deduped_findings.append(f)
-
-    recorded_modules = set()
-
-    for f in deduped_findings:
+    for f in findings:
         cat = map_finding_to_category(f)
         sev = (getattr(f, "severity", None) or "").lower()
-        v_status = (getattr(f, "verification_status", None) or "").upper()
-        f_status = (getattr(f, "status", None) or "").upper()
-        f_type = getattr(f, "type", "")
-        if f_type:
-            recorded_modules.add(f_type.lower())
 
-        # Determine verification status
-        effective_verif = v_status
-        if not effective_verif:
-            if f_status in ("SCANNER_ERROR", "ERROR"):
-                effective_verif = "ERROR"
-            elif f_status == "NOT_DETECTED":
-                effective_verif = "NOT_DETECTED"
-            elif f_status == "INCONCLUSIVE":
-                effective_verif = "INCONCLUSIVE"
-            elif f_status in ("BLOCKED", "SKIPPED", "NOT_TESTED", "POTENTIAL", "CONFIRMED"):
-                effective_verif = f_status
-            elif f_status in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
-                if (getattr(f, "confidence", None) or "").upper() == "LOW" or "potential" in (getattr(f, "title", "") or "").lower():
-                    effective_verif = "POTENTIAL"
-                else:
-                    effective_verif = "CONFIRMED"
-            else:
-                effective_verif = "POTENTIAL"
-
-        # Tally verification status
-        if effective_verif == "CONFIRMED":
-            c["confirmed"] += 1
-        elif effective_verif == "POTENTIAL":
-            c["potential"] += 1
-        elif effective_verif == "BLOCKED":
-            c["blocked"] += 1
-        elif effective_verif == "SKIPPED":
-            c["skipped"] += 1
-        elif effective_verif == "NOT_TESTED":
-            c["not_tested"] += 1
-
-        # Tally primary outcome categories
         if cat == "SCANNER_ERROR":
             c["scanner_error"] += 1
         elif cat == "NOT_DETECTED":
@@ -164,34 +101,6 @@ def aggregate_finding_counts(findings: List[Any], scan: Optional[Any] = None) ->
             if sev == "info":
                 c["info"] += 1
             c["total"] += 1
-
-    # If scan is supplied with module execution telemetry, account for clean/failed checks not in findings
-    if scan is not None:
-        module_details = None
-        if hasattr(scan, "modules") and isinstance(scan.modules, dict):
-            module_details = scan.modules.get("module_details", scan.modules)
-        elif hasattr(scan, "checks") and isinstance(scan.checks, dict):
-            module_details = scan.checks.get("module_details")
-
-        if module_details and isinstance(module_details, dict):
-            for mod_k, mod_v in module_details.items():
-                if not isinstance(mod_v, dict):
-                    continue
-                k_lower = mod_k.lower()
-                if k_lower in recorded_modules:
-                    continue  # Already accounted for in findings
-                st = (mod_v.get("status") or "").lower()
-                sel = mod_v.get("selected", True)
-                if not sel or st == "skipped":
-                    c["skipped"] += 1
-                elif st == "completed" and (mod_v.get("findings") or 0) == 0:
-                    c["not_detected"] += 1
-                elif st == "failed":
-                    c["scanner_error"] += 1
-                elif st == "inconclusive":
-                    c["inconclusive"] += 1
-                elif st == "blocked":
-                    c["blocked"] += 1
 
     return c
 

@@ -15,9 +15,6 @@ def is_safe_url(url: str) -> bool:
     if parsed.scheme not in ["http", "https"]:
         raise UnsafeTargetError(f"Unsupported scheme: {parsed.scheme}")
         
-    if parsed.username or parsed.password:
-        raise UnsafeTargetError("URL contains embedded credentials, which is prohibited")
-
     hostname = parsed.hostname
     if not hostname:
         raise UnsafeTargetError("Invalid URL: missing hostname")

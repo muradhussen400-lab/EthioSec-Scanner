@@ -74,10 +74,10 @@ def test_api_workflow():
         assert resp.status_code == 200, resp.text
         status = resp.json()["status"]
         print(f"Status: {status} (Progress: {resp.json()['progress']}%)")
-        if status in ["completed", "failed", "completed_with_errors"]:
+        if status in ["completed", "failed"]:
             break
             
-    assert status in ["completed", "completed_with_errors"], f"Scan did not complete, status is {status}"
+    assert status == "completed", f"Scan did not complete, status is {status}"
 
     print("Fetching findings...")
     resp = client.get(f"/api/scans/{scan_id}/results", headers=headers)

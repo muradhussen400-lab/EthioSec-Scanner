@@ -798,11 +798,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const currentStatus = (data.status || "queued").toLowerCase();
             if (statusLabel) {
-                statusLabel.textContent = currentStatus.toUpperCase().replace(/_/g, " ");
+                statusLabel.textContent = currentStatus.toUpperCase();
                 if (currentStatus === "completed") {
                     statusLabel.style.color = "var(--accent-green)";
-                } else if (currentStatus === "completed_with_errors") {
-                    statusLabel.style.color = "var(--brand-orange)";
                 } else if (currentStatus === "failed") {
                     statusLabel.style.color = "var(--danger-red)";
                 } else {
@@ -813,11 +811,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (stageHint) {
                 if (currentStatus === "completed") {
                     stageHint.textContent = "Assessment completed successfully. All findings and risk metrics have been recorded.";
-                } else if (currentStatus === "completed_with_errors") {
-                    stageHint.textContent = "Assessment completed with partial coverage or non-fatal probe warnings. Review findings below.";
                 } else if (currentStatus === "failed") {
                     stageHint.textContent = "Assessment halted. Review safety diagnostic details below.";
-                } else {
+                } else if (currentStatus === "running") {
                     stageHint.textContent = "The scanner is actively testing selected modules. This may take a few minutes.";
                 }
             }
@@ -844,9 +840,9 @@ document.addEventListener('DOMContentLoaded', () => {
             renderExecutionLog(data.timeline, data);
 
             // =================================================================
-            // HANDLE TERMINAL STATES (COMPLETED / FAILED / CANCELLED / COMPLETED_WITH_ERRORS)
+            // HANDLE TERMINAL STATES (COMPLETED / FAILED / CANCELLED)
             // =================================================================
-            if (currentStatus === "completed" || currentStatus === "completed_with_errors" || currentStatus === "failed" || currentStatus === "cancelled") {
+            if (currentStatus === "completed" || currentStatus === "failed" || currentStatus === "cancelled") {
                 isFinished = true;
                 clearInterval(pollInterval);
                 clearInterval(timerInterval);
@@ -873,7 +869,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (cancelScanBtn) cancelScanBtn.disabled = true;
 
-                if (currentStatus === "completed" || currentStatus === "completed_with_errors") {
+                if (currentStatus === "completed") {
                     updateProgressUI(100);
                     if (viewResultsBtn) {
                         viewResultsBtn.hidden = false;

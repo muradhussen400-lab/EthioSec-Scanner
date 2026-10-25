@@ -2,9 +2,7 @@ import asyncio
 import datetime
 import logging
 import time
-import re
-import httpx
-from typing import Optional, Dict, Any, List, Set, TYPE_CHECKING
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from urllib.parse import urlparse, urlencode, parse_qsl, urlunparse
 from bs4 import BeautifulSoup
 
@@ -17,46 +15,8 @@ from scanner.differential import BaselineEngine, BaselineProfile
 
 logger = logging.getLogger("ethiosec.scanner.sqli")
 
-# Sensitive cookies that should be preserved and excluded from active injection by default
-SENSITIVE_COOKIE_NAMES: Set[str] = {
-    "session", "sessionid", "sess", "phpsessid", "jsessionid", "aspsessionid",
-    "asp.net_sessionid", "sid", "token", "auth", "authorization", "jwt",
-    "access_token", "id_token", "csrf", "xsrf", "csrftoken", "anti_forgery",
-    "remember_me", "sso", "oidc"
-}
-
-def is_sensitive_cookie(name: str) -> bool:
-    """
-    Identifies whether a cookie represents sensitive authentication or session state.
-    Excludes such cookies from active injection by default to avoid session disruption.
-    """
-    if not name:
-        return False
-    n = name.strip().lower()
-    if n in SENSITIVE_COOKIE_NAMES:
-        return True
-    for s in ("session", "token", "csrf", "xsrf", "jwt", "auth"):
-        if s in n:
-            return True
-    return False
-
 # Curated, high-fidelity DBMS error signatures mapped to specific engines
 DB_ERRORS = {
-    "PostgreSQL": [
-        "unterminated string literal",
-        "unterminated quoted identifier",
-        "syntax error at or near",
-        "syntax error at end of input",
-        "postgresql query failed",
-        "unterminated quoted string",
-        "pg_query()",
-        "pg_exec()",
-        "psycopg2.errors",
-        "pg_catalog.",
-        "org.postgresql.util.psqlexception",
-        "invalid input syntax for type",
-        "invalid input syntax for integer",
-    ],
     "MySQL": [
         "you have an error in your sql syntax",
         "sql syntax error",
@@ -67,17 +27,23 @@ DB_ERRORS = {
         "mysql_num_rows",
         "my_print_error",
         "valid mysql result",
-        "unknown column in 'where clause'",
+    ],
+    "PostgreSQL": [
+        "syntax error at or near",
+        "postgresql query failed",
+        "unterminated quoted string",
+        "pg_query()",
+        "pg_exec()",
+        "psycopg2.errors.syntaxerror",
+        "pg_catalog.",
     ],
     "Microsoft SQL Server": [
         "unclosed quotation mark after the character string",
         "microsoft ole db provider for sql server",
-        "microsoft odbc driver for sql server",
         "incorrect syntax near",
         "procedure expects parameter",
         "driver][sql server]",
         "native client][sql server]",
-        "conversion failed when converting the varchar value",
     ],
     "Oracle": [
         "ora-01756: quoted string not properly terminated",
@@ -88,9 +54,9 @@ DB_ERRORS = {
     ],
     "SQLite": [
         "sqlite3.operationalerror",
-        "unrecognized token:",
         "unrecognized token",
-        "syntax error near",
+        "near \"",
+        "near '",
         "incomplete input",
     ]
 }
@@ -99,19 +65,17 @@ def check_db_errors(text: str, injected_value: str = None) -> tuple:
     """
     Scans text for authentic database engine error signatures.
     Rejects reflected payload text to avoid false positives on echo endpoints.
-    Handles case-insensitivity and whitespace variations safely.
     """
     if not text:
         return None, None
-    text_lower = " ".join(text.lower().split())
-    injected_lower = " ".join(injected_value.lower().split()) if injected_value else ""
+    text_lower = text.lower()
+    injected_lower = injected_value.lower() if injected_value else ""
     
     for db_name, error_list in DB_ERRORS.items():
         for err in error_list:
-            err_lower = " ".join(err.lower().split())
-            if err_lower in text_lower:
+            if err in text_lower:
                 # If the injected string itself contains the error phrase, it is an echo/reflection
-                if injected_lower and err_lower in injected_lower:
+                if injected_lower and err in injected_lower:
                     continue
                 return db_name, err
     return None, None
@@ -160,23 +124,8 @@ class SQLiCoverageRecord:
         self.inconclusive_reasons: List[str] = []
         self.tested_parameters: List[str] = []
         self.findings_added: int = 0
-        # Cookie-specific coverage tracking
-        self.candidate_cookies_discovered: int = 0
-        self.cookies_tested: int = 0
-        self.cookies_excluded_policy: List[str] = []
-        # JSON-specific coverage tracking
-        self.candidate_json_parameters_discovered: int = 0
-        self.json_parameters_tested: int = 0
 
-async def check_sqli(
-    scanner: "SecurityScanner", 
-    endpoints: list, 
-    forms: list, 
-    client: SafeHTTPClient, 
-    depth: str = "standard",
-    cookies: list = None,
-    allow_session_cookie_testing: bool = False
-) -> SQLiCoverageRecord:
+async def check_sqli(scanner: "SecurityScanner", endpoints: list, forms: list, client: SafeHTTPClient, depth: str = "standard") -> SQLiCoverageRecord:
     """
     Professional, evidence-driven SQL injection detection pipeline.
     Executes baseline profiling, error-based testing, paired-control boolean differential
@@ -213,8 +162,6 @@ async def check_sqli(
             ("1 AND 1=1", "1 AND 1=2"),
             ("' OR 'a'='a", "' OR 'a'='b"),
         ])
-    techniques_attempted_set: set = set()
-    techniques_completed_set: set = set()
 
     def _extract_csrf_from_html(html_text: str, field_name: str) -> Optional[str]:
         if not html_text:
@@ -251,42 +198,28 @@ async def check_sqli(
                 pass
         return False
 
-    async def _make_request(
-        url: str, 
-        method: str, 
-        params: dict = None, 
-        cookies: dict = None,
-        page_url: str = None, 
-        csrf_field: str = None,
-        location: str = "query"
-    ):
+    async def _make_request(url: str, method: str, params: dict, page_url: str = None, csrf_field: str = None):
         """
-        Executes HTTP request, managing query parameters, cookies, anti-CSRF token lifecycle,
+        Executes HTTP request, managing query parameters, anti-CSRF token lifecycle,
         consistent timing measurement, and diagnostic error handling.
         """
         coverage.requests_completed += 1
-        params = params or {}
         try:
             req_start = time.perf_counter()
             resp = None
-            if location == "json":
-                if hasattr(client, "post"):
-                    resp = await client.post(url, json=params, cookies=cookies)
-                else:
-                    resp = await client.request(method or "POST", url, json=params, cookies=cookies)
-            elif method == "GET":
+            if method == "GET":
                 parsed = urlparse(url)
                 existing_q = dict(parse_qsl(parsed.query))
                 merged = {**existing_q, **params}
                 query = urlencode(merged)
                 full_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, query, parsed.fragment))
-                resp = await client.get(full_url, cookies=cookies)
+                resp = await client.get(full_url)
             else:
                 if csrf_field and page_url:
                     fresh = await _fetch_csrf_token(page_url, csrf_field)
                     if fresh:
                         params[csrf_field] = fresh
-                resp = await client.post(url, data=params, cookies=cookies)
+                resp = await client.post(url, data=params)
 
             req_duration = time.perf_counter() - req_start
             if resp is not None:
@@ -313,9 +246,7 @@ async def check_sqli(
         param_to_inject: str, 
         source: str, 
         page_url: str = None, 
-        csrf_field: str = None,
-        cookies: dict = None,
-        location: str = "query"
+        csrf_field: str = None
     ):
         if _is_scan_cancelled():
             return
@@ -323,19 +254,13 @@ async def check_sqli(
         request_budget = 35 if depth == "deep" else 20
         requests_made = 0
 
-        baseline_params = params.copy() if params else {}
-        baseline_cookies = cookies.copy() if cookies else {}
-
         # Stage B: Parameter profiling & Baseline establishment
         baseline_requests_count = 3 if depth == "deep" else 2
         baseline_responses = []
         for _ in range(baseline_requests_count):
             if _is_scan_cancelled() or requests_made >= request_budget:
                 break
-            resp = await _make_request(
-                url, method, params=baseline_params, cookies=baseline_cookies, 
-                page_url=page_url, csrf_field=csrf_field, location=location
-            )
+            resp = await _make_request(url, method, params, page_url=page_url, csrf_field=csrf_field)
             requests_made += 1
             if resp:
                 baseline_responses.append(resp)
@@ -345,8 +270,7 @@ async def check_sqli(
             target_endpoint=url,
             http_method=method,
             parameter=param_to_inject,
-            location=location,
-            baseline_request={"params": baseline_params, "cookies": baseline_cookies, "location": location},
+            baseline_request=params,
             remediation=[
                 "Use parameterized queries, prepared statements, or ORM parameter binding.",
                 "Enforce strict allowlist input validation and sanitize all parameters.",
@@ -356,9 +280,8 @@ async def check_sqli(
         )
 
         coverage.inputs_tested += 1
-        param_label = f"json:{param_to_inject}" if location == "json" else (f"cookie:{param_to_inject}" if location == "cookie" else param_to_inject)
-        if param_label not in coverage.tested_parameters:
-            coverage.tested_parameters.append(param_label)
+        if param_to_inject not in coverage.tested_parameters:
+            coverage.tested_parameters.append(param_to_inject)
 
         if not baseline_responses:
             test_case.status = "INCONCLUSIVE"
@@ -414,21 +337,16 @@ async def check_sqli(
             nonlocal requests_made
             if _is_scan_cancelled() or requests_made >= request_budget:
                 return False
-            if location == "cookie":
-                v_cookies = baseline_cookies.copy()
-                v_cookies[param_to_inject] = str(v_cookies.get(param_to_inject, "") or "") + payload
-                v_resp = await _make_request(url, method, params=baseline_params, cookies=v_cookies, page_url=page_url, csrf_field=csrf_field, location=location)
-            else:
-                v_test_params = baseline_params.copy()
-                v_test_params[param_to_inject] = str(v_test_params.get(param_to_inject, "") or "") + payload
-                v_resp = await _make_request(url, method, params=v_test_params, cookies=baseline_cookies, page_url=page_url, csrf_field=csrf_field, location=location)
+            v_test_params = params.copy()
+            v_test_params[param_to_inject] = str(v_test_params[param_to_inject] or "") + payload
+            v_resp = await _make_request(url, method, v_test_params, page_url=page_url, csrf_field=csrf_field)
             requests_made += 1
             if not v_resp:
                 return False
             
             if expected_type == "db_error":
-                v_db, v_err = check_db_errors(v_resp.text, payload)
-                return v_db is not None and v_err not in getattr(profile, "baseline_db_errors", set())
+                v_db, _ = check_db_errors(v_resp.text, payload)
+                return v_db is not None
             elif expected_type == "boolean_true":
                 v_diff = profile.compare_test(v_resp)
                 return (not v_diff["is_body_similar"]) if inverted else v_diff["is_body_similar"]
@@ -443,27 +361,14 @@ async def check_sqli(
             return False
 
         # Stage C: Error-based SQL Injection Testing
-        techniques_attempted_set.add("error_based")
         for payload in syntax_payloads:
             if _is_scan_cancelled() or requests_made >= request_budget:
                 break
 
-            if location == "cookie":
-                test_cookies = baseline_cookies.copy()
-                test_cookies[param_to_inject] = str(test_cookies.get(param_to_inject, "") or "") + payload
-                test_resp = await _make_request(url, method, params=baseline_params, cookies=test_cookies, location=location)
-                current_evidence_params = {"cookies": test_cookies, "params": baseline_params}
-            elif location == "json":
-                test_params = baseline_params.copy()
-                test_params[param_to_inject] = str(test_params.get(param_to_inject, "") or "") + payload
-                test_resp = await _make_request(url, method, params=test_params, cookies=baseline_cookies, location=location)
-                current_evidence_params = {"json": test_params, "cookies": baseline_cookies}
-            else:
-                test_params = baseline_params.copy()
-                test_params[param_to_inject] = str(test_params.get(param_to_inject, "") or "") + payload
-                test_resp = await _make_request(url, method, params=test_params, cookies=baseline_cookies, page_url=page_url, csrf_field=csrf_field, location=location)
-                current_evidence_params = {"params": test_params, "cookies": baseline_cookies}
+            test_params = params.copy()
+            test_params[param_to_inject] = str(test_params[param_to_inject] or "") + payload
             
+            test_resp = await _make_request(url, method, test_params, page_url=page_url, csrf_field=csrf_field)
             requests_made += 1
             if not test_resp:
                 continue
@@ -491,36 +396,34 @@ async def check_sqli(
                     is_suspicious=False
                 )
 
-            db_name, err = check_db_errors(test_resp.text, payload)
-            if db_name and err not in getattr(profile, "baseline_db_errors", set()):
-                # Control Test: Validate reproducibility
-                is_reproducible = await _validate_payload(payload, "db_error")
-                if is_reproducible:
-                    test_case.add_observation(
-                        "database_error", 
-                        f"Payload '{payload}' in {location} '{param_to_inject}' reproducibly triggered {db_name} error signature: '{err}'", 
-                        is_strong_evidence=True,
-                        technique="Error-Based SQLi",
-                        payload=payload
-                    )
-                    detected_db = db_name
-                    vulnerable = True
-                    technique_used = "Error-Based SQL Injection"
-                    evidence_payload = payload
-                    evidence_params = current_evidence_params
-                    break
-                else:
-                    test_case.add_observation(
-                        "database_error_unstable", 
-                        f"Payload '{payload}' disclosed {db_name} error signature '{err}', but was not reproducible.", 
-                        is_suspicious=True
-                    )
+            if not profile.baseline_has_db_errors:
+                db_name, err = check_db_errors(test_resp.text, payload)
+                if db_name:
+                    # Control Test: Validate reproducibility
+                    is_reproducible = await _validate_payload(payload, "db_error")
+                    if is_reproducible:
+                        test_case.add_observation(
+                            "database_error", 
+                            f"Payload '{payload}' reproducibly triggered {db_name} error signature: '{err}'", 
+                            is_strong_evidence=True,
+                            technique="Error-Based SQLi",
+                            payload=payload
+                        )
+                        detected_db = db_name
+                        vulnerable = True
+                        technique_used = "Error-Based SQL Injection"
+                        evidence_payload = payload
+                        evidence_params = test_params
+                        break
+                    else:
+                        test_case.add_observation(
+                            "database_error_unstable", 
+                            f"Payload '{payload}' disclosed {db_name} error signature '{err}', but was not reproducible.", 
+                            is_suspicious=True
+                        )
                         
             if vulnerable:
                 break
-        else:
-            if not _is_scan_cancelled():
-                techniques_completed_set.add("error_based")
             
         # Stage D: Paired-Control Boolean Differential Testing
         if not vulnerable:
@@ -535,35 +438,15 @@ async def check_sqli(
                     if _is_scan_cancelled() or requests_made >= request_budget:
                         break
 
-                    if location == "cookie":
-                        cookies_true = baseline_cookies.copy()
-                        cookies_true[param_to_inject] = str(cookies_true.get(param_to_inject, "") or "") + pt
-                        resp_true = await _make_request(url, method, params=baseline_params, cookies=cookies_true, location=location)
-
-                        cookies_false = baseline_cookies.copy()
-                        cookies_false[param_to_inject] = str(cookies_false.get(param_to_inject, "") or "") + pf
-                        resp_false = await _make_request(url, method, params=baseline_params, cookies=cookies_false, location=location)
-                        current_evidence_params = {"cookies": cookies_true, "params": baseline_params}
-                    elif location == "json":
-                        params_true = baseline_params.copy()
-                        params_true[param_to_inject] = str(params_true.get(param_to_inject, "") or "") + pt
-                        resp_true = await _make_request(url, method, params=params_true, cookies=baseline_cookies, location=location)
-
-                        params_false = baseline_params.copy()
-                        params_false[param_to_inject] = str(params_false.get(param_to_inject, "") or "") + pf
-                        resp_false = await _make_request(url, method, params=params_false, cookies=baseline_cookies, location=location)
-                        current_evidence_params = {"json": params_true, "cookies": baseline_cookies}
-                    else:
-                        params_true = baseline_params.copy()
-                        params_true[param_to_inject] = str(params_true.get(param_to_inject, "") or "") + pt
-                        resp_true = await _make_request(url, method, params=params_true, cookies=baseline_cookies, page_url=page_url, csrf_field=csrf_field, location=location)
-
-                        params_false = baseline_params.copy()
-                        params_false[param_to_inject] = str(params_false.get(param_to_inject, "") or "") + pf
-                        resp_false = await _make_request(url, method, params=params_false, cookies=baseline_cookies, page_url=page_url, csrf_field=csrf_field, location=location)
-                        current_evidence_params = {"params": params_true, "cookies": baseline_cookies}
+                    params_true = params.copy()
+                    params_true[param_to_inject] = str(params_true[param_to_inject] or "") + pt
+                    resp_true = await _make_request(url, method, params_true, page_url=page_url, csrf_field=csrf_field)
+                    requests_made += 1
                     
-                    requests_made += 2
+                    params_false = params.copy()
+                    params_false[param_to_inject] = str(params_false[param_to_inject] or "") + pf
+                    resp_false = await _make_request(url, method, params_false, page_url=page_url, csrf_field=csrf_field)
+                    requests_made += 1
                     
                     if resp_true and resp_false:
                         if getattr(resp_true, "status_code", None) == 429 or getattr(resp_false, "status_code", None) == 429:
@@ -605,7 +488,7 @@ async def check_sqli(
                                 if is_standard_diff:
                                     obs_msg = f"Paired boolean diff: True payload '{pt}' matches baseline, False payload '{pf}' alters response reproducibly."
                                 else:
-                                    obs_msg = f"Paired boolean diff (Inverted/Auth context): True payload '{pt}' alters response / bypasses check, False payload '{pf}' matches baseline reproducibly."
+                                    obs_msg = f"Paired boolean diff (Authentication / Inverted): True payload '{pt}' alters response / bypasses check, False payload '{pf}' matches baseline reproducibly."
                                 
                                 test_case.add_observation(
                                     "boolean_differential", 
@@ -617,7 +500,7 @@ async def check_sqli(
                                 vulnerable = True
                                 technique_used = "Boolean Differential SQL Injection"
                                 evidence_payload = pt
-                                evidence_params = current_evidence_params
+                                evidence_params = params_true
                                 break
                             else:
                                 test_case.add_observation(
@@ -628,28 +511,15 @@ async def check_sqli(
 
         # Stage E: Bounded Time-Based Blind SQLi Testing (Deep mode only)
         if not vulnerable and depth == "deep" and profile.is_stable:
-            techniques_attempted_set.add("timing_delay")
             try:
                 for db_hint, delay_payload in timing_probes:
                     if _is_scan_cancelled() or requests_made >= request_budget:
                         break
 
-                    if location == "cookie":
-                        t_cookies = baseline_cookies.copy()
-                        t_cookies[param_to_inject] = str(t_cookies.get(param_to_inject, "") or "") + delay_payload
-                        t_resp = await _make_request(url, method, params=baseline_params, cookies=t_cookies, location=location)
-                        current_evidence_params = {"cookies": t_cookies, "params": baseline_params}
-                    elif location == "json":
-                        t_params = baseline_params.copy()
-                        t_params[param_to_inject] = str(t_params.get(param_to_inject, "") or "") + delay_payload
-                        t_resp = await _make_request(url, method, params=t_params, cookies=baseline_cookies, location=location)
-                        current_evidence_params = {"json": t_params, "cookies": baseline_cookies}
-                    else:
-                        t_params = baseline_params.copy()
-                        t_params[param_to_inject] = str(t_params.get(param_to_inject, "") or "") + delay_payload
-                        t_resp = await _make_request(url, method, params=t_params, cookies=baseline_cookies, page_url=page_url, csrf_field=csrf_field, location=location)
-                        current_evidence_params = {"params": t_params, "cookies": baseline_cookies}
+                    t_params = params.copy()
+                    t_params[param_to_inject] = str(t_params[param_to_inject] or "") + delay_payload
                     
+                    t_resp = await _make_request(url, method, t_params, page_url=page_url, csrf_field=csrf_field)
                     requests_made += 1
                     if not t_resp:
                         continue
@@ -668,7 +538,7 @@ async def check_sqli(
                     # 2. Timing threshold: delay must be >= 2.5s AND significantly higher than baseline mean
                     if t_duration >= 2.5 and (t_duration >= profile.mean_response_time + 1.8):
                         # 3. Control test: dispatch un-injected request to ensure server isn't globally lagging
-                        c_resp = await _make_request(url, method, params=baseline_params, cookies=baseline_cookies, page_url=page_url, csrf_field=csrf_field, location=location)
+                        c_resp = await _make_request(url, method, params, page_url=page_url, csrf_field=csrf_field)
                         requests_made += 1
                         c_duration = get_response_duration(c_resp) if c_resp else 0.0
 
@@ -688,7 +558,7 @@ async def check_sqli(
                                 technique_used = "Time-Based Blind SQL Injection"
                                 detected_db = db_hint
                                 evidence_payload = delay_payload
-                                evidence_params = current_evidence_params
+                                evidence_params = t_params
                                 break
                             else:
                                 test_case.add_observation(
@@ -702,8 +572,6 @@ async def check_sqli(
                                 f"Observed delay of {round(t_duration, 2)}s on probe, but un-injected control was also slow ({round(c_duration, 2)}s). Attributed to general network/server latency.",
                                 is_suspicious=False
                             )
-                if not _is_scan_cancelled():
-                    techniques_completed_set.add("timing_delay")
             except Exception as e:
                 logger.warning(f"Error during time-based testing on {param_to_inject}: {e}")
                 err_msg = f"Timing check exception ({e.__class__.__name__}: {str(e)})"
@@ -719,8 +587,7 @@ async def check_sqli(
         
         # Assemble finding for persistence
         if test_case.status in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
-            loc_label = "JSON" if location == "json" else ("Cookie" if location == "cookie" else ("Form" if location == "form" else "URL Query"))
-            desc = f"The {location} parameter '{param_to_inject}' exhibited behavior confirming SQL injection via {technique_used or 'behavioral probes'}."
+            desc = f"The parameter '{param_to_inject}' exhibited behavior confirming SQL injection via {technique_used or 'behavioral probes'}."
             if detected_db:
                 desc += f" Evidence suggests the backend database is {detected_db}."
                 
@@ -731,9 +598,9 @@ async def check_sqli(
                 f_type="sqli", 
                 severity=final_severity, 
                 status=final_status,
-                title=f"SQL Injection via {loc_label} Parameter '{param_to_inject}'",
+                title=f"SQL Injection via {source.capitalize()} Parameter '{param_to_inject}'",
                 description=desc,
-                evidence=f"Location: {location}\nParameter: {param_to_inject}\n{test_case.evidence}",
+                evidence=test_case.evidence,
                 impact="Attackers can bypass authentication, extract database contents, or alter system state.",
                 remediation=test_case.remediation,
                 owasp=test_case.owasp, 
@@ -741,40 +608,19 @@ async def check_sqli(
                 url=url, 
                 parameter=param_to_inject,
                 http_method=method, 
-                request=str(evidence_params) if evidence_params else str(baseline_params or baseline_cookies), 
-                response_summary=f"Evaluated via {technique_used or 'differential testing pipeline'} in {location} parameter",
+                request=str(evidence_params) if evidence_params else str(params), 
+                response_summary=f"Evaluated via {technique_used or 'differential testing pipeline'}",
                 confidence=test_case.confidence
             )
             coverage.findings_added += 1
 
     # Stage A: Discover and extract candidate inputs
     candidate_endpoints = []
-    candidate_json_endpoints = []
     for endpoint in (endpoints or []):
         if endpoint.get("source") == "form" and forms:
             continue
         url = endpoint.get("url", "")
-        method = endpoint.get("method", "GET").upper()
-        content_type = str(endpoint.get("content_type", "")).lower()
-        json_data = endpoint.get("json_data") or endpoint.get("json_body") or (endpoint.get("param_values") if "application/json" in content_type else None)
-        
-        # Check if it's a JSON endpoint
-        if "application/json" in content_type or endpoint.get("location") == "json" or (json_data and isinstance(json_data, dict)):
-            j_params = list(endpoint.get("params", []))
-            if not j_params and isinstance(json_data, dict):
-                j_params = list(json_data.keys())
-            j_values = dict(json_data) if isinstance(json_data, dict) else dict(endpoint.get("param_values", {}))
-            if j_params:
-                candidate_json_endpoints.append({
-                    "url": url,
-                    "method": method if method != "GET" else "POST",
-                    "params": j_params,
-                    "values": j_values
-                })
-                coverage.candidate_inputs_discovered += len(j_params)
-                coverage.candidate_json_parameters_discovered += len(j_params)
-            continue
-
+        method = endpoint.get("method", "GET")
         params_list = list(endpoint.get("params", []))
         param_values = dict(endpoint.get("param_values", {}))
         parsed_url = urlparse(url)
@@ -807,66 +653,15 @@ async def check_sqli(
             })
             coverage.candidate_inputs_discovered += len(inputs)
 
-    # Stage A.2: Harvest and categorize cookies
-    all_cookies_dict: Dict[str, str] = {}
-    candidate_cookies: List[Dict[str, Any]] = []
-    raw_cookies: List[Any] = list(cookies or [])
-    
-    # Check scanner inventory cookies if available
-    if scanner and hasattr(scanner, "inventory") and isinstance(scanner.inventory, dict):
-        for c in scanner.inventory.get("cookies", []):
-            c_n = c.get("name") if isinstance(c, dict) else getattr(c, "name", None)
-            if c_n and not any((x.get("name") if isinstance(x, dict) else getattr(x, "name", None)) == c_n for x in raw_cookies):
-                raw_cookies.append(c)
-
-    # Check SafeHTTPClient client cookies if available
-    client_inner = getattr(client, "client", None) if client else None
-    if client_inner is not None:
-        cookies_obj = getattr(client_inner, "cookies", None)
-        if isinstance(cookies_obj, (dict, httpx.Cookies)):
-            for c_name, c_val in cookies_obj.items():
-                if not any((x.get("name") if isinstance(x, dict) else getattr(x, "name", None)) == c_name for x in raw_cookies):
-                    raw_cookies.append({
-                        "name": c_name, 
-                        "value": c_val, 
-                        "url": getattr(scanner, "target_url", candidate_endpoints[0]["url"] if candidate_endpoints else "")
-                    })
-
-    for c in raw_cookies:
-        c_name = c.get("name") if isinstance(c, dict) else getattr(c, "name", None)
-        c_val = c.get("value", "") if isinstance(c, dict) else getattr(c, "value", "")
-        c_url = c.get("url") if isinstance(c, dict) else getattr(c, "url", None)
-        if not c_name:
-            continue
-        all_cookies_dict[c_name] = str(c_val or "")
-        coverage.candidate_cookies_discovered += 1
-
-        if is_sensitive_cookie(c_name) and not allow_session_cookie_testing:
-            if c_name not in coverage.cookies_excluded_policy:
-                coverage.cookies_excluded_policy.append(c_name)
-            continue
-
-        c_target_url = c_url or getattr(scanner, "target_url", "") or (candidate_endpoints[0]["url"] if candidate_endpoints else "")
-        candidate_cookies.append({
-            "name": c_name,
-            "value": str(c_val or ""),
-            "url": c_target_url
-        })
-        coverage.candidate_inputs_discovered += 1
-
     # If no candidate inputs exist across the crawled attack surface, return immediately
     if coverage.candidate_inputs_discovered == 0:
-        if coverage.cookies_excluded_policy:
-            coverage.blocking_reason = (
-                f"No candidate query parameters or HTML form inputs were discovered. "
-                f"Discovered {coverage.candidate_cookies_discovered} cookie(s) ({', '.join(coverage.cookies_excluded_policy)}), "
-                f"all excluded by authentication preservation policy."
-            )
-        else:
-            coverage.blocking_reason = "No candidate query parameters, HTML form inputs, JSON parameters, or cookies were discovered on target endpoints."
+        coverage.blocking_reason = "No candidate query parameters or HTML form inputs were discovered on target endpoints."
         coverage.baseline_stability = "not_evaluated"
         coverage.verification_completed = False
         return coverage
+
+    if "error_based" not in coverage.techniques_attempted:
+        coverage.techniques_attempted.extend(["error_based", "boolean_differential", "timing_delay"])
 
     # Stage B: Process GET Endpoints
     for ep in candidate_endpoints:
@@ -884,15 +679,7 @@ async def check_sqli(
             
         for param in all_param_names:
             try:
-                await test_parameter(
-                    url=url, 
-                    method=method, 
-                    params=baseline_params, 
-                    param_to_inject=param, 
-                    source="URL query",
-                    cookies=all_cookies_dict,
-                    location="query"
-                )
+                await test_parameter(url, method, baseline_params, param, "URL query")
             except Exception as pe:
                 logger.warning(f"Error testing parameter '{param}' on {url}: {pe}")
                 coverage.scanner_error = str(pe)
@@ -929,91 +716,21 @@ async def check_sqli(
         for param in params_to_test:
             try:
                 await test_parameter(
-                    url=action_url, 
-                    method=method, 
-                    params=baseline_params, 
-                    param_to_inject=param, 
-                    source="form", 
+                    action_url, 
+                    method, 
+                    baseline_params, 
+                    param, 
+                    "form", 
                     page_url=page_url, 
-                    csrf_field=csrf_field_name,
-                    cookies=all_cookies_dict,
-                    location="form"
+                    csrf_field=csrf_field_name
                 )
             except Exception as pe:
                 logger.warning(f"Error testing form parameter '{param}' on {action_url}: {pe}")
                 coverage.scanner_error = str(pe)
                 coverage.inconclusive_reasons.append(f"Scanner exception on form parameter '{param}': {pe}")
 
-    # Stage D: Process Cookies
-    for c_item in candidate_cookies:
-        if _is_scan_cancelled():
-            break
-        c_name = c_item["name"]
-        c_url = c_item["url"] or getattr(scanner, "target_url", "")
-        if not c_url and candidate_endpoints:
-            c_url = candidate_endpoints[0]["url"]
-        if not c_url:
-            continue
-
-        # Preserve query parameters from matching candidate endpoints
-        cookie_baseline_params = {}
-        for ep in candidate_endpoints:
-            if urlparse(ep["url"]).path == urlparse(c_url).path:
-                if ep.get("values"):
-                    cookie_baseline_params = ep["values"].copy()
-                if not urlparse(c_url).query and urlparse(ep["url"]).query:
-                    c_url = ep["url"]
-                break
-            
-        try:
-            await test_parameter(
-                url=c_url,
-                method="GET",
-                params=cookie_baseline_params,
-                param_to_inject=c_name,
-                source="cookie",
-                cookies=all_cookies_dict,
-                location="cookie"
-            )
-            coverage.cookies_tested += 1
-        except Exception as pe:
-            logger.warning(f"Error testing cookie parameter '{c_name}' on {c_url}: {pe}")
-            coverage.scanner_error = str(pe)
-            coverage.inconclusive_reasons.append(f"Scanner exception on cookie '{c_name}': {pe}")
-
-    # Stage E: Process JSON Endpoints
-    for j_ep in candidate_json_endpoints:
-        if _is_scan_cancelled():
-            break
-        j_url = j_ep["url"]
-        j_method = j_ep["method"]
-        j_params = j_ep["params"]
-        j_values = dict(j_ep.get("values", {}))
-        for param in j_params:
-            try:
-                await test_parameter(
-                    url=j_url,
-                    method=j_method,
-                    params=j_values,
-                    param_to_inject=param,
-                    source="JSON body",
-                    cookies=all_cookies_dict,
-                    location="json"
-                )
-                coverage.json_parameters_tested += 1
-            except Exception as pe:
-                logger.warning(f"Error testing JSON parameter '{param}' on {j_url}: {pe}")
-                coverage.scanner_error = str(pe)
-                coverage.inconclusive_reasons.append(f"Scanner exception on JSON parameter '{param}': {pe}")
-
-    # Update coverage records with truthfully verified techniques
-    coverage.techniques_attempted = sorted(list(techniques_attempted_set))
-    coverage.techniques_completed = sorted(list(techniques_completed_set))
-
-    if _is_scan_cancelled():
-        coverage.verification_completed = False
-        coverage.blocking_reason = "Scan cancelled before all techniques could complete."
-    elif coverage.inputs_tested > 0 and not coverage.scanner_error:
+    if coverage.inputs_tested > 0 and not coverage.scanner_error:
         coverage.verification_completed = True
+        coverage.techniques_completed = list(coverage.techniques_attempted)
 
     return coverage

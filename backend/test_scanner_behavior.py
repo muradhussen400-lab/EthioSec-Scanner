@@ -269,11 +269,11 @@ async def test_auth_inconclusive(test_server, db_session, mock_client):
     scanner = SecurityScanner(db_session, scan.id)
     scanner.client = mock_client
     
-    # Missing auth_context triggers honest INCONCLUSIVE status
+    # Missing auth_context triggers LOW
     await check_auth(scanner, [f"{test_server}/account"], [], mock_client, None)
     findings = db_session.query(Finding).all()
     assert len(findings) > 0
-    assert findings[-1].status == "INCONCLUSIVE" or findings[-1].verification_status == "INCONCLUSIVE"
+    assert findings[-1].status == "LOW"
 
 @pytest.mark.asyncio
 async def test_idor_low(test_server, db_session, mock_client):

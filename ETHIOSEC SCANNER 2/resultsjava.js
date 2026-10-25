@@ -3,7 +3,7 @@
    Strict Real Backend API Integration (/api/scans/{id}/results, /api/scans)
    ========================================================================== */
 
-async function initResultsController() {
+document.addEventListener("DOMContentLoaded", async () => {
     const API_BASE = "http://127.0.0.1:8000/api";
     function getAuthToken() {
         const token = localStorage.getItem("token");
@@ -161,13 +161,11 @@ async function initResultsController() {
     const dCweTag = document.getElementById("dCweTag");
 
     // State Variables
-    let currentScanId = UI.getQueryParam("id") || UI.getQueryParam("scan_id");
+    let currentScanId = UI.getQueryParam("id");
     let scanResultData = null;
     let allFindings = [];
     let filteredFindings = [];
     const CIRCUMFERENCE = 2 * Math.PI * 58; // 364.42px
-
-    renderLoading();
 
     // Step 1: Resolve Scan ID if not supplied
     if (!currentScanId) {
@@ -246,7 +244,7 @@ async function initResultsController() {
                 try {
                     const listData = await scanListRes.json();
                     scanMetaRecord = (listData.scans || []).find(s => s.id === currentScanId);
-                } catch (_) { }
+                } catch (_) {}
             }
 
             paintOverview(scanResultData, scanMetaRecord);
@@ -273,11 +271,10 @@ async function initResultsController() {
             targetBreadcrumb.textContent = target;
             targetBreadcrumb.href = target.startsWith("http") ? target : `https://${target}`;
         }
-        const scanId = String(result.scan_id || result.id || currentScanId || "");
         if (scanIdBadge) {
-            scanIdBadge.textContent = `#${scanId}`;
+            scanIdBadge.textContent = `#${result.scan_id}`;
         }
-        if (metaScanId) metaScanId.textContent = scanId.slice(0, 12);
+        if (metaScanId) metaScanId.textContent = result.scan_id.slice(0, 12);
         if (metaProfile) metaProfile.textContent = depth;
         if (metaScannedAt) metaScannedAt.textContent = UI.formatDate(result.scanned_at || metaRecord?.created_at);
 
@@ -333,10 +330,8 @@ async function initResultsController() {
                     cPass++;
                 } else if (stat === "INCONCLUSIVE") {
                     cInconc++;
-                } else if (stat === "NOT_TESTED" || stat === "SKIPPED" || stat === "BLOCKED" || (f.verification_status || "").toUpperCase() === "NOT_TESTED") {
-                    // Informational coverage notices, skipped checks, and uninspected telemetry do not inflate vulnerability counts
                 } else {
-                    // Confirmed or potential vulnerability finding
+                    // Confirmed vulnerability finding
                     if (sev === "critical") cCrit++;
                     else if (sev === "high") cHigh++;
                     else if (sev === "medium") cMed++;
@@ -536,11 +531,16 @@ async function initResultsController() {
             const sev = (f.severity || "info").toLowerCase();
             const stat = (f.status || "NOT_DETECTED").toUpperCase();
             const mod = (f.type || "").toLowerCase();
-            const verifStat = (f.verification_status || f.status || "").toUpperCase();
+
+            // Scope Separation: Inconclusive checks live in Assessment Coverage, NOT in main findings list
+            // unless user explicitly filters by status INCONCLUSIVE
+            if (stat === "INCONCLUSIVE" && selStat !== "INCONCLUSIVE") {
+                return false;
+            }
 
             // Severity filter (CRITICAL, HIGH, MEDIUM, LOW, NOT DETECTED, SCANNER ERROR)
             if (selSev === "confirmed") {
-                if (verifStat !== "CONFIRMED") return false;
+                if (stat === "NOT_DETECTED" || stat === "SCANNER_ERROR" || stat === "INCONCLUSIVE") return false;
             } else if (selSev === "critical") {
                 if (sev !== "critical" || stat === "NOT_DETECTED" || stat === "SCANNER_ERROR") return false;
             } else if (selSev === "high") {
@@ -563,7 +563,7 @@ async function initResultsController() {
             }
 
             // Verification status filter
-            if (selStat !== "all" && verifStat !== selStat) {
+            if (selStat !== "all" && stat !== selStat) {
                 return false;
             }
 
@@ -641,8 +641,6 @@ async function initResultsController() {
         findingsList.innerHTML = filteredFindings.map((f, idx) => {
             const rawSev = (f.severity || "info").toLowerCase();
             const status = (f.status || "NOT_DETECTED").toUpperCase();
-            let verif = (f.verification_status || f.status || "NOT_DETECTED").toUpperCase();
-            if (verif === "SCANNER_ERROR") verif = "ERROR";
             const isPassed = status === "NOT_DETECTED";
             const isError = status === "SCANNER_ERROR" || f.type === "scanner_error";
 
@@ -658,10 +656,6 @@ async function initResultsController() {
                 cardClass = "passed";
                 badgeClass = "passed";
                 badgeLabel = "NOT DETECTED";
-            } else if (status === "INCONCLUSIVE" || verif === "INCONCLUSIVE") {
-                cardClass = "inconclusive";
-                badgeClass = "inconclusive";
-                badgeLabel = "INCONCLUSIVE";
             }
 
             // Evidence preview (safe excerpt)
@@ -682,7 +676,7 @@ async function initResultsController() {
                     <div class="finding-main">
                         <div class="finding-header-row">
                             <span class="sev-badge ${badgeClass}">${badgeLabel}</span>
-                            <span class="status-badge-outline ${verif.toLowerCase().replace(/_/g, "-")}">${UI.escapeHTML(verif.replace(/_/g, " "))}</span>
+                            <span class="status-badge-outline ${status.toLowerCase()}">${UI.escapeHTML(status)}</span>
                             <span class="finding-title-text">${UI.escapeHTML(f.title)}</span>
                         </div>
                         <p class="finding-desc-snippet">${UI.escapeHTML(f.description)}</p>
@@ -750,16 +744,13 @@ async function initResultsController() {
 
         const sev = (finding.severity || "info").toLowerCase();
         const stat = (finding.status || "NOT_DETECTED").toUpperCase();
-        let verif = (finding.verification_status || stat).toUpperCase();
-        if (verif === "SCANNER_ERROR") verif = "ERROR";
 
         if (dSeverityBadge) {
             dSeverityBadge.textContent = sev.toUpperCase();
             dSeverityBadge.className = `sev-badge ${sev}`;
         }
         if (dStatusBadge) {
-            dStatusBadge.textContent = verif.replace(/_/g, " ");
-            dStatusBadge.className = `status-badge-outline ${verif.toLowerCase().replace(/_/g, "-")}`;
+            dStatusBadge.textContent = stat;
         }
         if (dConfidence) {
             dConfidence.textContent = `Confidence: ${finding.confidence || "HIGH"}`;
@@ -959,13 +950,6 @@ async function initResultsController() {
 
     // Not Found State (HTTP 404)
     function renderNotFoundError(message) {
-        if (targetBreadcrumb) targetBreadcrumb.textContent = "Scan Not Found";
-        if (verdictTitle) verdictTitle.textContent = "Assessment Record Not Found";
-        if (verdictDesc) verdictDesc.textContent = UI.escapeHTML(message);
-        if (metaScanId) metaScanId.textContent = "—";
-        if (metaStatusText) metaStatusText.textContent = "Not Found";
-        if (metaStatusPill) metaStatusPill.className = "status-pill failed";
-        if (findingsCountBadge) findingsCountBadge.textContent = "0 findings";
         if (findingsList) {
             findingsList.innerHTML = `
                 <div class="state-container">
@@ -983,13 +967,6 @@ async function initResultsController() {
 
     // Auth Expired State (HTTP 401/403)
     function renderAuthExpiredError() {
-        if (targetBreadcrumb) targetBreadcrumb.textContent = "Authentication Required";
-        if (verdictTitle) verdictTitle.textContent = "Session Expired";
-        if (verdictDesc) verdictDesc.textContent = "Your session has expired. Please sign in again to access this scan result.";
-        if (metaScanId) metaScanId.textContent = "—";
-        if (metaStatusText) metaStatusText.textContent = "Unauthorized";
-        if (metaStatusPill) metaStatusPill.className = "status-pill failed";
-        if (findingsCountBadge) findingsCountBadge.textContent = "0 findings";
         if (findingsList) {
             findingsList.innerHTML = `
                 <div class="state-container">
@@ -1007,13 +984,6 @@ async function initResultsController() {
 
     // No Scan State (no ID and no history)
     function renderNoScanState() {
-        if (targetBreadcrumb) targetBreadcrumb.textContent = "No Target Selected";
-        if (verdictTitle) verdictTitle.textContent = "No Scan Assessment Selected";
-        if (verdictDesc) verdictDesc.textContent = "No prior scans were found on record. Start an automated assessment on an authorized target to view results.";
-        if (metaScanId) metaScanId.textContent = "—";
-        if (metaStatusText) metaStatusText.textContent = "Idle";
-        if (metaStatusPill) metaStatusPill.className = "status-pill completed";
-        if (findingsCountBadge) findingsCountBadge.textContent = "0 findings";
         if (findingsList) {
             findingsList.innerHTML = `
                 <div class="state-container">
@@ -1032,13 +1002,6 @@ async function initResultsController() {
 
     // General Error State
     function renderGeneralError(message) {
-        if (targetBreadcrumb) targetBreadcrumb.textContent = "Assessment Unavailable";
-        if (verdictTitle) verdictTitle.textContent = "Unable to Retrieve Results";
-        if (verdictDesc) verdictDesc.textContent = UI.escapeHTML(message);
-        if (metaScanId) metaScanId.textContent = "—";
-        if (metaStatusText) metaStatusText.textContent = "Error";
-        if (metaStatusPill) metaStatusPill.className = "status-pill failed";
-        if (findingsCountBadge) findingsCountBadge.textContent = "0 findings";
         if (findingsList) {
             findingsList.innerHTML = `
                 <div class="state-container">
@@ -1135,10 +1098,4 @@ async function initResultsController() {
 
     // Initial Load Execution
     await loadScanResults();
-}
-
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initResultsController);
-} else {
-    initResultsController();
-}
+});

@@ -70,22 +70,6 @@ CANONICAL_MODULES: Dict[str, Dict[str, Any]] = {
         "type": "active",
         "aliases": []
     },
-    "csrf": {
-        "id": "csrf",
-        "name": "Cross-Site Request Forgery (CSRF)",
-        "description": "Evaluates anti-CSRF protections, form tokens, and SameSite cookie isolation",
-        "owasp": "A01:2021-Broken Access Control",
-        "type": "active",
-        "aliases": ["xsrf", "anti-csrf"]
-    },
-    "ssrf": {
-        "id": "ssrf",
-        "name": "Server-Side Request Forgery (SSRF)",
-        "description": "Safe, non-destructive validation of URL and webhook inputs with strict loopback protections",
-        "owasp": "A10:2021-Server-Side Request Forgery (SSRF)",
-        "type": "active",
-        "aliases": ["ssrf_safe"]
-    },
     "exposed_files": {
         "id": "exposed_files",
         "name": "Exposed Sensitive Files",
@@ -147,10 +131,6 @@ def resolve_module_selection(raw_modules: Any) -> Dict[str, bool]:
             result[norm_k] = True
         elif norm_k in ("ssl", "tls"):
             result["https"] = True
-        elif norm_k in ("xsrf", "anti-csrf"):
-            result["csrf"] = True
-        elif norm_k in ("ssrf_safe", "request_forgery"):
-            result["ssrf"] = True
             
     # If misconfig was explicitly requested on its own, enable passive misconfiguration audits
     # unless specific checks were already provided

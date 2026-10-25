@@ -112,8 +112,6 @@ document.addEventListener("DOMContentLoaded", () => {
         exposed_files: true,
         http_methods: false,
         info_disclosure: false,
-        csrf: false,
-        ssrf: false,
         misconfig: false
     };
 
@@ -129,8 +127,6 @@ document.addEventListener("DOMContentLoaded", () => {
         exposed_files: "Exposed Files",
         http_methods: "HTTP Methods",
         info_disclosure: "Information Disclosure",
-        csrf: "Cross-Site Request Forgery (CSRF)",
-        ssrf: "Server-Side Request Forgery (SSRF)",
         misconfig: "Security Misconfiguration"
     };
 
@@ -146,8 +142,6 @@ document.addEventListener("DOMContentLoaded", () => {
         exposed_files: "📁",
         http_methods: "📡",
         info_disclosure: "ℹ️",
-        csrf: "🔄",
-        ssrf: "🎯",
         misconfig: "⚙️"
     };
 
@@ -307,15 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function onUrlInputChanged() {
-        const userEmail = (localStorage.getItem("userEmail") || "").toLowerCase().trim();
-        let raw = (targetUrlInput ? targetUrlInput.value : "").trim();
-
-        // If field contains the registered user's email (plain or prefixed), clear it immediately
-        if (userEmail && (raw.toLowerCase() === userEmail || raw.toLowerCase() === "https://" + userEmail || raw.toLowerCase() === "http://" + userEmail)) {
-            targetUrlInput.value = "";
-            raw = "";
-        }
-
+        const raw = targetUrlInput.value.trim();
         clearUrlBtn.style.display = raw.length > 0 ? "flex" : "none";
 
         if (!raw) {
@@ -368,21 +354,11 @@ document.addEventListener("DOMContentLoaded", () => {
         targetUrlInput.addEventListener("input", onUrlInputChanged);
         targetUrlInput.addEventListener("blur", () => {
             const raw = targetUrlInput.value.trim();
-            // If raw is empty or contains an email address or @, NEVER prepend https://
-            if (!raw || raw.includes("@") || raw.toLowerCase().startsWith("mailto:")) {
-                const userEmail = (localStorage.getItem("userEmail") || "").toLowerCase().trim();
-                if (raw && (raw.toLowerCase() === userEmail || raw.toLowerCase() === "https://" + userEmail || raw.toLowerCase() === "http://" + userEmail)) {
-                    targetUrlInput.value = "";
-                }
-                onUrlInputChanged();
-                return;
-            }
-            if (!/^https?:\/\//i.test(raw)) {
+            if (raw && !/^https?:\/\//i.test(raw)) {
                 targetUrlInput.value = "https://" + raw;
                 onUrlInputChanged();
             }
         });
-        targetUrlInput.addEventListener("change", onUrlInputChanged);
     }
 
     if (clearUrlBtn) {
@@ -1149,34 +1125,23 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCheckCardsUI();
     onUrlInputChanged();
 
-    // Browser Autofill Guard: Ensure target field remains completely blank if browser/password manager attempts to autofill credentials or email
-    function purgeAutofillEmail() {
-        if (!targetUrlInput) return;
-        const val = (targetUrlInput.value || "").trim();
-        const userEmail = (localStorage.getItem("userEmail") || "").toLowerCase().trim();
-        if (
-            val.includes("@") ||
-            val.toLowerCase().startsWith("mailto:") ||
-            (userEmail && (val.toLowerCase() === userEmail || val.toLowerCase() === "https://" + userEmail || val.toLowerCase() === "http://" + userEmail))
-        ) {
-            targetUrlInput.value = "";
-            onUrlInputChanged();
-        }
-    }
-
-    // Run purge immediately and over multiple browser lifecycle moments
-    purgeAutofillEmail();
-    [20, 60, 120, 250, 500, 900, 1500, 2500].forEach(delay => setTimeout(purgeAutofillEmail, delay));
-    window.addEventListener("pageshow", purgeAutofillEmail);
-    window.addEventListener("focus", purgeAutofillEmail);
-    if (targetUrlInput) {
-        targetUrlInput.addEventListener("focus", purgeAutofillEmail);
-        targetUrlInput.addEventListener("animationstart", (e) => {
-            if (e.animationName && e.animationName.toLowerCase().includes("autofill")) {
-                purgeAutofillEmail();
+    // Browser Autofill Guard: Ensure target field remains blank if browser attempts to autofill credentials/email
+    setTimeout(() => {
+        if (targetUrlInput && targetUrlInput.value) {
+            if (targetUrlInput.value.includes("@") || targetUrlInput.value.toLowerCase().startsWith("mailto:")) {
+                targetUrlInput.value = "";
+                onUrlInputChanged();
             }
-        });
-    }
+        }
+    }, 50);
+    setTimeout(() => {
+        if (targetUrlInput && targetUrlInput.value) {
+            if (targetUrlInput.value.includes("@") || targetUrlInput.value.toLowerCase().startsWith("mailto:")) {
+                targetUrlInput.value = "";
+                onUrlInputChanged();
+            }
+        }
+    }, 250);
 
     // Check backend health silently on page load
     checkBackendHealth(false);

@@ -227,14 +227,13 @@ class BaselineProfile:
         if token_sets:
             self.common_tokens = set.intersection(*token_sets)
 
-        # Populate baseline_has_db_errors and baseline_db_errors using db_error_checker if provided
-        self.baseline_db_errors: Set[str] = set()
+        # Populate baseline_has_db_errors using db_error_checker if provided
         if db_error_checker:
             for r in self.requests:
                 db_name, err = db_error_checker(r.text)
                 if db_name:
                     self.baseline_has_db_errors = True
-                    self.baseline_db_errors.add(err)
+                    break
 
     def compare_test(self, test_resp: Optional[httpx.Response]) -> Dict[str, Any]:
         """

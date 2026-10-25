@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, status, Response
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List, Any, Optional, Dict
+from typing import List, Any, Optional
 import datetime
 import time
 from urllib.parse import urlparse
@@ -14,20 +14,15 @@ import httpx
 import secrets
 import string
 import logging
-import base64
-import hashlib
-from google.oauth2 import id_token as google_id_token
-from google.auth.transport import requests as google_requests
 
 from database import get_db
-from models import User, Scan, ScanTarget, Finding, UserSettings, ScanModule, Report, Notification, AuditLog
+from models import User, Scan, ScanTarget, Finding, UserSettings
 from schemas import (
     UserRegister, UserLogin, UserOut, UserProfileUpdate, TokenResponse,
     VerifyEmailRequest, ResendVerificationRequest, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, MessageResponse,
-    GoogleExchangeRequest, TargetCreate, TargetOut,
+    TargetCreate, TargetOut,
     ScanCreate, ScanStatusOut, ScanResultOut, FindingOut, DashboardSummaryOut, DashboardTrend, ScanCounts,
-    AIRequest, AIResponse, UserSettingsUpdate, UserSettingsOut, AIAssistantRequestNew,
-    PhoneSendCodeRequest, PhoneVerifyCodeRequest, PhoneStatusOut
+    AIRequest, AIResponse, UserSettingsUpdate, UserSettingsOut, AIAssistantRequestNew
 )
 from security import (
     get_password_hash, verify_password, create_access_token,
@@ -35,10 +30,8 @@ from security import (
     timedelta, ACCESS_TOKEN_EXPIRE_MINUTES, REQUIRE_EMAIL_VERIFICATION
 )
 from email_service import email_service, hash_verification_secret, verify_secret_hash
-from phone_service import phone_service
 from rate_limiter import (
-    limit_login, limit_register, limit_verify, limit_resend, limit_reset, limit_scans, limit_ai,
-    limit_phone_send, limit_phone_verify, _limiter
+    limit_login, limit_register, limit_verify, limit_resend, limit_reset, limit_scans, limit_ai, _limiter
 )
 # Backward-compatibility alias for legacy test fixtures
 request_counts = _limiter._records
@@ -59,8 +52,7 @@ router = APIRouter()
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
     email_norm = user_in.email.strip().lower()
     
-    existing_user = db.query(User).filter(User.email == email_norm).first()
-    if existing_user:
+    if db.query(User).filter(User.email == email_norm).first():
         audit_logger.warning(f"Registration attempted with existing email: {email_norm}")
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     
@@ -83,20 +75,12 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         verification_sent_at=now.isoformat()
     )
     db.add(new_user)
-    
-    # Send verification email if required
-    if REQUIRE_EMAIL_VERIFICATION:
-        sent = email_service.send_verification_email(new_user.email, code)
-        if not sent:
-            db.rollback()
-            audit_logger.error(f"Registration aborted: Email delivery failed for {new_user.email}")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Unable to send verification email. Please check your email configuration or try again later."
-            )
-    
     db.commit()
     db.refresh(new_user)
+    
+    # Send verification email
+    if REQUIRE_EMAIL_VERIFICATION:
+        email_service.send_verification_email(new_user.email, code)
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -196,16 +180,9 @@ def resend_verification(req: ResendVerificationRequest, db: Session = Depends(ge
     user.verification_expires_at = (now + datetime.timedelta(minutes=15)).isoformat()
     user.verification_attempts = 0
     user.verification_sent_at = now.isoformat()
-
-    sent = email_service.send_verification_email(user.email, code)
-    if not sent:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Unable to send verification email. Please check your email configuration or try again later."
-        )
-
     db.commit()
+
+    email_service.send_verification_email(user.email, code)
     audit_logger.info(f"Resent verification code to: {user.email}")
     return success_msg
 
@@ -299,16 +276,9 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user.reset_token_hash = hash_verification_secret(token)
     user.reset_expires_at = (now + datetime.timedelta(minutes=15)).isoformat()
     user.reset_attempts = 0
-
-    sent = email_service.send_password_reset_email(user.email, token)
-    if not sent:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Unable to send password reset email at this time. Please try again later."
-        )
-
     db.commit()
+    
+    email_service.send_password_reset_email(user.email, token)
     audit_logger.info(f"Password reset token issued for: {user.email}")
     return response
 
@@ -376,346 +346,69 @@ def change_password(req: ChangePasswordRequest, current_user: User = Depends(get
 def read_users_me(current_user: User = Depends(get_current_user)):
     return {"user": current_user}
 
-# Ephemeral OAuth state and exchange code stores with automatic cleanup
-_oauth_states: Dict[str, Dict[str, Any]] = {}
-_oauth_exchange_codes: Dict[str, Dict[str, Any]] = {}
-
-def _cleanup_oauth_stores():
-    now = time.time()
-    expired_states = [s for s, data in _oauth_states.items() if now - data.get("created_at", 0) > 600]
-    for s in expired_states:
-        _oauth_states.pop(s, None)
-    expired_codes = [c for c, data in _oauth_exchange_codes.items() if now - data.get("created_at", 0) > 60]
-    for c in expired_codes:
-        _oauth_exchange_codes.pop(c, None)
-
 @router.get("/auth/google/login")
-def google_login(request: Request):
-    """
-    Initiates Google OAuth 2.0 / OpenID Connect authentication using PKCE and secure state.
-    """
-    _cleanup_oauth_stores()
+def google_login():
     client_id = os.getenv("GOOGLE_CLIENT_ID")
-    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://127.0.0.1:8000/api/auth/google/callback")
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5500").rstrip("/")
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+    if not client_id or not redirect_uri:
+        raise HTTPException(status_code=500, detail="Google OAuth is not configured on the server.")
     
-    if not client_id or not client_secret:
-        audit_logger.warning("Google login requested but credentials are not configured on the server.")
-        return RedirectResponse(f"{frontend_url}/login.html?oauth_error=not_configured")
-
-    # Cryptographically secure state (CSRF mitigation)
-    state = secrets.token_urlsafe(32)
-    # PKCE (Proof Key for Code Exchange)
-    code_verifier = secrets.token_urlsafe(64)
-    code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode('ascii')).digest()).decode('ascii').rstrip('=')
-
-    _oauth_states[state] = {
-        "code_verifier": code_verifier,
-        "created_at": time.time()
-    }
-
-    auth_url = (
-        f"https://accounts.google.com/o/oauth2/v2/auth?"
-        f"response_type=code"
-        f"&client_id={client_id}"
-        f"&redirect_uri={redirect_uri}"
-        f"&scope=openid%20email%20profile"
-        f"&state={state}"
-        f"&code_challenge={code_challenge}"
-        f"&code_challenge_method=S256"
-        f"&access_type=offline"
-        f"&prompt=select_account"
-    )
-    return RedirectResponse(auth_url)
+    url = f"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&scope=openid%20email%20profile&access_type=offline"
+    return RedirectResponse(url)
 
 @router.get("/auth/google/callback")
-async def google_callback(
-    request: Request,
-    code: Optional[str] = None,
-    state: Optional[str] = None,
-    error: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
-    """
-    Handles Google OAuth callback:
-    1. Validates state and PKCE code_verifier (CSRF & replay protection)
-    2. Exchanges authorization code for tokens
-    3. Validates Google ID token signature, issuer, audience, and email_verified
-    4. Identifies user by stable Google subject identifier (sub)
-    5. Performs safe account linking or new registration
-    6. Establishes session safely using a short-lived single-use exchange ticket (no JWT in URL)
-    """
-    _cleanup_oauth_stores()
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5500").rstrip("/")
-    
-    # 1. Handle user cancellation or provider errors
-    if error:
-        audit_logger.warning(f"Google OAuth provider returned error: {error}")
-        return RedirectResponse(f"{frontend_url}/login.html?oauth_error={error}")
-
-    if not code or not state:
-        audit_logger.warning("Google OAuth callback invoked with missing code or state parameter.")
-        return RedirectResponse(f"{frontend_url}/login.html?oauth_error=invalid_request")
-
-    # 2. Validate state & retrieve PKCE verifier (single-use delete)
-    state_data = _oauth_states.pop(state, None)
-    if not state_data or (time.time() - state_data.get("created_at", 0) > 600):
-        audit_logger.warning(f"Google OAuth state mismatch or expired: state={state}")
-        return RedirectResponse(f"{frontend_url}/login.html?oauth_error=invalid_state")
-
-    code_verifier = state_data.get("code_verifier")
+async def google_callback(code: str, db: Session = Depends(get_db)):
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://127.0.0.1:8000/api/auth/google/callback")
-
-    # 3. Exchange authorization code for tokens
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+    
     token_url = "https://oauth2.googleapis.com/token"
-    token_payload = {
+    data = {
         "code": code,
         "client_id": client_id,
         "client_secret": client_secret,
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
-        "code_verifier": code_verifier,
     }
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as http_client:
-            token_res = await http_client.post(token_url, data=token_payload)
-            if token_res.status_code != 200:
-                audit_logger.error(f"Google token exchange failed: HTTP {token_res.status_code} - {token_res.text}")
-                return RedirectResponse(f"{frontend_url}/login.html?oauth_error=token_exchange_failed")
-            token_data = token_res.json()
-    except Exception as exc:
-        audit_logger.error(f"Exception during Google token exchange: {exc}")
-        return RedirectResponse(f"{frontend_url}/login.html?oauth_error=network_error")
-
-    raw_id_token = token_data.get("id_token")
-    if not raw_id_token:
-        audit_logger.error("No ID token returned by Google OAuth token endpoint.")
-        return RedirectResponse(f"{frontend_url}/login.html?oauth_error=missing_id_token")
-
-    # 4. Strictly validate Google ID Token signature, issuer, audience, and expiry
-    try:
-        id_info = google_id_token.verify_oauth2_token(
-            raw_id_token,
-            google_requests.Request(),
-            client_id
-        )
-    except Exception as val_err:
-        audit_logger.error(f"Google ID token cryptographic validation failed: {val_err}")
-        return RedirectResponse(f"{frontend_url}/login.html?oauth_error=invalid_token")
-
-    # 5. Verify email_verified claim
-    if not id_info.get("email_verified"):
-        audit_logger.warning(f"Google user email is not verified by Google: {id_info.get('email')}")
-        return RedirectResponse(f"{frontend_url}/login.html?oauth_error=unverified_google_email")
-
-    # 6. Extract claims with stable subject identifier
-    google_sub = str(id_info.get("sub", "")).strip()
-    email = str(id_info.get("email", "")).strip().lower()
-    full_name = id_info.get("name") or (email.split("@")[0] if email else "Google User")
-    avatar_url = id_info.get("picture")
-
-    if not google_sub or not email:
-        return RedirectResponse(f"{frontend_url}/login.html?oauth_error=invalid_claims")
-
-    # 7. Account Resolution & Safe Account Linking
-    user = db.query(User).filter(User.google_id == google_sub).first()
-    
-    if not user:
-        # Check if account already exists with this verified email
-        existing_email_user = db.query(User).filter(User.email == email).first()
-        if existing_email_user:
-            if existing_email_user.google_id and existing_email_user.google_id != google_sub:
-                audit_logger.warning(f"Account collision: {email} already linked to different Google sub.")
-                return RedirectResponse(f"{frontend_url}/login.html?oauth_error=account_linked_to_different_google_id")
-            
-            # Safe account linking for verified email
-            user = existing_email_user
-            user.google_id = google_sub
-            user.is_verified = True # Google has confirmed email ownership
-            if not user.full_name and full_name:
-                user.full_name = full_name
-            if not user.avatar_url and avatar_url:
-                user.avatar_url = avatar_url
-            db.commit()
-            audit_logger.info(f"Safely linked Google identity (sub={google_sub}) to existing user: {user.email}")
-        else:
-            # Brand-new user registration via Google OAuth
-            # Password hash is initialized to an unusable random string
+    async with httpx.AsyncClient() as client:
+        response = await client.post(token_url, data=data)
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to exchange Google code for token.")
+        token_data = response.json()
+        access_token = token_data.get("access_token")
+        
+        user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        user_info_response = await client.get(user_info_url, headers=headers)
+        if user_info_response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to fetch user info from Google.")
+        
+        user_info = user_info_response.json()
+        email = user_info.get("email", "").strip().lower()
+        full_name = user_info.get("name")
+        
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
             random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
             user = User(
                 email=email,
                 full_name=full_name,
-                google_id=google_sub,
-                auth_provider="google",
-                avatar_url=avatar_url,
                 password_hash=get_password_hash(random_password),
-                role="Security Administrator", # Default standard role, no client escalation
-                is_verified=True
+                role="Security Administrator",
+                is_verified=True # Email ownership verified by Google OAuth
             )
             db.add(user)
             db.commit()
             db.refresh(user)
-            audit_logger.info(f"New user created via Google OAuth: {user.email} (sub={google_sub})")
-
-    # Reset failed login count and lockout if previously locked
-    user.failed_login_attempts = 0
-    user.locked_until = None
-    db.commit()
-
-    # 8. Issue JWT and one-time single-use exchange code (eliminates JWT token in URL)
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    jwt_token = create_access_token(
-        data={"sub": user.email, "is_verified": user.is_verified},
-        expires_delta=access_token_expires
-    )
-    
-    exchange_code = secrets.token_urlsafe(32)
-    _oauth_exchange_codes[exchange_code] = {
-        "token": jwt_token,
-        "user": UserOut.model_validate(user).model_dump(),
-        "created_at": time.time()
-    }
-
-    audit_logger.info(f"Google OAuth authentication successful for user: {user.email}")
-    return RedirectResponse(f"{frontend_url}/login.html?oauth_code={exchange_code}")
-
-@router.post("/auth/google/exchange", response_model=TokenResponse)
-def google_exchange(req: GoogleExchangeRequest):
-    """
-    Exchanges a single-use 60-second authorization code for a session token.
-    Prevents token exposure in URLs and browser history.
-    """
-    _cleanup_oauth_stores()
-    exchange_data = _oauth_exchange_codes.pop(req.code, None)
-    if not exchange_data or (time.time() - exchange_data.get("created_at", 0) > 60):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired Google OAuth exchange code."
+        
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        jwt_token = create_access_token(
+            data={"sub": user.email, "is_verified": user.is_verified},
+            expires_delta=access_token_expires
         )
-    return {"token": exchange_data["token"], "user": exchange_data["user"]}
-
-# ==============================================================================
-# PHONE NUMBER VERIFICATION (SMS OTP PROVIDER)
-# ==============================================================================
-
-@router.post("/auth/phone/send-code", response_model=MessageResponse, dependencies=[Depends(limit_phone_send)])
-async def send_phone_code(
-    req: PhoneSendCodeRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Sends an SMS verification code to the specified phone number via the configured provider (Twilio Verify)
-    or safe development simulation.
-    Enforces E.164 normalization, cooldown, and ownership validation.
-    """
-    is_valid, normalized_phone, err_msg = phone_service.normalize_and_validate(req.phone_number)
-    if not is_valid:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
-
-    # Prevent phone number hijacking: check if already verified by another user
-    existing_owner = db.query(User).filter(
-        User.phone_number == normalized_phone,
-        User.phone_verified == True,
-        User.id != current_user.id
-    ).first()
-    if existing_owner:
-        audit_logger.warning(f"Phone verification attempted for already verified number: {normalized_phone[:5]}***")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This phone number is already verified and linked to another account."
-        )
-
-    # Check 60-second resend cooldown on user record
-    now = datetime.datetime.now(datetime.timezone.utc)
-    if current_user.phone_verification_sent_at:
-        try:
-            last_sent = datetime.datetime.fromisoformat(current_user.phone_verification_sent_at)
-            elapsed = (now - last_sent).total_seconds()
-            if elapsed < 60:
-                retry_after = int(60 - elapsed)
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"Please wait {retry_after} seconds before requesting another SMS verification code.",
-                    headers={"Retry-After": str(retry_after)}
-                )
-        except (ValueError, TypeError):
-            pass
-
-    success, msg, meta = await phone_service.send_verification_code(normalized_phone)
-    if not success:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
-
-    current_user.phone_number = normalized_phone
-    current_user.phone_verification_sent_at = now.isoformat()
-    current_user.phone_verification_attempts = 0
-    db.commit()
-
-    audit_logger.info(f"Phone verification code dispatched to {normalized_phone[:5]}*** for user {current_user.email}")
-    return MessageResponse(
-        message=msg,
-        detail=f"Provider: {meta.get('provider', 'standard')} (Real Provider: {meta.get('is_real_provider', False)})"
-    )
-
-@router.post("/auth/phone/verify-code", response_model=PhoneStatusOut, dependencies=[Depends(limit_phone_verify)])
-async def verify_phone_code(
-    req: PhoneVerifyCodeRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Verifies the submitted SMS code with the provider.
-    Marks phone_verified=True on successful validation.
-    """
-    is_valid, normalized_phone, err_msg = phone_service.normalize_and_validate(req.phone_number)
-    if not is_valid:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
-
-    # Check brute-force attempt limits
-    if current_user.phone_verification_attempts >= 5:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Maximum verification attempts exceeded for this phone number. Please request a new code."
-        )
-
-    success, msg, meta = await phone_service.verify_code(normalized_phone, req.code)
-    if not success:
-        current_user.phone_verification_attempts += 1
-        db.commit()
-        audit_logger.warning(f"Failed phone verification attempt for user {current_user.email}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
-
-    now = datetime.datetime.now(datetime.timezone.utc)
-    current_user.phone_number = normalized_phone
-    current_user.phone_verified = True
-    current_user.phone_verified_at = now.isoformat()
-    current_user.phone_verification_attempts = 0
-    db.commit()
-    db.refresh(current_user)
-
-    audit_logger.info(f"Phone {normalized_phone[:5]}*** successfully verified for user {current_user.email}")
-    return PhoneStatusOut(
-        phone_number=current_user.phone_number,
-        phone_verified=current_user.phone_verified,
-        phone_verified_at=current_user.phone_verified_at,
-        provider=meta.get("provider"),
-        is_real_provider=meta.get("is_real_provider", False)
-    )
-
-@router.get("/auth/phone/status", response_model=PhoneStatusOut)
-def get_phone_status(current_user: User = Depends(get_current_user)):
-    """Retrieves current user's phone verification status and configured provider."""
-    return PhoneStatusOut(
-        phone_number=current_user.phone_number,
-        phone_verified=bool(current_user.phone_verified),
-        phone_verified_at=current_user.phone_verified_at,
-        provider="twilio_verify" if phone_service.is_provider_configured else "mock_development_simulation",
-        is_real_provider=phone_service.is_provider_configured
-    )
-
+        
+        frontend_redirect = f"{os.getenv('FRONTEND_URL', 'http://localhost:5500')}/login.html?google_token={jwt_token}"
+        return RedirectResponse(frontend_redirect)
 
 # ==============================================================================
 # DASHBOARD (Requires Verified User)
@@ -723,10 +416,7 @@ def get_phone_status(current_user: User = Depends(get_current_user)):
 
 @router.get("/dashboard/summary", response_model=DashboardSummaryOut)
 def dashboard_summary(range: str = "week", current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
-    scans = db.query(Scan).filter(
-        Scan.user_id == current_user.id,
-        Scan.status.in_(["completed", "completed_with_errors"])
-    ).order_by(Scan.created_at.desc()).all()
+    scans = db.query(Scan).filter(Scan.user_id == current_user.id, Scan.status == "completed").order_by(Scan.finished_at.desc()).all()
     
     if not scans:
         trend = DashboardTrend(
@@ -745,7 +435,7 @@ def dashboard_summary(range: str = "week", current_user: User = Depends(get_curr
     total_scans = len(scans)
     
     findings = db.query(Finding).filter(Finding.scan_id == latest.id).all()
-    c = aggregate_finding_counts(findings, scan=latest)
+    c = aggregate_finding_counts(findings)
 
     trend = DashboardTrend(
         labels=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
@@ -860,7 +550,7 @@ def cancel_scan(id: str, current_user: User = Depends(get_current_verified_user)
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
-    if scan.status not in ("completed", "failed", "cancelled", "completed_with_errors"):
+    if scan.status in ("running", "queued"):
         scan.status = "cancelled"
         scan.stage = "Scan cancelled by user"
         scan.finished_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -874,7 +564,7 @@ def list_scans(limit: int = 100, current_user: User = Depends(get_current_verifi
     scan_list = []
     for s in scans:
         findings = db.query(Finding).filter(Finding.scan_id == s.id).all()
-        c = aggregate_finding_counts(findings, scan=s)
+        c = aggregate_finding_counts(findings)
         
         scan_list.append({
             "id": s.id,
@@ -905,7 +595,7 @@ def scan_status(id: str, current_user: User = Depends(get_current_verified_user)
         raise HTTPException(status_code=404, detail="Scan not found")
     
     findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
-    c = aggregate_finding_counts(findings, scan=scan)
+    c = aggregate_finding_counts(findings)
     
     req_modules = scan.modules if (scan.modules and isinstance(scan.modules, dict)) else {}
     exec_checks = scan.checks if (scan.checks and isinstance(scan.checks, dict)) else {}
@@ -935,7 +625,6 @@ def scan_status(id: str, current_user: User = Depends(get_current_verified_user)
     timeline = exec_checks.get("timeline")
     pipeline_stages = exec_checks.get("pipeline_stages")
     completed_map = exec_checks.get("completed_checks")
-    inventory = exec_checks.get("inventory")
     if not completed_map:
         completed_map = {k: v for k, v in exec_checks.items() if isinstance(v, bool)}
     
@@ -953,7 +642,6 @@ def scan_status(id: str, current_user: User = Depends(get_current_verified_user)
         timeline=timeline,
         pipeline_stages=pipeline_stages,
         findings_count=c,
-        inventory=inventory,
         created_at=scan.created_at,
         finished_at=scan.finished_at
     )
@@ -963,11 +651,11 @@ def scan_results(id: str, current_user: User = Depends(get_current_verified_user
     scan = db.query(Scan).filter(Scan.id == id, Scan.user_id == current_user.id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
-    if scan.status not in ("completed", "failed", "completed_with_errors"):
+    if scan.status not in ("completed", "failed"):
         raise HTTPException(status_code=409, detail="Scan is not completed yet")
         
     findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
-    c = aggregate_finding_counts(findings, scan=scan)
+    c = aggregate_finding_counts(findings)
 
     module_details = None
     if scan.modules:
@@ -980,10 +668,6 @@ def scan_results(id: str, current_user: User = Depends(get_current_verified_user
             except Exception:
                 pass
 
-    inventory = None
-    if scan.checks and isinstance(scan.checks, dict):
-        inventory = scan.checks.get("inventory")
-
     return ScanResultOut(
         scan_id=scan.id,
         target=scan.target_url,
@@ -993,8 +677,7 @@ def scan_results(id: str, current_user: User = Depends(get_current_verified_user
         security_score=scan.security_score,
         counts=ScanCounts(**c),
         findings=findings,
-        module_details=module_details,
-        inventory=inventory
+        module_details=module_details
     )
 
 @router.delete("/scans/{id}")
@@ -1036,32 +719,6 @@ def update_profile(updates: UserProfileUpdate, current_user: User = Depends(get_
         user.full_name = updates.full_name
     if updates.website is not None:
         user.website = updates.website
-    if updates.avatar_url is not None:
-        user.avatar_url = updates.avatar_url
-    if updates.phone_number is not None:
-        raw_phone = updates.phone_number.strip()
-        if not raw_phone:
-            user.phone_number = None
-            user.phone_verified = False
-            user.phone_verified_at = None
-        elif raw_phone != user.phone_number:
-            is_valid, normalized_phone, err_msg = phone_service.normalize_and_validate(raw_phone)
-            if not is_valid:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err_msg)
-            # Check unique constraint against other users
-            existing_owner = db.query(User).filter(
-                User.phone_number == normalized_phone,
-                User.id != user.id
-            ).first()
-            if existing_owner:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="This phone number is already registered to another account."
-                )
-            user.phone_number = normalized_phone
-            user.phone_verified = False
-            user.phone_verified_at = None
-
     db.commit()
     db.refresh(user)
     return user
@@ -1103,22 +760,18 @@ def update_user_settings(updates: UserSettingsUpdate, current_user: User = Depen
 
 @router.get("/reports")
 def list_reports(current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
-    scans = db.query(Scan).filter(
-        Scan.user_id == current_user.id,
-        Scan.status.in_(["completed", "completed_with_errors"])
-    ).order_by(Scan.finished_at.desc()).all()
+    scans = db.query(Scan).filter(Scan.user_id == current_user.id, Scan.status == "completed").order_by(Scan.finished_at.desc()).all()
     reports = []
     for s in scans:
         findings = db.query(Finding).filter(Finding.scan_id == s.id).all()
-        c = aggregate_finding_counts(findings, s)
-        report_counts = {k: c.get(k, 0) for k in ["high", "medium", "low", "not_detected", "scanner_error", "inconclusive", "critical", "info", "total"] if k in c}
+        c = aggregate_finding_counts(findings)
         reports.append({
             "id": "r" + s.id,
             "scan_id": s.id,
             "target": s.target_url,
             "depth": s.depth,
             "security_score": s.security_score if s.security_score is not None else 0,
-            "counts": report_counts,
+            "counts": c,
             "generated_at": s.finished_at or s.created_at
         })
     return {"reports": reports}
@@ -1126,17 +779,12 @@ def list_reports(current_user: User = Depends(get_current_verified_user), db: Se
 @router.get("/reports/{id}")
 async def get_report(id: str, current_user: User = Depends(get_current_verified_user), db: Session = Depends(get_db)):
     scan_id = id[1:] if id.startswith("r") else id
-    scan = db.query(Scan).filter(
-        Scan.id == scan_id,
-        Scan.user_id == current_user.id,
-        Scan.status.in_(["completed", "completed_with_errors"])
-    ).first()
+    scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == current_user.id, Scan.status == "completed").first()
     if not scan:
         raise HTTPException(status_code=404, detail="Report not found")
         
     findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
-    c = aggregate_finding_counts(findings, scan)
-    report_counts = {k: c.get(k, 0) for k in ["high", "medium", "low", "not_detected", "scanner_error", "inconclusive", "critical", "info", "total"] if k in c}
+    c = aggregate_finding_counts(findings)
     by_type = {}
     for f in findings:
         status = (f.status or "").upper()
@@ -1156,7 +804,7 @@ async def get_report(id: str, current_user: User = Depends(get_current_verified_
         "target": scan.target_url,
         "depth": scan.depth,
         "security_score": scan.security_score,
-        "counts": report_counts,
+        "counts": c,
         "generated_at": scan.finished_at or scan.created_at,
         "executive_summary": executive_summary_md,
         "executive_summary_structured": summary_data,
@@ -1171,11 +819,7 @@ async def regenerate_report_ai_summary(
     db: Session = Depends(get_db)
 ):
     scan_id = id[1:] if id.startswith("r") else id
-    scan = db.query(Scan).filter(
-        Scan.id == scan_id,
-        Scan.user_id == current_user.id,
-        Scan.status.in_(["completed", "completed_with_errors"])
-    ).first()
+    scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == current_user.id, Scan.status == "completed").first()
     if not scan:
         raise HTTPException(status_code=404, detail="Report not found")
         
@@ -1197,11 +841,11 @@ def export_report_json(
     scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == current_user.id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Report not found")
-    if scan.status not in ("completed", "completed_with_errors", "failed"):
+    if scan.status not in ("completed", "failed"):
         raise HTTPException(status_code=409, detail="Scan is still running; export is unavailable")
 
     findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()
-    c = aggregate_finding_counts(findings, scan)
+    c = aggregate_finding_counts(findings)
 
     findings_data = []
     for f in findings:
@@ -1212,7 +856,6 @@ def export_report_json(
             "title": f.title,
             "severity": f.severity,
             "status": f.status,
-            "verification_status": f.verification_status or f.status,
             "category": cat,
             "confidence": f.confidence,
             "url": f.url,
@@ -1255,7 +898,7 @@ def export_report_csv(
     scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == current_user.id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Report not found")
-    if scan.status not in ("completed", "completed_with_errors", "failed"):
+    if scan.status not in ("completed", "failed"):
         raise HTTPException(status_code=409, detail="Scan is still running; export is unavailable")
 
     findings = db.query(Finding).filter(Finding.scan_id == scan.id).all()

@@ -243,40 +243,28 @@ button {
 .logo {
     display: flex;
     align-items: center;
-    gap: 11px;
-    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-    color: #FFFFFF;
-    text-decoration: none;
+    gap: 10px;
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
 }
 
-.logo > span:last-child span {
-    color: #FF2028;
+.logo>span:last-child span {
+    color: var(--brand);
 }
 
 .logo-icon {
     width: 34px;
     height: 34px;
-    min-width: 34px;
-    min-height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    flex-shrink: 0;
-}
-
-.logo-icon svg {
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
-    flex-shrink: 0 !important;
-    display: block !important;
+    display: grid;
+    place-items: center;
+    color: white;
+    background: linear-gradient(135deg,
+            var(--brand),
+            var(--brand-dark));
+    border-radius: 9px;
+    box-shadow: 0 0 25px rgba(204, 47, 12, 0.4);
 }
 
 .nav-links {

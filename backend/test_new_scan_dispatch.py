@@ -519,8 +519,9 @@ async def test_module_exception_does_not_hang_scan(db_session):
         mock_sqli.side_effect = RuntimeError("Simulated database driver failure")
         await scanner.run_scan()
 
-    # The scan should finish cleanly without hanging, recording module errors
-    assert scan.status in ("completed", "completed_with_errors")
+    db_session.refresh(scan)
+    # The scan should finish cleanly without hanging
+    assert scan.status == "completed"
     assert scanner.module_details["sqli"]["status"] == "failed"
     assert "failed" in scanner.module_details["sqli"]["message"].lower()
     # Subsequent module (XSS) must still have executed

@@ -24,8 +24,7 @@ def run_vulnerable_app():
     try:
         httpx.get("http://127.0.0.1:3000/", timeout=1.0)
     except Exception:
-        app_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vulnerable_app.py")
-        proc = subprocess.Popen([sys.executable, app_path])
+        proc = subprocess.Popen([sys.executable, "vulnerable_app.py"])
         for _ in range(30):
             try:
                 r = httpx.get("http://127.0.0.1:3000/", timeout=1.0)

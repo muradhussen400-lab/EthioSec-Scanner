@@ -1,6 +1,6 @@
 import re
 import json
-from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 
 class UserBase(BaseModel):
@@ -43,19 +43,11 @@ class UserLogin(BaseModel):
 class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=100)
     website: Optional[str] = Field(None, max_length=255)
-    avatar_url: Optional[str] = Field(None, max_length=500)
-    phone_number: Optional[str] = Field(None, max_length=32)
 
 class UserOut(UserBase):
     id: str
     role: str
     is_verified: bool = False
-    google_id: Optional[str] = None
-    auth_provider: Optional[str] = "local"
-    avatar_url: Optional[str] = None
-    phone_number: Optional[str] = None
-    phone_verified: bool = False
-    phone_verified_at: Optional[str] = None
     created_at: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -63,24 +55,6 @@ class UserOut(UserBase):
 class TokenResponse(BaseModel):
     token: str
     user: UserOut
-
-class GoogleExchangeRequest(BaseModel):
-    code: str = Field(..., min_length=10, max_length=128)
-
-class PhoneSendCodeRequest(BaseModel):
-    phone_number: str = Field(..., min_length=7, max_length=32)
-
-class PhoneVerifyCodeRequest(BaseModel):
-    phone_number: str = Field(..., min_length=7, max_length=32)
-    code: str = Field(..., min_length=4, max_length=10)
-
-class PhoneStatusOut(BaseModel):
-    phone_number: Optional[str] = None
-    phone_verified: bool = False
-    phone_verified_at: Optional[str] = None
-    provider: Optional[str] = None
-    is_real_provider: Optional[bool] = False
-
 
 class VerifyEmailRequest(BaseModel):
     email: str = Field(..., max_length=255)
@@ -196,15 +170,13 @@ class ScanCreate(BaseModel):
         valid_keys = {
             "sqli", "xss", "headers", "cookies", "cors", "https", "auth",
             "access_control", "exposed_files", "http_methods", "info_disclosure",
-            "csrf", "ssrf", "xsrf", "anti-csrf", "ssrf_safe", "request_forgery",
             "misconfig", "tls", "ssl", "all"
         }
         unknown = set(v.keys()) - valid_keys
         if unknown:
             supported = ", ".join(sorted([
                 "sqli", "xss", "headers", "cookies", "cors", "https", "auth",
-                "access_control", "exposed_files", "http_methods", "info_disclosure",
-                "csrf", "ssrf"
+                "access_control", "exposed_files", "http_methods", "info_disclosure"
             ]))
             raise ValueError(f"Unknown module(s): {', '.join(sorted(unknown))}. Supported modules are: {supported}.")
         return v
@@ -231,7 +203,6 @@ class ScanStatusOut(BaseModel):
     timeline: Optional[List[Dict[str, Any]]] = None
     pipeline_stages: Optional[List[Dict[str, Any]]] = None
     findings_count: Optional[Dict[str, int]] = None
-    inventory: Optional[Dict[str, Any]] = None
     created_at: Optional[str] = None
     finished_at: Optional[str] = None
 
@@ -241,10 +212,8 @@ class FindingOut(BaseModel):
     severity: str
     confidence: Optional[str] = "HIGH"
     status: Optional[str] = "NOT_DETECTED"
-    verification_status: Optional[str] = None
     url: Optional[str] = None
     parameter: Optional[str] = None
-    location: Optional[str] = None
     title: str
     description: str
     evidence: Optional[str] = None
@@ -259,44 +228,6 @@ class FindingOut(BaseModel):
     created_at: str
 
     model_config = ConfigDict(from_attributes=True)
-
-    @model_validator(mode="after")
-    def populate_verification_status(self):
-        if not self.verification_status:
-            st = (self.status or "").upper()
-            if st in ("SCANNER_ERROR", "ERROR"):
-                self.verification_status = "ERROR"
-            elif st == "NOT_DETECTED":
-                self.verification_status = "NOT_DETECTED"
-            elif st == "INCONCLUSIVE":
-                self.verification_status = "INCONCLUSIVE"
-            elif st in ("BLOCKED", "SKIPPED", "NOT_TESTED", "POTENTIAL", "CONFIRMED"):
-                self.verification_status = st
-            elif st in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
-                if (self.confidence or "").upper() == "LOW" or "potential" in (self.title or "").lower():
-                    self.verification_status = "POTENTIAL"
-                else:
-                    self.verification_status = "CONFIRMED"
-            else:
-                self.verification_status = "POTENTIAL"
-        else:
-            self.verification_status = self.verification_status.upper()
-            if self.verification_status == "SCANNER_ERROR":
-                self.verification_status = "ERROR"
-        if not self.location:
-            if self.evidence and "location: cookie" in self.evidence.lower():
-                self.location = "cookie"
-            elif self.evidence and "location: form" in self.evidence.lower():
-                self.location = "form"
-            elif self.evidence and "location: json" in self.evidence.lower():
-                self.location = "json"
-            elif self.evidence and "location: header" in self.evidence.lower():
-                self.location = "header"
-            elif self.evidence and "location: query" in self.evidence.lower():
-                self.location = "query"
-            elif self.parameter:
-                self.location = "query"
-        return self
 
     @field_validator("remediation", mode="before")
     @classmethod
@@ -326,11 +257,6 @@ class ScanCounts(BaseModel):
     not_detected: int = 0
     scanner_error: int = 0
     inconclusive: int = 0
-    confirmed: int = 0
-    potential: int = 0
-    blocked: int = 0
-    skipped: int = 0
-    not_tested: int = 0
     total: int = 0
 
 class ScanResultOut(BaseModel):
@@ -343,7 +269,6 @@ class ScanResultOut(BaseModel):
     counts: ScanCounts
     findings: List[FindingOut]
     module_details: Optional[Dict[str, Any]] = None
-    inventory: Optional[Dict[str, Any]] = None
 
 class DashboardTrend(BaseModel):
     labels: List[str]

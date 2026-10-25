@@ -91,6 +91,3 @@ limit_resend = rate_limit(max_requests=1, window_seconds=60, prefix="auth_resend
 limit_reset = rate_limit(max_requests=3, window_seconds=900, prefix="auth_reset")       # 3 requests / 15 mins
 limit_scans = rate_limit(max_requests=20, window_seconds=3600, prefix="scans")          # 20 scans / hour
 limit_ai = rate_limit(max_requests=30, window_seconds=60, prefix="ai_chat")             # 30 requests / min
-limit_phone_send = rate_limit(max_requests=5, window_seconds=600, prefix="auth_phone_send")     # 5 SMS requests / 10 mins
-limit_phone_verify = rate_limit(max_requests=10, window_seconds=600, prefix="auth_phone_verify") # 10 verify checks / 10 mins
-
